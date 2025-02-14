@@ -29,11 +29,18 @@ const Index = () => {
       <Navbar />
       <main className="flex-1">
         <section className="px-4 py-20 md:py-32 mx-auto container text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-in">
+          <div className="flex justify-center mb-8">
+            <img 
+              src="/lovable-uploads/2f0b86ee-d92e-4b14-b2bb-9001b82c5ce2.png" 
+              alt="LUMS Logo" 
+              className="h-32 w-auto"
+            />
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-in text-primary">
             Welcome to LUMS
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-[600px] mx-auto animate-in">
-            Lund Muslim Student Association - Building a supportive community for Muslim students
+            Lund University Muslim Students - Building a supportive community for Muslim students
             in Lund through events, activities, and connections.
           </p>
           <div className="flex gap-4 justify-center animate-in">
@@ -52,14 +59,14 @@ const Index = () => {
         </section>
 
         <section className="px-4 py-16 mx-auto container">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-3xl font-bold text-center mb-12 text-primary">
             Why Join LUMS?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {features.map((feature) => (
               <Card key={feature.title} className="hover-card">
                 <CardHeader>
-                  <feature.icon className="h-8 w-8 mb-2 text-primary" />
+                  <feature.icon className="h-8 w-8 mb-2 text-secondary" />
                   <CardTitle>{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
