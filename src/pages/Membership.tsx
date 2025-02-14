@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { Check } from "lucide-react";
 
 const Membership = () => {
@@ -71,6 +72,7 @@ const Membership = () => {
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

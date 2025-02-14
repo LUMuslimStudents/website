@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import { Calendar, MapPin } from "lucide-react";
 
 const Events = () => {
@@ -55,6 +56,7 @@ const Events = () => {
           ))}
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
