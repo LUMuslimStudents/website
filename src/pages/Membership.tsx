@@ -9,25 +9,27 @@ const Membership = () => {
     {
       id: 1,
       name: "Student Membership",
-      price: "199 SEK",
-      period: "per year",
+      price: "100 SEK",
+      period: "per semester",
       features: [
-        "Access to all student events",
-        "Voting rights in association",
-        "Member discounts",
-        "Newsletter subscription",
+        "Access to all LUMS events",
+        "Prayer room access",
+        "Community WhatsApp group",
+        "Weekly newsletters",
+        "Event discounts",
       ],
     },
     {
       id: 2,
-      name: "Alumni Membership",
-      price: "299 SEK",
-      period: "per year",
+      name: "Supporting Member",
+      price: "200 SEK",
+      period: "per semester",
       features: [
-        "Access to alumni network",
+        "All Student Member benefits",
+        "Support LUMS activities",
+        "Recognition in our community",
+        "Special event invitations",
         "Mentorship opportunities",
-        "Special events access",
-        "Newsletter subscription",
       ],
     },
   ];
@@ -37,9 +39,9 @@ const Membership = () => {
       <Navbar />
       <main className="flex-1 container py-8">
         <div className="text-center mb-12 animate-in">
-          <h1 className="text-4xl font-bold mb-4">Choose Your Membership</h1>
+          <h1 className="text-4xl font-bold mb-4">Join LUMS</h1>
           <p className="text-xl text-muted-foreground max-w-[600px] mx-auto">
-            Join our community and get access to exclusive benefits and events.
+            Become part of our vibrant Muslim student community in Lund and enjoy exclusive benefits.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-[1000px] mx-auto">
@@ -63,7 +65,7 @@ const Membership = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Select Plan</Button>
+                <Button className="w-full">Become a Member</Button>
               </CardFooter>
             </Card>
           ))}
