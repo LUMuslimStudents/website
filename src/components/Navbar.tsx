@@ -23,6 +23,9 @@ export const Navbar = () => {
           <Link to="/membership">
             <Button variant="ghost">Membership</Button>
           </Link>
+          <Link to="/blog">
+            <Button variant="ghost">Blog</Button>
+          </Link>
         </div>
       </div>
     </nav>
