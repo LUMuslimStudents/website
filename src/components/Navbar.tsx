@@ -1,33 +1,27 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Navbar = () => {
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <Link to="/" className="flex items-center space-x-2">
-          <img 
-            src="/lovable-uploads/2f0b86ee-d92e-4b14-b2bb-9001b82c5ce2.png" 
-            alt="LUMS Logo" 
-            className="h-12 w-auto"
-          />
-          <span className="text-sm text-muted-foreground hidden md:inline">
-            Lund University Muslim Students
-          </span>
+    <header className="border-b bg-background">
+      <div className="container flex h-16 items-center justify-between">
+        <Link to="/" className="font-bold text-xl">
+          LUMS
         </Link>
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <Link to="/events">
-            <Button variant="ghost">Events</Button>
+        <nav className="flex items-center gap-6">
+          <Link to="/events" className="text-muted-foreground hover:text-foreground transition-colors">
+            Events
           </Link>
-          <Link to="/membership">
-            <Button variant="ghost">Membership</Button>
+          <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+            Blog
           </Link>
-          <Link to="/blog">
-            <Button variant="ghost">Blog</Button>
+          <Link to="/membership" className="text-muted-foreground hover:text-foreground transition-colors">
+            Membership
           </Link>
-        </div>
+          <ThemeToggle />
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 };

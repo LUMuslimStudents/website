@@ -6,6 +6,9 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Users, Calendar, LifeBuoy } from "lucide-react";
+import { FAQ } from "@/components/FAQ";
+import { Testimonials } from "@/components/Testimonials";
 
 const Membership = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,15 +67,53 @@ const Membership = () => {
     },
   ];
 
+  const benefits = [
+    {
+      title: "Community Connection",
+      description: "Join a vibrant community of Muslim students",
+      icon: Users
+    },
+    {
+      title: "Exclusive Events",
+      description: "Get priority access to all LUMS events",
+      icon: Calendar
+    },
+    {
+      title: "Support Network",
+      description: "Access to mentorship and support services",
+      icon: LifeBuoy
+    }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 container py-8">
+        <div className="relative overflow-hidden bg-gradient-to-r from-primary/10 to-primary/5 py-16 mb-12">
+          <div className="container relative z-10">
+            <h1 className="text-5xl font-bold text-center mb-4 animate-in slide-in-from-bottom duration-700">
+              Join Our Community
+            </h1>
+            <p className="text-xl text-center text-muted-foreground max-w-2xl mx-auto animate-in slide-in-from-bottom duration-700 delay-200">
+              Be part of Lund University's vibrant Muslim community. Connect, learn, and grow together.
+            </p>
+          </div>
+          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]" />
+        </div>
         <div className="text-center mb-12 animate-in">
           <h1 className="text-4xl font-bold mb-4">Join LUMS</h1>
           <p className="text-xl text-muted-foreground max-w-[600px] mx-auto">
             Become part of our vibrant Muslim student community in Lund and enjoy exclusive benefits.
           </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          {benefits.map((benefit) => (
+            <div key={benefit.title} className="group p-6 rounded-lg border bg-card hover:shadow-lg transition-all duration-300">
+              <benefit.icon className="h-12 w-12 text-primary mb-4 group-hover:scale-110 transition-transform duration-300" />
+              <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
+              <p className="text-muted-foreground">{benefit.description}</p>
+            </div>
+          ))}
         </div>
         <div className="max-w-[500px] mx-auto">
           <Card className="hover-card">
@@ -163,6 +204,8 @@ const Membership = () => {
           </DialogContent>
         </Dialog>
       </main>
+      <FAQ />
+      <Testimonials />
       <Footer />
     </div>
   );

@@ -3,6 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Calendar, MapPin } from "lucide-react";
+import { useState } from "react";
 
 const Events = () => {
   const events = [
@@ -33,11 +34,27 @@ const Events = () => {
     // Add more events as needed
   ];
 
+  // Add event filtering
+  const categories = ["All", "Social", "Educational", "Religious", "Community"];
+  const [activeCategory, setActiveCategory] = useState("All");
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 container py-8">
         <h1 className="text-4xl font-bold mb-8 animate-in">Upcoming Events</h1>
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              variant={activeCategory === category ? "default" : "outline"}
+              onClick={() => setActiveCategory(category)}
+              className="rounded-full"
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
             <Card key={event.id} className="hover-card">
