@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
@@ -17,6 +16,14 @@ const Events = () => {
     },
     {
       id: 2,
+      title: "Career Workshop",
+      date: "March 20, 2024",
+      location: "Main Campus Hall",
+      price: "Free for members",
+      description: "Learn from industry professionals about career opportunities.",
+    },
+    {
+      id: 3,
       title: "Career Workshop",
       date: "March 20, 2024",
       location: "Main Campus Hall",

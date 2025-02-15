@@ -57,7 +57,6 @@ const Membership = () => {
       period: "per semester",
       features: [
         "Access to all LUMS events",
-        "Prayer room access",
         "Community WhatsApp group",
         "Weekly newsletters",
         "Event discounts",

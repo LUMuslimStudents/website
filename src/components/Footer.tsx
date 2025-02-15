@@ -11,11 +11,12 @@ export const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
             <div className="space-y-2">
               <a 
-                href="mailto:contact@lums.se" 
+                href="mailto:muslimskastudenterlu@gmail.com" 
                 className="flex items-center text-muted-foreground hover:text-primary transition-colors"
               >
                 <Mail className="h-4 w-4 mr-2" />
-                contact@lums.se
+                muslimskastudenterlu@gmail.com
+
               </a>
             </div>
           </div>
@@ -23,7 +24,7 @@ export const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
             <div className="flex space-x-4">
               <a
-                href="https://instagram.com/lums"
+                href="https://www.instagram.com/muslimstudentslu/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
@@ -31,7 +32,7 @@ export const Footer = () => {
                 <Instagram className="h-6 w-6" />
               </a>
               <a
-                href="https://facebook.com/lums"
+                href="https://www.facebook.com/profile.php?id=100086599076992"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
@@ -39,7 +40,7 @@ export const Footer = () => {
                 <Facebook className="h-6 w-6" />
               </a>
               <a
-                href="https://linkedin.com/company/lums"
+                href="https://www.linkedin.com/groups/12774879/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors"
