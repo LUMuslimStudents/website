@@ -268,3 +268,52 @@ html {
     transform: translateY(-20px);
   }
 }
+
+/* Add these responsive utilities */
+@layer utilities {
+  .container {
+    @apply px-4 md:px-6;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Update page transitions for mobile */
+.page {
+  position: relative;
+  opacity: 0;
+  animation: fadeIn 0.6s ease-in-out forwards;
+  overflow-x: hidden; /* Prevent horizontal scroll during animations */
+}
+
+/* Adjust card layouts for mobile */
+.hover-card {
+  @apply transition-all duration-300;
+  
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px -5px rgba(0, 74, 172, 0.1);
+    }
+  }
+  
+  @media (hover: none) {
+    &:active {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px -5px rgba(0, 74, 172, 0.1);
+    }
+  }
+}
+
+/* Improve touch targets on mobile */
+button, a {
+  @apply min-h-[44px] md:min-h-[unset];
+  
+  @media (max-width: 768px) {
+    &:not(.inline-link) {
+      @apply px-4 py-2;
+    }
+  }
+}
