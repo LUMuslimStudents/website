@@ -27,25 +27,25 @@
   }
  
   .dark {
-    --background: 0 0% 0%;      /* Pure black */
-    --foreground: 0 0% 100%;    /* Pure white */
-    --card: 0 0% 3%;            /* Very dark gray, almost black */
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 0%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 212 100% 34%;    /* Keeping LUMS Blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 35 85% 55%;    /* Keeping Gold */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 5%;           /* Very dark gray for muted areas */
-    --muted-foreground: 0 0% 70%;
-    --accent: 212 100% 34%;     /* Keeping LUMS Blue */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-    --border: 0 0% 15%;         /* Dark gray borders */
-    --input: 0 0% 15%;
-    --ring: 212 100% 34%;
+    --background: 222 47% 11%;        /* Dark navy instead of pure black */
+    --foreground: 210 40% 98%;        /* Soft white for better readability */
+    --card: 222 47% 13%;              /* Slightly lighter than background */
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 212 100% 50%;          /* Brighter LUMS Blue for dark mode */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 35 85% 55%;          /* Keep gold color */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 47% 15%;             /* Subtle background for muted areas */
+    --muted-foreground: 210 40% 80%;  /* Softer text for muted content */
+    --accent: 212 100% 50%;           /* Brighter accent for dark mode */
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 47% 18%;            /* Subtle borders */
+    --input: 222 47% 18%;
+    --ring: 212 100% 50%;
   }
 }
 
