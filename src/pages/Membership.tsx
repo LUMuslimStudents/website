@@ -33,7 +33,8 @@ const Membership = () => {
         throw new Error('Please use your @student.lu.se email address');
       }
 
-      const { error } = await supabase
+      // Create member directly
+      const { error: memberError } = await supabase
         .from('members')
         .insert([
           {
@@ -45,7 +46,7 @@ const Membership = () => {
           }
         ]);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
 
       toast({
         title: "Registration successful!",
