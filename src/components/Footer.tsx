@@ -13,14 +13,14 @@ export const Footer = () => {
 
   return (
     <footer className="border-t bg-background">
-      <div className="container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
+      <div className="container py-8 md:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="text-center sm:text-left">
             <h3 className="font-bold text-lg mb-4">About LUMS</h3>
             <p className="text-muted-foreground">
               Supporting Muslim students at Lund University since 2014.
             </p>
-            <div className="flex gap-4 mt-4">
+            <div className="flex gap-4 mt-4 justify-center sm:justify-start">
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
@@ -77,8 +77,8 @@ export const Footer = () => {
             </div>
           </div>
         </div>
-        <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} LUMS - Lund University Muslim Students. All rights reserved.</p>
+        <div className="mt-8 md:mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
+          <p>© {new Date().getFullYear()} LUMS - Lund University Muslim Students.</p>
           <p className="mt-2">Developed with ❤️ by LUMS Tech Team</p>
         </div>
       </div>
