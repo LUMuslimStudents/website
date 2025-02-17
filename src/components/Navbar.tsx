@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/ui/nav-link";
 import { ThemeToggle } from "./ThemeToggle";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 
 export const Navbar = () => {
@@ -9,81 +9,67 @@ export const Navbar = () => {
 
   return (
     <header className="border-b bg-background">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-20 items-center justify-between relative">
+        {/* Left-aligned LUMS logo */}
         <NavLink 
           to="/" 
           className="group transition-all flex items-center z-20"
         >
-          <span className="text-2xl font-bold bg-gradient-to-r from-[#004aac] via-[#c19434] to-[#004aac] bg-clip-text text-transparent bg-size-300 animate-gradient-slow hover:scale-105 transition-all duration-500 ease-in-out">
-            LUMS
-          </span>
+          <img 
+            src="/lovable-uploads/logo_minimalist_transparent.png"
+            alt="LUMS Logo"
+            className="h-16 w-auto hover:scale-105 transition-all duration-500 ease-in-out"
+          />
         </NavLink>
 
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden z-20"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
-        </button>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <NavLink to="/events" className="text-muted-foreground hover:text-foreground transition-colors">
-            Events
-          </NavLink>
-          <NavLink to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
-            Blog
-          </NavLink>
-          <NavLink to="/suggestions" className="text-muted-foreground hover:text-foreground transition-colors">
-            Suggestions
-          </NavLink>
-          <NavLink to="/membership" className="text-muted-foreground hover:text-foreground transition-colors">
-            Membership
-          </NavLink>
+        {/* Right-aligned menu button */}
+        <div className="flex items-center gap-2">
           <ThemeToggle />
-        </nav>
+          <button
+            className="p-2 hover:bg-muted rounded-full"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
 
-        {/* Mobile Navigation */}
+        {/* Dropdown Menu */}
         <div className={`
-          fixed inset-0 bg-background/95 backdrop-blur-sm md:hidden
-          transition-all duration-300 ease-in-out
-          ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          absolute right-0 top-full mt-2 w-48 
+          bg-background border rounded-lg shadow-lg
+          transition-all duration-200 ease-in-out
+          ${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}
+          z-50
         `}>
-          <nav className="flex flex-col items-center justify-center h-full gap-8">
+          <nav className="py-2">
             <NavLink 
               to="/events" 
-              className="text-xl font-medium hover:text-[#004aac] transition-colors"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Events
             </NavLink>
             <NavLink 
               to="/blog" 
-              className="text-xl font-medium hover:text-[#004aac] transition-colors"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Blog
             </NavLink>
             <NavLink 
               to="/suggestions" 
-              className="text-xl font-medium hover:text-[#004aac] transition-colors"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Suggestions
             </NavLink>
             <NavLink 
               to="/membership" 
-              className="text-xl font-medium hover:text-[#004aac] transition-colors"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Membership
             </NavLink>
-            <ThemeToggle />
           </nav>
         </div>
       </div>
