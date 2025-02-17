@@ -8,7 +8,9 @@ import Events from "./pages/Events";
 import Membership from "./pages/Membership";
 import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
+import Mission from "./pages/Mission";
 import { ThemeProvider } from "next-themes";
+import Suggestions from "./pages/Suggestions";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/membership" element={<Membership />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/mission" element={<Mission />} />
+              <Route path="/suggestions" element={<Suggestions />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

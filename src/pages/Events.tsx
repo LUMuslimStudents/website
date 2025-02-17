@@ -39,7 +39,7 @@ const Events = () => {
   const [activeCategory, setActiveCategory] = useState("All");
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col page">
       <Navbar />
       <main className="flex-1 container py-8">
         <h1 className="text-4xl font-bold mb-8 animate-in">Upcoming Events</h1>

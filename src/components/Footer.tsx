@@ -1,60 +1,83 @@
 import { Facebook, Instagram, Linkedin, Mail } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const Footer = () => {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path: string) => {
+    window.scrollTo(0, 0);
+    navigate(path);
+  };
+
   return (
     <footer className="border-t bg-background">
-      <div className="container py-8 md:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-700">
-          <div className="group">
-            <h3 className="text-lg font-semibold mb-4 relative">
-              Contact Us
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
-            </h3>
-            <div className="space-y-2">
-              <a 
-                href="mailto:muslimskastudenterlu@gmail.com" 
-                className="flex items-center text-muted-foreground hover:text-primary transition-all duration-300 transform hover:translate-x-1"
-              >
-                <Mail className="h-4 w-4 mr-2 transition-transform duration-300 group-hover:rotate-12" />
-                muslimskastudenterlu@gmail.com
+      <div className="container py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 className="font-bold text-lg mb-4">About LUMS</h3>
+            <p className="text-muted-foreground">
+              Supporting Muslim students at Lund University since 2014.
+            </p>
+            <div className="flex gap-4 mt-4">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
+                <Linkedin className="h-5 w-5" />
               </a>
             </div>
           </div>
-          <div className="group">
-            <h3 className="text-lg font-semibold mb-4 relative">
-              Follow Us
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
-            </h3>
-            <div className="flex space-x-6">
-              <a
-                href="https://www.instagram.com/muslimstudentslu/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-all duration-300 transform hover:scale-110 hover:-translate-y-1"
-              >
-                <Instagram className="h-6 w-6" />
-              </a>
-              <a
-                href="https://www.facebook.com/profile.php?id=100086599076992"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-all duration-300 transform hover:scale-110 hover:-translate-y-1"
-              >
-                <Facebook className="h-6 w-6" />
-              </a>
-              <a
-                href="https://www.linkedin.com/groups/12774879/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-all duration-300 transform hover:scale-110 hover:-translate-y-1"
-              >
-                <Linkedin className="h-6 w-6" />
-              </a>
+          <div>
+            <h3 className="font-bold text-lg mb-4">Quick Links</h3>
+            <ul className="space-y-2">
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/events')}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Upcoming Events
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/membership')}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Join Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/suggestions')}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Give Feedback
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-bold text-lg mb-4">Contact</h3>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>Email: contact@lums.se</li>
+              <li>Location: Lund University</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-bold text-lg mb-4">Newsletter</h3>
+            <p className="text-muted-foreground mb-4">Stay updated with our latest news</p>
+            <div className="flex gap-2">
+              <Input placeholder="Your email" className="bg-background" />
+              <Button className="bg-[#004aac] hover:bg-[#004aac]/90">Subscribe</Button>
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground opacity-0 animate-in fade-in duration-700 delay-300">
+        <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} LUMS - Lund University Muslim Students. All rights reserved.</p>
           <p className="mt-2">Developed with ❤️ by LUMS Tech Team</p>
         </div>
