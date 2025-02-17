@@ -5,47 +5,47 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 220 10% 30%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 10% 30%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 217 91% 21%;  /* LUMS Blue */
+    --popover-foreground: 220 10% 30%;
+    --primary: 212 100% 34%;  /* LUMS Blue #004aac */
     --primary-foreground: 0 0% 100%;
-    --secondary: 36 100% 40%;  /* LUMS Gold */
+    --secondary: 35 85% 55%;  /* Warm Gold */
     --secondary-foreground: 0 0% 100%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 36 100% 40%;  /* LUMS Gold */
+    --muted: 212 30% 97%;    /* Light Blue Background */
+    --muted-foreground: 212 20% 40%;
+    --accent: 212 100% 34%;  /* LUMS Blue */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 217 91% 21%;  /* LUMS Blue */
+    --border: 212 20% 90%;
+    --input: 212 20% 90%;
+    --ring: 212 100% 34%;
     --radius: 0.75rem;
   }
  
   .dark {
-    --background: 20 14.3% 4.1%;
-    --foreground: 0 0% 95%;
-    --card: 24 9.8% 10%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 9%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 217 91% 21%;  /* LUMS Blue */
+    --background: 0 0% 0%;      /* Pure black */
+    --foreground: 0 0% 100%;    /* Pure white */
+    --card: 0 0% 3%;            /* Very dark gray, almost black */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 212 100% 34%;    /* Keeping LUMS Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 36 100% 40%;  /* LUMS Gold */
+    --secondary: 35 85% 55%;    /* Keeping Gold */
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 36 100% 40%;  /* LUMS Gold */
+    --muted: 0 0% 5%;           /* Very dark gray for muted areas */
+    --muted-foreground: 0 0% 70%;
+    --accent: 212 100% 34%;     /* Keeping LUMS Blue */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 85.7% 97.3%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 217 91% 21%;  /* LUMS Blue */
+    --border: 0 0% 15%;         /* Dark gray borders */
+    --input: 0 0% 15%;
+    --ring: 212 100% 34%;
   }
 }
 
@@ -58,14 +58,45 @@
   }
 }
 
+/* Professional Animations */
 .animate-in {
-  animation: animate-in 0.5s ease-out;
+  animation: animate-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-in-from-bottom {
+  animation: slide-in-bottom 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-card {
+  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-muted/50;
+  position: relative;
+  overflow: hidden;
+}
+
+.hover-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent 0%, rgba(0, 74, 172, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hover-card:hover::after {
+  opacity: 1;
+}
+
+.feature-icon {
+  @apply transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3;
 }
 
 @keyframes animate-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -73,6 +104,167 @@
   }
 }
 
+@keyframes slide-in-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Gradient Backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--background)) 100%);
+}
+
+.card-hover-effect {
+  @apply relative overflow-hidden;
+}
+
+.card-hover-effect::after {
+  content: '';
+  @apply absolute inset-0 opacity-0 transition-opacity duration-300 bg-gradient-to-r from-primary/5 to-secondary/5;
+}
+
+.card-hover-effect:hover::after {
+  @apply opacity-100;
+}
+
+/* Add these new animations to your existing CSS */
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes expand {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 4s ease infinite;
+}
+
+.animate-expand {
+  animation: expand 0.8s ease-out forwards;
+  animation-delay: 0.5s;
+}
+
+/* Add these to your existing animations */
+.bg-size-200 {
+  background-size: 200% auto;
+}
+
+.animate-gradient {
+  animation: gradient 3s linear infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
+}
+
+/* Update the gradient animations */
+.bg-size-300 {
+  background-size: 300% auto;
+}
+
+.animate-gradient-slow {
+  animation: gradient 12s ease-in-out infinite;
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+    background-size: 300% auto;
+  }
+  50% {
+    background-position: 100% 50%;
+    background-size: 300% auto;
+  }
+}
+
+/* Add smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Add more professional animations */
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.6s ease forwards;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add hover effects for cards */
 .hover-card {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  @apply transition-all duration-300;
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px -5px rgba(0, 74, 172, 0.1);
+  }
+}
+
+/* Add page transition styles */
+.page {
+  position: relative;
+  opacity: 0;
+  animation: fadeIn 0.6s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-exit {
+  opacity: 1;
+  animation: fadeOut 0.6s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 }
