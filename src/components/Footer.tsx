@@ -49,6 +49,24 @@ export const Footer = () => {
     }
   };
 
+  const socialLinks = [
+    {
+      name: "Instagram",
+      href: "https://www.instagram.com/muslimstudentslu/",
+      icon: Instagram
+    },
+    {
+      name: "LinkedIn",
+      href: "https://www.linkedin.com/groups/12774879/",
+      icon: Linkedin
+    },
+    {
+      name: "Facebook",
+      href: "https://www.facebook.com/profile.php?id=100086599076992",
+      icon: Facebook
+    }
+  ];
+
   return (
     <footer className="border-t bg-background">
       <div className="container py-8 md:py-12">
@@ -59,15 +77,18 @@ export const Footer = () => {
               Supporting Muslim students at Lund University since 2014.
             </p>
             <div className="flex gap-4 mt-4 justify-center sm:justify-start">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-[#004aac] transition-colors">
-                <Linkedin className="h-5 w-5" />
-              </a>
+              {socialLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-[#004aac] transition-colors"
+                  aria-label={link.name}
+                >
+                  <link.icon className="h-5 w-5" />
+                </a>
+              ))}
             </div>
           </div>
           <div>
@@ -102,7 +123,14 @@ export const Footer = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">Contact</h3>
             <ul className="space-y-2 text-muted-foreground">
-              <li>Email: contact@lums.se</li>
+              <li>
+                Email: <a 
+                  href="mailto:muslimskastudenterlu@gmail.com" 
+                  className="hover:text-[#004aac] transition-colors"
+                >
+                  muslimskastudenterlu@gmail.com
+                </a>
+              </li>
               <li>Location: Lund University</li>
             </ul>
           </div>
