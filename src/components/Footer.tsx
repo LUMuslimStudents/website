@@ -2,13 +2,51 @@ import { Facebook, Instagram, Linkedin, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 export const Footer = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleNavigation = (path: string) => {
     window.scrollTo(0, 0);
     navigate(path);
+  };
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .insert([
+          { email, subscribed_at: new Date().toISOString() }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Successfully subscribed!",
+        description: "Thank you for subscribing to our newsletter.",
+      });
+      
+      setEmail("");
+    } catch (error) {
+      toast({
+        title: "Subscription failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -71,10 +109,27 @@ export const Footer = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">Newsletter</h3>
             <p className="text-muted-foreground mb-4">Stay updated with our latest news</p>
-            <div className="flex gap-2">
-              <Input placeholder="Your email" className="bg-background" />
-              <Button className="bg-[#004aac] hover:bg-[#004aac]/90">Subscribe</Button>
-            </div>
+            <form onSubmit={handleSubscribe} className="flex gap-2">
+              <Input 
+                type="email"
+                placeholder="Your email" 
+                className="bg-background"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <Button 
+                type="submit" 
+                className="bg-[#004aac] hover:bg-[#004aac]/90"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Subscribe"
+                )}
+              </Button>
+            </form>
           </div>
         </div>
         <div className="mt-8 md:mt-12 pt-8 border-t text-center text-sm text-muted-foreground">

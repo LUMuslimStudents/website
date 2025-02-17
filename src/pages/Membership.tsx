@@ -2,16 +2,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Calendar, LifeBuoy } from "lucide-react";
 import { FAQ } from "@/components/FAQ";
 import { Testimonials } from "@/components/Testimonials";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 const Membership = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     fullName: '',
     studyProgram: '',
@@ -19,30 +23,52 @@ const Membership = () => {
     phoneNumber: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Save to localStorage
-    const members = JSON.parse(localStorage.getItem('members') || '[]');
-    members.push({
-      ...formData,
-      id: Date.now(),
-      joinDate: new Date().toISOString(),
-    });
-    localStorage.setItem('members', JSON.stringify(members));
-    
-    // Close dialog
-    setIsOpen(false);
-    
-    // Clear form
-    setFormData({
-      fullName: '',
-      studyProgram: '',
-      schoolEmail: '',
-      phoneNumber: ''
-    });
+    setIsLoading(true);
 
-    // Show success message (you can add a toast here)
-    alert('Registration successful!');
+    try {
+      // Validate Lund University email
+      if (!formData.schoolEmail.endsWith('@student.lu.se')) {
+        throw new Error('Please use your @student.lu.se email address');
+      }
+
+      const { error } = await supabase
+        .from('members')
+        .insert([
+          {
+            full_name: formData.fullName,
+            study_program: formData.studyProgram,
+            school_email: formData.schoolEmail,
+            phone_number: formData.phoneNumber,
+            membership_status: 'pending'
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Registration successful!",
+        description: "We'll review your application and get back to you soon.",
+      });
+      
+      // Clear form and close dialog
+      setFormData({
+        fullName: '',
+        studyProgram: '',
+        schoolEmail: '',
+        phoneNumber: ''
+      });
+      setIsOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,8 +141,8 @@ const Membership = () => {
             </div>
           ))}
         </div>
-        <div className="max-w-[500px] mx-auto">
-          <Card className="hover-card">
+        <div className="max-w-[500px] mx-auto relative z-10">
+          <Card>
             <CardHeader>
               <CardTitle className="text-2xl">{plans[0].name}</CardTitle>
               <div className="flex items-baseline mt-4">
@@ -134,12 +160,11 @@ const Membership = () => {
                 ))}
               </ul>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pb-4">
               <Button 
-                className="w-full"
-                onClick={() => {
-                  setIsOpen(true);
-                }}
+                variant="default"
+                className="w-full bg-[#004aac] hover:bg-[#004aac]/90 text-white font-medium py-2"
+                onClick={() => setIsOpen(true)}
               >
                 Become a Member
               </Button>
@@ -161,6 +186,7 @@ const Membership = () => {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -171,6 +197,7 @@ const Membership = () => {
                   value={formData.studyProgram}
                   onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -184,6 +211,7 @@ const Membership = () => {
                   required
                   pattern=".*@student\.lu\.se$"
                   title="Please use your @student.lu.se email"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -195,10 +223,22 @@ const Membership = () => {
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
                   required
+                  disabled={isLoading}
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Proceed to Payment
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Application'
+                )}
               </Button>
             </form>
           </DialogContent>
