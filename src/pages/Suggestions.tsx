@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const Suggestions = () => {
   const { toast } = useToast();
@@ -22,25 +23,36 @@ const Suggestions = () => {
     setIsLoading(true);
 
     try {
-      // Here you would typically send the data to your backend
-      // For now, we'll just simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Insert suggestion into Supabase
+      const { error } = await supabase
+        .from('suggestions')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            suggestion: formData.suggestion,
+            category: formData.category,
+          }
+        ]);
+
+      if (error) throw error;
       
       toast({
         title: "Thank you for your suggestion!",
         description: "We'll review it and get back to you soon.",
       });
 
+      // Clear form after successful submission
       setFormData({
         name: "",
         email: "",
         suggestion: "",
         category: "event"
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Something went wrong",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     } finally {
