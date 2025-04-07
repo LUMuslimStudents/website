@@ -17,13 +17,21 @@ serve(async (req) => {
 
   try {
     // Create a Supabase client with admin privileges to update the database
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase configuration is missing");
+    }
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { memberId, memberName, memberEmail, productName, amount } = await req.json();
+    const requestData = await req.json().catch(() => {
+      throw new Error("Invalid request body format");
+    });
+    
+    const { memberId, memberName, memberEmail, productName, amount } = requestData;
 
     // Validate required fields
     if (!memberId || !memberEmail) {
@@ -33,7 +41,7 @@ serve(async (req) => {
     // Initialize Stripe with the secret key from environment variables
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
-      throw new Error("Stripe secret key is not configured");
+      throw new Error("Stripe secret key is not configured. Please set it in Supabase Edge Function secrets.");
     }
 
     const stripe = new Stripe(stripeSecretKey, {
@@ -56,8 +64,8 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}&member_id=${memberId}`,
-      cancel_url: `${req.headers.get("origin")}/membership?canceled=true`,
+      success_url: `${req.headers.get("origin") || "https://your-website.com"}/payment-success?session_id={CHECKOUT_SESSION_ID}&member_id=${memberId}`,
+      cancel_url: `${req.headers.get("origin") || "https://your-website.com"}/membership?canceled=true`,
       client_reference_id: memberId,
       customer_email: memberEmail,
       metadata: {
@@ -88,7 +96,10 @@ serve(async (req) => {
     console.error("Error creating checkout session:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || "Failed to create checkout session", 
+        details: error.toString() 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

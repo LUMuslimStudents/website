@@ -19,15 +19,31 @@ CREATE TABLE IF NOT EXISTS public.members (
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 
 -- Create policy to allow anonymous users to insert (for registration)
-CREATE POLICY members_insert_policy ON public.members 
-    FOR INSERT 
-    TO anon
-    WITH CHECK (true);
-    
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT FROM pg_policies WHERE tablename = 'members' AND policyname = 'members_insert_policy'
+    ) THEN
+        CREATE POLICY members_insert_policy ON public.members 
+            FOR INSERT 
+            TO anon
+            WITH CHECK (true);
+    END IF;
+END
+$$;
+
 -- Create policy to allow service role to select, update, and delete
-CREATE POLICY members_service_policy ON public.members 
-    USING (true)
-    WITH CHECK (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT FROM pg_policies WHERE tablename = 'members' AND policyname = 'members_service_policy'
+    ) THEN
+        CREATE POLICY members_service_policy ON public.members 
+            USING (true)
+            WITH CHECK (true);
+    END IF;
+END
+$$;
 
 -- Create trigger to automatically update the updated_at column
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
@@ -38,6 +54,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop trigger if it exists to avoid errors during re-runs
+DROP TRIGGER IF EXISTS update_members_updated_at ON public.members;
+
+-- Create trigger
 CREATE TRIGGER update_members_updated_at
 BEFORE UPDATE ON public.members
 FOR EACH ROW

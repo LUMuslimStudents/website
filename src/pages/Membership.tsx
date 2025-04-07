@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 // Form validation schema
 const formSchema = z.object({
@@ -33,6 +34,7 @@ const Membership = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,6 +67,7 @@ const Membership = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    setApiError(null);
 
     try {
       // Create member in the database
@@ -84,11 +87,16 @@ const Membership = () => {
 
       if (memberError) throw memberError;
       
+      if (!member || member.length === 0) {
+        throw new Error("Failed to create member record");
+      }
+      
       // Get the newly created member ID
       const memberId = member[0].id;
       
       // Call the Supabase Edge Function to create a Stripe checkout session
       setIsRedirecting(true);
+      
       const { data: sessionData, error: sessionError } = await supabase.functions.invoke('create-checkout', {
         body: {
           memberId,
@@ -99,15 +107,20 @@ const Membership = () => {
         }
       });
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error("Stripe session error:", sessionError);
+        throw new Error(sessionError.message || "Failed to create payment session");
+      }
       
       // Redirect to the Stripe checkout page
       if (sessionData && sessionData.url) {
         window.location.href = sessionData.url;
       } else {
-        throw new Error('Failed to create payment session');
+        throw new Error('Failed to create payment session. No redirect URL returned.');
       }
     } catch (error: any) {
+      console.error("Registration error:", error);
+      setApiError(error.message || "An unexpected error occurred. Please try again later.");
       toast({
         title: "Registration failed",
         description: error.message || "Please try again later.",
@@ -217,6 +230,13 @@ const Membership = () => {
             <DialogHeader>
               <DialogTitle>Membership Application</DialogTitle>
             </DialogHeader>
+            {apiError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{apiError}</AlertDescription>
+              </Alert>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
