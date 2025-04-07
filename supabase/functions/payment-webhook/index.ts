@@ -40,6 +40,10 @@ serve(async (req) => {
     );
   }
 
+  // Check if we're using a test key (starts with sk_test_)
+  const isTestMode = stripeSecretKey.startsWith('sk_test_');
+  console.log(`Webhook received in Stripe ${isTestMode ? 'TEST' : 'LIVE'} mode`);
+
   const stripe = new Stripe(stripeSecretKey, {
     apiVersion: "2023-10-16",
   });
@@ -50,6 +54,7 @@ serve(async (req) => {
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      console.log(`Webhook event type: ${event.type}`);
     } catch (err) {
       console.error(`Webhook signature verification failed:`, err.message);
       return new Response(`Webhook Error: ${err.message}`, { status: 400 });
