@@ -10,7 +10,17 @@ This document outlines the steps needed to set up the Stripe integration for the
 
 ## Setup Steps
 
-### 1. Configure Stripe Webhook
+### 1. Set up Stripe Environment Variables
+
+1. Login to your Supabase dashboard
+2. Go to Settings > API
+3. Add the following secrets under "Edge Function Secrets":
+   - `STRIPE_SECRET_KEY`: Your Stripe secret key (from Stripe Dashboard > Developers > API keys)
+   - `STRIPE_WEBHOOK_SECRET`: Generate this in the next step
+   - `SUPABASE_URL`: Your Supabase project URL (already set)
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (already set)
+
+### 2. Configure Stripe Webhook
 
 1. Login to your [Stripe Dashboard](https://dashboard.stripe.com)
 2. Go to Developers > Webhooks
@@ -22,17 +32,7 @@ This document outlines the steps needed to set up the Stripe integration for the
    - `checkout.session.completed`
    - `checkout.session.expired`
    - `payment_intent.succeeded`
-5. Copy the "Signing Secret" that is generated
-
-### 2. Configure Supabase Environment Variables
-
-1. Login to your Supabase dashboard
-2. Go to Settings > API
-3. Add the following secrets under "Edge Function Secrets":
-   - `STRIPE_SECRET_KEY`: Your Stripe secret key (from Stripe Dashboard > Developers > API keys)
-   - `STRIPE_WEBHOOK_SECRET`: The webhook signing secret you copied earlier
-   - `SUPABASE_URL`: Your Supabase project URL (already set)
-   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (already set)
+5. Copy the "Signing Secret" that is generated and add it as `STRIPE_WEBHOOK_SECRET` in your Supabase Edge Function Secrets
 
 ### 3. Deploy the Edge Functions
 
@@ -42,11 +42,14 @@ This document outlines the steps needed to set up the Stripe integration for the
    supabase functions deploy payment-webhook
    ```
 
-### 4. Set Up the Database Table
+### 4. Verify the Database Table
 
-1. Run the SQL migration script to create the members table with the necessary fields:
+1. Check that the members table is set up correctly:
    ```sql
-   -- See supabase/migrations/20231001000000_create_members_table.sql
+   -- The migration script creates:
+   -- - A members table with payment fields
+   -- - RLS policies for security
+   -- - An update trigger for timestamps
    ```
 
 ## Testing the Integration
@@ -70,6 +73,17 @@ ZIP: Any 5 digits
 
 ## Troubleshooting
 
-- Check the Supabase Edge Function logs for errors
-- Verify that webhook events are being received in the Stripe Dashboard
-- Ensure the database table has the correct structure and permissions
+- **Error: "Failed to fetch"** - This typically means your Edge Function isn't accessible. Check:
+  - Supabase Edge Functions are properly deployed
+  - Environment variables are set correctly
+  - No CORS issues (the code includes CORS headers)
+  
+- **Payment created but status not updated** - This may indicate webhook issues:
+  - Check that the webhook URL is correctly configured in Stripe
+  - Verify the webhook secret is set properly in Supabase
+  - Look at Supabase Edge Function logs for errors
+
+- **Database errors** - If you see database-related errors:
+  - Check that the members table exists and has the correct schema
+  - Verify RLS policies are properly set up
+  - Test database access from the Edge Functions
