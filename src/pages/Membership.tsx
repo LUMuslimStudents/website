@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
@@ -11,16 +12,35 @@ import { FAQ } from "@/components/FAQ";
 import { Testimonials } from "@/components/Testimonials";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Membership = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     fullName: '',
     studyProgram: '',
     schoolEmail: '',
     phoneNumber: ''
+  });
+
+  // Check if the user was redirected back from a canceled payment
+  const searchParams = new URLSearchParams(location.search);
+  const canceled = searchParams.get('canceled') === 'true';
+
+  // Show a toast if payment was canceled
+  useState(() => {
+    if (canceled) {
+      toast({
+        title: "Payment canceled",
+        description: "Your payment was canceled. You can try again when you're ready.",
+        variant: "destructive",
+      });
+    }
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,8 +53,8 @@ const Membership = () => {
         throw new Error('Please use your @student.lu.se email address');
       }
 
-      // Create member directly
-      const { error: memberError } = await supabase
+      // Create member in the database
+      const { data: member, error: memberError } = await supabase
         .from('members')
         .insert([
           {
@@ -42,33 +62,45 @@ const Membership = () => {
             study_program: formData.studyProgram,
             school_email: formData.schoolEmail,
             phone_number: formData.phoneNumber,
-            membership_status: 'pending'
+            membership_status: 'pending',
+            payment_status: 'pending'
           }
-        ]);
+        ])
+        .select();
 
       if (memberError) throw memberError;
-
-      toast({
-        title: "Registration successful!",
-        description: "We'll review your application and get back to you soon.",
-      });
       
-      // Clear form and close dialog
-      setFormData({
-        fullName: '',
-        studyProgram: '',
-        schoolEmail: '',
-        phoneNumber: ''
+      // Get the newly created member ID
+      const memberId = member[0].id;
+      
+      // Call the Supabase Edge Function to create a Stripe checkout session
+      setIsRedirecting(true);
+      const { data: sessionData, error: sessionError } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          memberId,
+          memberName: formData.fullName,
+          memberEmail: formData.schoolEmail,
+          productName: 'LUMS Membership',
+          amount: 10000 // 100 SEK in öre
+        }
       });
-      setIsOpen(false);
+
+      if (sessionError) throw sessionError;
+      
+      // Redirect to the Stripe checkout page
+      if (sessionData && sessionData.url) {
+        window.location.href = sessionData.url;
+      } else {
+        throw new Error('Failed to create payment session');
+      }
     } catch (error: any) {
       toast({
         title: "Registration failed",
         description: error.message || "Please try again later.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
+      setIsRedirecting(false);
     }
   };
 
@@ -187,7 +219,7 @@ const Membership = () => {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isRedirecting}
                 />
               </div>
               <div className="space-y-2">
@@ -198,7 +230,7 @@ const Membership = () => {
                   value={formData.studyProgram}
                   onChange={handleInputChange}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isRedirecting}
                 />
               </div>
               <div className="space-y-2">
@@ -212,7 +244,7 @@ const Membership = () => {
                   required
                   pattern=".*@student\.lu\.se$"
                   title="Please use your @student.lu.se email"
-                  disabled={isLoading}
+                  disabled={isLoading || isRedirecting}
                 />
               </div>
               <div className="space-y-2">
@@ -224,21 +256,26 @@ const Membership = () => {
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isRedirecting}
                 />
               </div>
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={isLoading}
+                disabled={isLoading || isRedirecting}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Submitting...
                   </>
+                ) : isRedirecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting to payment...
+                  </>
                 ) : (
-                  'Submit Application'
+                  'Continue to Payment'
                 )}
               </Button>
             </form>
