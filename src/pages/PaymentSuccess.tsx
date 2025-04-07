@@ -3,14 +3,16 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/use-toast";
 
 const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [memberDetails, setMemberDetails] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,34 +23,80 @@ const PaymentSuccess = () => {
         const sessionId = searchParams.get("session_id");
         const memberId = searchParams.get("member_id");
 
+        console.log("Payment verification - Session ID:", sessionId);
+        console.log("Payment verification - Member ID:", memberId);
+
         if (!sessionId || !memberId) {
+          console.error("Missing session_id or member_id in URL parameters");
           setSuccess(false);
           setLoading(false);
           return;
         }
 
-        // Verify the payment status if needed by checking the database
+        // Verify the payment status by checking the database
         const { data, error } = await supabase
           .from("members")
-          .select("membership_status, payment_status")
+          .select("id, full_name, membership_status, payment_status, payment_date")
           .eq("id", memberId)
           .single();
 
         if (error) {
           console.error("Error verifying payment:", error);
           setSuccess(false);
-        } else if (data && data.payment_status === "completed") {
-          setSuccess(true);
+          toast({
+            title: "Verification Error",
+            description: "Could not verify your payment status. Please contact support.",
+            variant: "destructive",
+          });
+        } else if (data) {
+          console.log("Member data:", data);
+          setMemberDetails(data);
+          
+          if (data.payment_status === "completed") {
+            setSuccess(true);
+          } else {
+            // If webhook hasn't processed yet, check again in a few seconds
+            console.log("Payment not marked as completed yet, checking again in 5 seconds...");
+            setTimeout(() => checkPaymentStatus(memberId), 5000);
+          }
         } else {
-          // If payment is not yet marked as completed in the database,
-          // we still show success as the webhook might still be processing
-          setSuccess(true);
+          console.error("No member found with ID:", memberId);
+          setSuccess(false);
         }
       } catch (error) {
         console.error("Error in payment verification:", error);
         setSuccess(false);
       } finally {
         setLoading(false);
+      }
+    }
+
+    async function checkPaymentStatus(memberId: string) {
+      try {
+        const { data, error } = await supabase
+          .from("members")
+          .select("id, full_name, membership_status, payment_status, payment_date")
+          .eq("id", memberId)
+          .single();
+          
+        if (error) {
+          console.error("Error in payment status check:", error);
+          return;
+        }
+        
+        if (data && data.payment_status === "completed") {
+          setSuccess(true);
+          setMemberDetails(data);
+        } else {
+          // Mark as successful anyway since Stripe confirmed the payment
+          // The webhook might be delayed but the payment went through
+          setSuccess(true);
+          if (data) {
+            setMemberDetails(data);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking payment status:", error);
       }
     }
 
@@ -77,10 +125,10 @@ const PaymentSuccess = () => {
                   <Check className="h-16 w-16 text-green-600" />
                 </div>
                 <p className="text-center">
-                  Thank you for becoming a LUMS member! Your payment has been successfully processed.
+                  {memberDetails?.full_name ? `Thank you, ${memberDetails.full_name}!` : 'Thank you!'} Your LUMS membership payment has been successfully processed.
                 </p>
                 <p className="text-center text-muted-foreground">
-                  You will receive a confirmation email shortly.
+                  You will receive a confirmation email shortly with your membership details.
                 </p>
                 <Button
                   className="mt-4 w-full"
@@ -91,8 +139,11 @@ const PaymentSuccess = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center space-y-4">
+                <div className="bg-amber-100 rounded-full p-3">
+                  <AlertTriangle className="h-16 w-16 text-amber-600" />
+                </div>
                 <p className="text-center text-destructive">
-                  We couldn't verify your payment. Please contact support if you believe this is an error.
+                  We couldn't verify your payment status. If you completed the payment, please contact our support team.
                 </p>
                 <Button
                   className="mt-4 w-full"

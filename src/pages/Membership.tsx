@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Check, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Calendar, LifeBuoy } from "lucide-react";
@@ -13,6 +13,21 @@ import { Testimonials } from "@/components/Testimonials";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
+// Form validation schema
+const formSchema = z.object({
+  fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  studyProgram: z.string().min(2, { message: "Study program is required." }),
+  schoolEmail: z.string().email({ message: "Please enter a valid email." })
+    .refine(email => email.endsWith('@student.lu.se'), { 
+      message: "Please use your @student.lu.se email address" 
+    }),
+  phoneNumber: z.string().min(6, { message: "Valid phone number is required." }),
+});
 
 const Membership = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,11 +36,16 @@ const Membership = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const [formData, setFormData] = useState({
-    fullName: '',
-    studyProgram: '',
-    schoolEmail: '',
-    phoneNumber: ''
+
+  // Initialize form with react-hook-form and zod validation
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      fullName: '',
+      studyProgram: '',
+      schoolEmail: '',
+      phoneNumber: ''
+    },
   });
 
   // Check if the user was redirected back from a canceled payment
@@ -33,7 +53,7 @@ const Membership = () => {
   const canceled = searchParams.get('canceled') === 'true';
 
   // Show a toast if payment was canceled
-  useState(() => {
+  useEffect(() => {
     if (canceled) {
       toast({
         title: "Payment canceled",
@@ -41,27 +61,21 @@ const Membership = () => {
         variant: "destructive",
       });
     }
-  });
+  }, [canceled, toast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
 
     try {
-      // Validate Lund University email
-      if (!formData.schoolEmail.endsWith('@student.lu.se')) {
-        throw new Error('Please use your @student.lu.se email address');
-      }
-
       // Create member in the database
       const { data: member, error: memberError } = await supabase
         .from('members')
         .insert([
           {
-            full_name: formData.fullName,
-            study_program: formData.studyProgram,
-            school_email: formData.schoolEmail,
-            phone_number: formData.phoneNumber,
+            full_name: values.fullName,
+            study_program: values.studyProgram,
+            school_email: values.schoolEmail,
+            phone_number: values.phoneNumber,
             membership_status: 'pending',
             payment_status: 'pending'
           }
@@ -78,8 +92,8 @@ const Membership = () => {
       const { data: sessionData, error: sessionError } = await supabase.functions.invoke('create-checkout', {
         body: {
           memberId,
-          memberName: formData.fullName,
-          memberEmail: formData.schoolEmail,
+          memberName: values.fullName,
+          memberEmail: values.schoolEmail,
           productName: 'LUMS Membership',
           amount: 10000 // 100 SEK in öre
         }
@@ -102,13 +116,6 @@ const Membership = () => {
       setIsLoading(false);
       setIsRedirecting(false);
     }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
   const plans = [
@@ -210,75 +217,96 @@ const Membership = () => {
             <DialogHeader>
               <DialogTitle>Membership Application</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="fullName">Full Name</label>
-                <Input
-                  id="fullName"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
                   name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading || isRedirecting}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          disabled={isLoading || isRedirecting} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="studyProgram">Study Program</label>
-                <Input
-                  id="studyProgram"
+                <FormField
+                  control={form.control}
                   name="studyProgram"
-                  value={formData.studyProgram}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading || isRedirecting}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Study Program</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          disabled={isLoading || isRedirecting} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="schoolEmail">School Email</label>
-                <Input
-                  id="schoolEmail"
+                <FormField
+                  control={form.control}
                   name="schoolEmail"
-                  type="email"
-                  value={formData.schoolEmail}
-                  onChange={handleInputChange}
-                  required
-                  pattern=".*@student\.lu\.se$"
-                  title="Please use your @student.lu.se email"
-                  disabled={isLoading || isRedirecting}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>School Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="email"
+                          placeholder="your.name@student.lu.se"
+                          disabled={isLoading || isRedirecting} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="phoneNumber">Phone Number</label>
-                <Input
-                  id="phoneNumber"
+                <FormField
+                  control={form.control}
                   name="phoneNumber"
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={handleInputChange}
-                  required
-                  disabled={isLoading || isRedirecting}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="tel"
+                          disabled={isLoading || isRedirecting} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={isLoading || isRedirecting}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : isRedirecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting to payment...
-                  </>
-                ) : (
-                  'Continue to Payment'
-                )}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={isLoading || isRedirecting}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : isRedirecting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Redirecting to payment...
+                    </>
+                  ) : (
+                    'Continue to Payment'
+                  )}
+                </Button>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </main>
