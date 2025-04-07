@@ -38,11 +38,17 @@ serve(async (req) => {
       throw new Error("Missing required fields: memberId and memberEmail are required");
     }
 
+    console.log(`Creating checkout session for member ID: ${memberId}, email: ${memberEmail}`);
+
     // Initialize Stripe with the secret key from environment variables
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
       throw new Error("Stripe secret key is not configured. Please set it in Supabase Edge Function secrets.");
     }
+
+    // Check if we're using a test key (starts with sk_test_)
+    const isTestMode = stripeSecretKey.startsWith('sk_test_');
+    console.log(`Using Stripe in ${isTestMode ? 'TEST' : 'LIVE'} mode`);
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
@@ -57,6 +63,7 @@ serve(async (req) => {
             currency: "sek",
             product_data: {
               name: productName || "LUMS Membership",
+              description: "LUMS membership payment" + (isTestMode ? " (TEST MODE)" : ""),
             },
             unit_amount: amount || 10000, // 100 SEK in öre (100 SEK = 10000 öre)
           },
@@ -74,6 +81,8 @@ serve(async (req) => {
       },
     });
 
+    console.log(`Created Stripe session: ${session.id}`);
+
     // Update member record with session ID
     const { error: updateError } = await supabaseAdmin
       .from("members")
@@ -82,6 +91,8 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Error updating member with session ID:", updateError);
+    } else {
+      console.log(`Updated member ${memberId} with payment session ID`);
     }
 
     // Return the checkout session URL

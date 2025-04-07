@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Check, Loader2, AlertTriangle } from "lucide-react";
+import { Check, Loader2, AlertTriangle, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,7 +85,10 @@ const Membership = () => {
         ])
         .select();
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("Member creation error:", memberError);
+        throw new Error(memberError.message || "Failed to create membership record");
+      }
       
       if (!member || member.length === 0) {
         throw new Error("Failed to create member record");
@@ -93,6 +96,8 @@ const Membership = () => {
       
       // Get the newly created member ID
       const memberId = member[0].id;
+      
+      console.log("Created member with ID:", memberId);
       
       // Call the Supabase Edge Function to create a Stripe checkout session
       setIsRedirecting(true);
@@ -179,12 +184,25 @@ const Membership = () => {
           </div>
           <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]" />
         </div>
+        
+        {/* Test mode notice */}
+        <div className="max-w-[500px] mx-auto mb-6">
+          <Alert className="bg-amber-50 border-amber-200">
+            <CreditCard className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-700">Stripe Test Mode</AlertTitle>
+            <AlertDescription className="text-amber-600">
+              This is running in Stripe test mode. Use test card 4242 4242 4242 4242 for payments.
+            </AlertDescription>
+          </Alert>
+        </div>
+        
         <div className="text-center mb-12 animate-in">
           <h1 className="text-4xl font-bold mb-4">Join LUMS</h1>
           <p className="text-xl text-muted-foreground max-w-[600px] mx-auto">
             Become part of our vibrant Muslim student community in Lund and enjoy exclusive benefits.
           </p>
         </div>
+        
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           {benefits.map((benefit) => (
             <div key={benefit.title} className="group p-6 rounded-lg border bg-card hover:shadow-lg transition-all duration-300">
@@ -194,6 +212,7 @@ const Membership = () => {
             </div>
           ))}
         </div>
+        
         <div className="max-w-[500px] mx-auto relative z-10">
           <Card>
             <CardHeader>
