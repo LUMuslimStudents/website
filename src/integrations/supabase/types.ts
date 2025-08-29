@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      members: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          membership_status: string
+          payment_date: string | null
+          payment_id: string | null
+          payment_session_id: string | null
+          payment_status: string
+          phone_number: string
+          school_email: string
+          study_program: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          membership_status?: string
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_session_id?: string | null
+          payment_status?: string
+          phone_number: string
+          school_email: string
+          study_program: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          membership_status?: string
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_session_id?: string | null
+          payment_status?: string
+          phone_number?: string
+          school_email?: string
+          study_program?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
