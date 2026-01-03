@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -24,19 +23,14 @@ export const Footer = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('newsletter_subscribers')
-        .insert([
-          { email, subscribed_at: new Date().toISOString() }
-        ]);
-
-      if (error) throw error;
+      // Mock subscription success for UI flow
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       toast({
         title: "Successfully subscribed!",
         description: "Thank you for subscribing to our newsletter.",
       });
-      
+
       setEmail("");
     } catch (error) {
       toast({
@@ -95,7 +89,7 @@ export const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <button 
+                <button
                   onClick={() => handleNavigation('/events')}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -103,7 +97,7 @@ export const Footer = () => {
                 </button>
               </li>
               <li>
-                <button 
+                <button
                   onClick={() => handleNavigation('/membership')}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -111,7 +105,7 @@ export const Footer = () => {
                 </button>
               </li>
               <li>
-                <button 
+                <button
                   onClick={() => handleNavigation('/suggestions')}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -124,8 +118,8 @@ export const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Contact</h3>
             <ul className="space-y-2 text-muted-foreground">
               <li>
-                Email: <a 
-                  href="mailto:muslimskastudenterlu@gmail.com" 
+                Email: <a
+                  href="mailto:muslimskastudenterlu@gmail.com"
                   className="hover:text-[#004aac] transition-colors"
                 >
                   muslimskastudenterlu@gmail.com
@@ -138,16 +132,16 @@ export const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Newsletter</h3>
             <p className="text-muted-foreground mb-4">Stay updated with our latest news</p>
             <form onSubmit={handleSubscribe} className="flex gap-2">
-              <Input 
+              <Input
                 type="email"
-                placeholder="Your email" 
+                placeholder="Your email"
                 className="bg-background"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-[#004aac] hover:bg-[#004aac]/90"
                 disabled={isLoading}
               >

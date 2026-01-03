@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const Suggestions = () => {
   const { toast } = useToast();
@@ -23,20 +22,9 @@ const Suggestions = () => {
     setIsLoading(true);
 
     try {
-      // Insert suggestion into Supabase
-      const { error } = await supabase
-        .from('suggestions')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            suggestion: formData.suggestion,
-            category: formData.category,
-          }
-        ]);
+      // Mock suggestion submission success for UI flow
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      if (error) throw error;
-      
       toast({
         title: "Thank you for your suggestion!",
         description: "We'll review it and get back to you soon.",
@@ -132,8 +120,8 @@ const Suggestions = () => {
               />
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-[#004aac] hover:bg-[#004aac]/90"
               disabled={isLoading}
             >

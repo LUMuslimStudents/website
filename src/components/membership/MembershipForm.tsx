@@ -8,15 +8,14 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
 
 // Form validation schema
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   studyProgram: z.string().min(2, { message: "Study program is required." }),
   schoolEmail: z.string().email({ message: "Please enter a valid email." })
-    .refine(email => email.endsWith('@student.lu.se'), { 
-      message: "Please use your @student.lu.se email address" 
+    .refine(email => email.endsWith('@student.lu.se'), {
+      message: "Please use your @student.lu.se email address"
     }),
   phoneNumber: z.string().min(6, { message: "Valid phone number is required." }),
 });
@@ -46,59 +45,20 @@ const MembershipForm = ({ onClose }: MembershipFormProps) => {
     setApiError(null);
 
     try {
-      // Create member in the database
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .insert([
-          {
-            full_name: values.fullName,
-            study_program: values.studyProgram,
-            school_email: values.schoolEmail,
-            phone_number: values.phoneNumber,
-            membership_status: 'pending',
-            payment_status: 'pending'
-          }
-        ])
-        .select();
+      console.log("Form submitted with values:", values);
 
-      if (memberError) {
-        console.error("Member creation error:", memberError);
-        throw new Error(memberError.message || "Failed to create membership record");
-      }
-      
-      if (!member || member.length === 0) {
-        throw new Error("Failed to create member record");
-      }
-      
-      // Get the newly created member ID
-      const memberId = member[0].id;
-      
-      console.log("Created member with ID:", memberId);
-      
-      // Call the Supabase Edge Function to create a Stripe checkout session
+      // Mock registration success for UI flow
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       setIsRedirecting(true);
-      
-      const { data: sessionData, error: sessionError } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          memberId,
-          memberName: values.fullName,
-          memberEmail: values.schoolEmail,
-          productName: 'LUMS Membership',
-          amount: 10000 // 100 SEK in öre
-        }
-      });
 
-      if (sessionError) {
-        console.error("Stripe session error:", sessionError);
-        throw new Error(sessionError.message || "Failed to create payment session");
-      }
-      
-      // Redirect to the Stripe checkout page
-      if (sessionData && sessionData.url) {
-        window.location.href = sessionData.url;
-      } else {
-        throw new Error('Failed to create payment session. No redirect URL returned.');
-      }
+      // Since we don't have a backend now, we'll just mock a redirect 
+      // or show a success message. For now, let's pretend we're redirecting 
+      // to a success page directly.
+      setTimeout(() => {
+        window.location.href = `/payment-success?session_id=mock_session&member_id=mock_member`;
+      }, 1000);
+
     } catch (error: any) {
       console.error("Registration error:", error);
       setApiError(error.message || "An unexpected error occurred. Please try again later.");
@@ -125,9 +85,9 @@ const MembershipForm = ({ onClose }: MembershipFormProps) => {
               <FormItem>
                 <FormLabel>Full Name</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    disabled={isLoading || isRedirecting} 
+                  <Input
+                    {...field}
+                    disabled={isLoading || isRedirecting}
                   />
                 </FormControl>
                 <FormMessage />
@@ -141,9 +101,9 @@ const MembershipForm = ({ onClose }: MembershipFormProps) => {
               <FormItem>
                 <FormLabel>Study Program</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    disabled={isLoading || isRedirecting} 
+                  <Input
+                    {...field}
+                    disabled={isLoading || isRedirecting}
                   />
                 </FormControl>
                 <FormMessage />
@@ -157,11 +117,11 @@ const MembershipForm = ({ onClose }: MembershipFormProps) => {
               <FormItem>
                 <FormLabel>School Email</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="email"
                     placeholder="your.name@student.lu.se"
-                    disabled={isLoading || isRedirecting} 
+                    disabled={isLoading || isRedirecting}
                   />
                 </FormControl>
                 <FormMessage />
@@ -175,18 +135,18 @@ const MembershipForm = ({ onClose }: MembershipFormProps) => {
               <FormItem>
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
+                  <Input
+                    {...field}
                     type="tel"
-                    disabled={isLoading || isRedirecting} 
+                    disabled={isLoading || isRedirecting}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full"
             disabled={isLoading || isRedirecting}
           >
