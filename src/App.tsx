@@ -13,6 +13,9 @@ import NotFound from "./pages/NotFound";
 import Mission from "./pages/Mission";
 import { ThemeProvider } from "next-themes";
 import Suggestions from "./pages/Suggestions";
+import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +35,9 @@ const App = () => (
               <Route path="/blog" element={<Blog />} />
               <Route path="/mission" element={<Mission />} />
               <Route path="/suggestions" element={<Suggestions />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

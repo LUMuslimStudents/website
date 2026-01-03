@@ -6,16 +6,19 @@ import { useState } from "react";
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const userString = localStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : null;
+  const isAdmin = user?.role === 'admin';
 
   return (
     <header className="border-b bg-background">
       <div className="container flex h-20 items-center justify-between relative">
         {/* Left-aligned LUMS logo */}
-        <NavLink 
-          to="/" 
+        <NavLink
+          to="/"
           className="group transition-all flex items-center z-20"
         >
-          <img 
+          <img
             src="/lovable-uploads/logo_minimalist_transparent.png"
             alt="LUMS Logo"
             className="h-16 w-auto hover:scale-105 transition-all duration-500 ease-in-out"
@@ -42,34 +45,65 @@ export const Navbar = () => {
           z-50
         `}>
           <nav className="py-2">
-            <NavLink 
-              to="/events" 
+            <NavLink
+              to="/events"
               className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Events
             </NavLink>
-            <NavLink 
-              to="/blog" 
+            <NavLink
+              to="/blog"
               className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Blog
             </NavLink>
-            <NavLink 
-              to="/suggestions" 
+            <NavLink
+              to="/suggestions"
               className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Suggestions
             </NavLink>
-            <NavLink 
-              to="/membership" 
+            <NavLink
+              to="/membership"
               className="block px-4 py-2 hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               Membership
             </NavLink>
+            <div className="h-px bg-border my-2" />
+            <NavLink
+              to="/login"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Login
+            </NavLink>
+            <NavLink
+              to="/signup"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Sign Up
+            </NavLink>
+            <NavLink
+              to="/signup"
+              className="block px-4 py-2 hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Sign Up
+            </NavLink>
+            {isAdmin && (
+              <NavLink
+                to="/admin"
+                className="block px-4 py-2 hover:bg-muted transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Admin
+              </NavLink>
+            )}
           </nav>
         </div>
       </div>
