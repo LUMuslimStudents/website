@@ -7,6 +7,11 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, requireAdmin, AuthRequest } from './middleware/auth';
 
+BigInt.prototype.toJSON = function () {
+  const int = Number.parseInt(this.toString());
+  return int ?? this.toString();
+};
+
 dotenv.config();
 
 const app = express();
@@ -24,14 +29,58 @@ app.post('/api/auth/signup', async (req, res) => {
     try {
         const { first_name, last_name, email, password, study_program, phone_number } = req.body;
 
-        if (!email || !password || !first_name || !last_name) {
+        if (!email || !password || !first_name || !last_name || !study_program || !phone_number) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
+        // Regex validation
+        const nameRegex = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/;
+        const emailRegex = /^[a-zA-Z0-9.-]{5,}@student.lu.se$/;
+        const phoneRegex = /^[\d\s+\-()]+$/;
+        const programRegex = /^[a-zA-Z\s&()-]+$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*\d).{6,}$/;
+
+        if (!nameRegex.test(first_name)) {
+            return res.status(400).json({ error: 'First name contains invalid characters' });
+        }
+
+        if (!nameRegex.test(last_name)) {
+            return res.status(400).json({ error: 'Last name contains invalid characters' });
+        }
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Not an LU student mail' });
+        }
+
+        if (!phoneRegex.test(phone_number)) {
+            return res.status(400).json({ error: 'Phone number contains invalid characters' });
+        }
+
+        if (!programRegex.test(study_program)) {
+            return res.status(400).json({ error: 'Study program contains invalid characters' });
+        }
+
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters with lowercase, and numbers' });
+        }
+
         // Check if user exists
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const existingUser = await prisma.users.findFirst({
+            where: { 
+                OR: [
+                    { email },
+                    { phone_number }
+                ]
+            }
+        });
+
         if (existingUser) {
-            return res.status(400).json({ error: 'User already exists' });
+            if (existingUser.email === email) {
+                return res.status(400).json({ error: 'Email already exists' });
+            }
+            if (existingUser.phone_number === phone_number) {
+                return res.status(400).json({ error: 'Phone number already exists' });
+            }
         }
 
         // Hash password
@@ -47,7 +96,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
         // For now, default role is 'user'.
 
-        const user = await prisma.user.create({
+        const user = await prisma.users.create({
             data: {
                 first_name,
                 last_name,
@@ -71,7 +120,7 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.users.findUnique({ where: { email } });
         if (!user) {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
@@ -107,7 +156,7 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/users - Admin only
 app.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-        const users = await prisma.user.findMany();
+        const users = await prisma.users.findMany();
 
         // Remove password from response
         const sanitizedUsers = users.map(user => {

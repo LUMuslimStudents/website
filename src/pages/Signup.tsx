@@ -13,12 +13,28 @@ import { apiRequest } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
 
 const formSchema = z.object({
-    first_name: z.string().min(2, 'First name is required'),
-    last_name: z.string().min(2, 'Last name is required'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    study_program: z.string().min(2, 'Study program is required'),
-    phone_number: z.string().min(5, 'Phone number is required'),
+    first_name: z.string()
+        .min(2, 'First name must be at least 2 characters')
+        .regex(/^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/, 'First name can only contain latin letters and spaces'),
+
+    last_name: z.string()
+        .min(2, 'Last name must be at least 2 characters')
+        .regex(/^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/, 'Last name can only contain latin letters and spaces'),
+
+    email: z.string().regex(/^[a-zA-Z0-9.-]{5,}@student.lu.se$/, 'Invalid email format. Must be exclusively a Lund University student email.'),
+
+    password: z.string()
+        .min(6, 'Password must be at least 6 characters')
+        .regex(/(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
+        .regex(/(?=.*\d)/, 'Password must contain at least one number'),
+
+    study_program: z.string()
+        .min(2, 'Study program is required')
+        .regex(/^[a-zA-Z\s&()-]+$/, 'Study program can only contain letters, numbers, spaces, and basic symbols'),
+
+    phone_number: z.string()
+        .min(5, 'Phone number is required')
+        .regex(/^[\d\s+\-()]+$/, 'Phone number can only contain digits, spaces, +, -, and parentheses'),
 });
 
 const Signup = () => {
