@@ -88,13 +88,6 @@ export const Navbar = () => {
             >
               Sign Up
             </NavLink>
-            <NavLink
-              to="/signup"
-              className="block px-4 py-2 hover:bg-muted transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Sign Up
-            </NavLink>
             {isAdmin && (
               <NavLink
                 to="/admin"
