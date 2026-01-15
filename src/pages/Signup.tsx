@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
+import { TermsConditionsDialog } from '@/components/membership/TermsConditionsDialog';
 
 const formSchema = z.object({
     first_name: z.string()
@@ -47,6 +48,10 @@ const Signup = () => {
     const [pendingDialog, setPendingDialog] = useState(false);
     const [pendingEmail, setPendingEmail] = useState('');
     const [restarting, setRestarting] = useState(false);
+    const [conditionsDialog, setConditionsDialog] = useState(false);
+    const [refundPolicy, setrefundPolicy] = useState(false);
+    const [GDPRTerm, setGDPRTerm] = useState(false);
+    const [pendingFormValues, setPendingFormValues] = useState<z.infer<typeof formSchema> | null>(null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -76,11 +81,21 @@ const Signup = () => {
     };
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        // Store form values and show conditions dialog
+        setPendingFormValues(values);
+        setrefundPolicy(false);
+        setGDPRTerm(false);
+        setConditionsDialog(true);
+    };
+
+    const handleConditionsAccept = async () => {
+        if (!pendingFormValues) return;
+
         setLoading(true);
         try {
-            const response = await apiRequest('/auth/signup', 'POST', values);
+            const response = await apiRequest('/auth/signup', 'POST', pendingFormValues);
             toast.success('You now must verify your LU email before your account is created.');
-            navigate('/verify-email', { state: { email: values.email } });
+            navigate('/verify-email', { state: { email: pendingFormValues.email } });
         } catch (error: any) {
             // Check if error is about pending signup
             const isNested = typeof error.message === 'object';
@@ -88,7 +103,8 @@ const Signup = () => {
             
             if (error.message?.includes('pending signup') || errorObj.redirectTo) {
                 // Show dialog for pending signup
-                setPendingEmail(values.email);
+                setConditionsDialog(false);
+                setPendingEmail(pendingFormValues.email);
                 setPendingDialog(true);
             } else {
                 toast.error(error.message || 'Signup failed');
@@ -135,6 +151,18 @@ const Signup = () => {
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Terms & Conditions Dialog */}
+            <TermsConditionsDialog
+                open={conditionsDialog}
+                onOpenChange={setConditionsDialog}
+                refundPolicy={refundPolicy}
+                onRefundPolicyChange={setrefundPolicy}
+                GDPRTerm={GDPRTerm}
+                onGDPRTermChange={setGDPRTerm}
+                onAccept={handleConditionsAccept}
+                loading={loading}
+            />
 
             <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <Card className="w-full max-w-md">
