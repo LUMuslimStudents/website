@@ -96,9 +96,9 @@ const Login = () => {
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
+              Not a member yet?{' '}
               <Link to="/signup" className="text-primary hover:underline">
-                Sign up
+                Sign up now!
               </Link>
             </p>
           </CardFooter>

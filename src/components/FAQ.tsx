@@ -19,7 +19,7 @@ export const FAQ = () => (
       <AccordionItem value="item-3">
         <AccordionTrigger>How long is the membership valid?</AccordionTrigger>
         <AccordionContent>
-          Membership is valid for one semester. You can renew your membership at the start of each semester.
+          Membership is valid for one semester. You must renew your membership at the start of each semester by signing up again.
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-4">

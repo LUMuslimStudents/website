@@ -13,10 +13,10 @@ const MembershipPlan = ({ onBecomeMember }: MembershipPlanProps) => {
     price: "100 SEK",
     period: "per semester",
     features: [
-      "Access to all LUMS events",
+      "Discount on all LUMS events",
       "Community WhatsApp group",
-      "Weekly newsletters",
-      "Event discounts",
+      "Opportunity to volunteer",
+      "Support LUMS initiatives"
     ],
   };
 

@@ -93,6 +93,7 @@ const Membership = () => {
             <MembershipForm onClose={() => setIsOpen(false)} />
           </DialogContent>
         </Dialog>
+
       </main>
       <FAQ />
       <Testimonials />

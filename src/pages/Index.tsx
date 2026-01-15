@@ -51,7 +51,7 @@ const Index = () => {
         <div className="container py-12 md:py-24 flex flex-col items-center gradient-bg">
           <div className="relative">
             <img 
-              src="/lovable-uploads/LUMS - Banner Logo_Transparent.png"
+              src="/logos/LUMS - Banner Logo_Transparent.png"
               alt="LUMS Logo" 
               className="w-64 md:w-96 mb-8 animate-in fade-in duration-1000 relative z-10"
             />
@@ -59,9 +59,9 @@ const Index = () => {
           </div>
           
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#004aac] tracking-tight animate-in slide-in-from-bottom duration-700">
+            {/* <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#004aac] tracking-tight animate-in slide-in-from-bottom duration-700">
               Welcome to LUMS
-            </h1>
+            </h1> */}
             <p className="text-xl text-muted-foreground mb-8 animate-in slide-in-from-bottom duration-700 delay-200">
               Lund University Muslim Students - A community dedicated to supporting Muslim students at Lund University
             </p>

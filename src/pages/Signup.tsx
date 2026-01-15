@@ -6,6 +6,7 @@ import * as z from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -28,6 +29,8 @@ const formSchema = z.object({
         .min(6, 'Password must be at least 6 characters')
         .regex(/(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
         .regex(/(?=.*\d)/, 'Password must contain at least one number'),
+
+    gender: z.enum(['male', 'female'], { errorMap: () => ({ message: 'Please select a gender' }) }),
 
     study_program: z.string()
         .min(2, 'Study program is required')
@@ -52,6 +55,7 @@ const Signup = () => {
             last_name: '',
             email: '',
             password: '',
+            gender: '',
             study_program: '',
             phone_number: '',
         },
@@ -135,7 +139,7 @@ const Signup = () => {
             <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <Card className="w-full max-w-md">
                     <CardHeader>
-                        <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
+                        <CardTitle className="text-2xl text-center">Become a member</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Form {...form}>
@@ -148,7 +152,7 @@ const Signup = () => {
                                             <FormItem>
                                                 <FormLabel>First Name</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="John" {...field} />
+                                                    <Input placeholder="Fulan" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -161,7 +165,7 @@ const Signup = () => {
                                             <FormItem>
                                                 <FormLabel>Last Name</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Doe" {...field} />
+                                                    <Input placeholder="Al-Fulani" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -176,7 +180,7 @@ const Signup = () => {
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" placeholder="john@example.com" {...field} />
+                                                <Input type="email" placeholder="ab1234cd-s@student.lu.se" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -199,6 +203,28 @@ const Signup = () => {
 
                                 <FormField
                                     control={form.control}
+                                    name="gender"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Gender</FormLabel>
+                                            <FormControl>
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select gender" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="male">Male</SelectItem>
+                                                        <SelectItem value="female">Female</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
                                     name="study_program"
                                     render={({ field }) => (
                                         <FormItem>
@@ -211,6 +237,8 @@ const Signup = () => {
                                     )}
                                 />
 
+                               {/* here */}
+
                                 <FormField
                                     control={form.control}
                                     name="phone_number"
@@ -218,7 +246,7 @@ const Signup = () => {
                                         <FormItem>
                                             <FormLabel>Phone Number</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="+1 234 567 890" {...field} />
+                                                <Input placeholder="+46 71 234 5678" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -233,7 +261,7 @@ const Signup = () => {
                     </CardContent>
                     <CardFooter className="flex justify-center">
                         <p className="text-sm text-muted-foreground">
-                            Already have an account?{' '}
+                            Already a member?{' '}
                             <Link to="/login" className="text-primary hover:underline">
                                 Login
                             </Link>
