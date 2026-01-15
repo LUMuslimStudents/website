@@ -71,10 +71,15 @@ app.use(express.json());
 // POST /api/auth/signup - Create unverified user and send verification code
 app.post('/api/auth/signup', async (req, res) => {
     try {
-        const { first_name, last_name, email, password, study_program, phone_number } = req.body;
+        const { first_name, last_name, email, password, gender, study_program, phone_number } = req.body;
 
-        if (!email || !password || !first_name || !last_name || !study_program || !phone_number) {
+        if (!email || !password || !first_name || !last_name || !gender || !study_program || !phone_number) {
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Gender validation
+        if (gender !== 'male' && gender !== 'female') {
+            return res.status(400).json({ error: 'Invalid gender value' });
         }
 
         // Regex validation
@@ -191,6 +196,7 @@ app.post('/api/auth/signup', async (req, res) => {
                 last_name,
                 email,
                 phone_number,
+                gender: gender,
                 password: hashedPassword,
                 study_program: study_program || '',
                 email_verification_code: emailVerificationCode,
@@ -276,6 +282,8 @@ app.post('/api/auth/verify-email', async (req, res) => {
                     phone_number: pendingSignup.phone_number,
                     study_program: pendingSignup.study_program,
                     role: 'user',
+                    gender: pendingSignup.gender,
+                    term: process.env.MEMBERSHIP_TERM || 'XXXX',
                 }
             });
 
