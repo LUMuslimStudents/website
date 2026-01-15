@@ -1,47 +1,47 @@
 import { Facebook, Instagram, Linkedin, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+// import { Input } from "@/components/ui/input";
+// import { Button } from "@/components/ui/button";
+// import { useState } from "react";
+// import { useToast } from "@/components/ui/use-toast";
+// import { Loader2 } from "lucide-react";
 
 export const Footer = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  // const { toast } = useToast();
+  // const [email, setEmail] = useState("");
+  // const [isLoading, setIsLoading] = useState(false);
 
   const handleNavigation = (path: string) => {
     window.scrollTo(0, 0);
     navigate(path);
   };
 
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
+  // const handleSubscribe = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!email) return;
 
-    setIsLoading(true);
-    try {
-      // Mock subscription success for UI flow
-      await new Promise(resolve => setTimeout(resolve, 800));
+  //   setIsLoading(true);
+  //   try {
+  //     // Mock subscription success for UI flow
+  //     await new Promise(resolve => setTimeout(resolve, 800));
 
-      toast({
-        title: "Successfully subscribed!",
-        description: "Thank you for subscribing to our newsletter.",
-      });
+  //     toast({
+  //       title: "Successfully subscribed!",
+  //       description: "Thank you for subscribing to our newsletter.",
+  //     });
 
-      setEmail("");
-    } catch (error) {
-      toast({
-        title: "Subscription failed",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     setEmail("");
+  //   } catch (error) {
+  //     toast({
+  //       title: "Subscription failed",
+  //       description: "Please try again later.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const socialLinks = [
     {
@@ -64,11 +64,11 @@ export const Footer = () => {
   return (
     <footer className="border-t bg-background">
       <div className="container py-8 md:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           <div className="text-center sm:text-left">
             <h3 className="font-bold text-lg mb-4">About LUMS</h3>
             <p className="text-muted-foreground">
-              Supporting Muslim students at Lund University since 2014.
+              Supporting Muslim students at Lund University since 2023.
             </p>
             <div className="flex gap-4 mt-4 justify-center sm:justify-start">
               {socialLinks.map((link) => (
@@ -128,7 +128,7 @@ export const Footer = () => {
               <li>Location: Lund University</li>
             </ul>
           </div>
-          <div>
+          {/* <div>
             <h3 className="font-bold text-lg mb-4">Newsletter</h3>
             <p className="text-muted-foreground mb-4">Stay updated with our latest news</p>
             <form onSubmit={handleSubscribe} className="flex gap-2">
@@ -152,7 +152,7 @@ export const Footer = () => {
                 )}
               </Button>
             </form>
-          </div>
+          </div> */}
         </div>
         <div className="mt-8 md:mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} LUMS - Lund University Muslim Students.</p>

@@ -53,7 +53,7 @@ const Index = () => {
             <img 
               src="/logos/LUMS - Banner Logo_Transparent.png"
               alt="LUMS Logo" 
-              className="w-64 md:w-96 mb-8 animate-in fade-in duration-1000 relative z-10"
+              className="w-96 md:w-96 mb-8 animate-in fade-in duration-1000 relative z-10"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/10 -z-0" />
           </div>

@@ -2,12 +2,13 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface MembershipPlanProps {
   onBecomeMember: () => void;
 }
 
-const MembershipPlan = ({ onBecomeMember }: MembershipPlanProps) => {
+const MembershipPlan = () => {
   const plan = {
     name: "Student Membership",
     price: "100 SEK",
@@ -43,9 +44,8 @@ const MembershipPlan = ({ onBecomeMember }: MembershipPlanProps) => {
         <Button 
           variant="default"
           className="w-full bg-[#004aac] hover:bg-[#004aac]/90 text-white font-medium py-2"
-          onClick={onBecomeMember}
         >
-          Become a Member
+          <Link to="/signup">Become a member</Link>
         </Button>
       </CardFooter>
     </Card>
