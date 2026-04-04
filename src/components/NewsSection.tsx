@@ -47,7 +47,7 @@ export const NewsSection = () => {
               <Button 
                 asChild 
                 variant="ghost" 
-                className="p-0 h-auto text-[#004aac] hover:text-[#004aac]/80"
+                className="p-0 h-7 text-[#004aac] hover:text-[#004aac] hover:underline font-medium hover:bg-transparent"
               >
                 <NavLink to={item.link} className="flex items-center">
                   Read more 

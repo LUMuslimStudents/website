@@ -36,6 +36,13 @@ export const Navbar = () => {
 
         {/* Right-aligned menu button */}
         <div className="flex items-center gap-2">
+          {user && (
+            <span
+              className="block w-full text-right py-2 font-medium"
+            >
+              🌟 {user.first_name}
+            </span>
+          )}
           <ThemeToggle />
           <button
             className="p-2 hover:bg-muted rounded-full"
