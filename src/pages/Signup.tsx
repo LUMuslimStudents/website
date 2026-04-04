@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
@@ -55,15 +55,7 @@ const Signup = () => {
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-            first_name: '',
-            last_name: '',
-            email: '',
-            password: '',
-            gender: '',
-            study_program: '',
-            phone_number: '',
-        },
+        mode: 'onBlur'
     });
 
     const handleRestart = async () => {
@@ -124,7 +116,8 @@ const Signup = () => {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Incomplete Signup Found</AlertDialogTitle>
                         <AlertDialogDescription>
-                            You already have a signup in progress for {pendingEmail}. Would you like to continue verifying it or start over?
+                            You already have a signup in progress for {pendingEmail}.
+                            Would you like to continue verifying it or start over?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="flex gap-3">
@@ -264,8 +257,6 @@ const Signup = () => {
                                         </FormItem>
                                     )}
                                 />
-
-                               {/* here */}
 
                                 <FormField
                                     control={form.control}

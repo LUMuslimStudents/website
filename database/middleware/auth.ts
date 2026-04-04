@@ -29,6 +29,23 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
+export const authenticateTokenOptional = (req: AuthRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        const verified = jwt.verify(token, JWT_SECRET) as any;
+        req.user = verified;
+        next();
+    } catch (error) {
+        res.status(401).json({ error: 'Invalid token.' });
+    }
+};
+
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Access denied. Admin role required.' });

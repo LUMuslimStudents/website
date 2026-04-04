@@ -17,6 +17,7 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
+import Checkout from "./pages/StripeCheckout";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,7 @@ const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
     <div className="min-h-screen bg-background text-foreground">
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={100}>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              {/* <Route path="/checkout" element={<Checkout />} /> */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
