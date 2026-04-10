@@ -26,3 +26,7 @@ public/events/*
 *.njsproj
 *.sln
 *.sw?
+
+# Database
+database/mysql
+
