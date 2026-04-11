@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiRequest } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TouchTooltip } from "../ui/tooltip";
+import { EventRegistrationTermsDialog } from "./EventRegistrationTermsDialog";
 
 const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,50}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,10 +49,20 @@ type UserProfile = {
   study_program?: string;
 };
 
+export type EventRegistrationFooterState = {
+  isAlreadyRegistered: boolean;
+  isSubmittingRegistration: boolean;
+  displayPrice: number;
+  displayPriceTier: "member" | "nonmember" | "alumnus";
+};
+
 type EventRegistrationFormProps = {
   event: {
     id: number;
     invitation: string;
+    date?: string | Date;
+    start_time?: string | Date;
+    deadline?: string | Date;
     price_member: number;
     price_nonmember: number;
     price_alumnus: number;
@@ -63,12 +72,52 @@ type EventRegistrationFormProps = {
   isSignedIn: boolean;
   user: UserProfile | null;
   onRegistered: (eventId: number) => void;
+  onFooterStateChange?: (footerState: EventRegistrationFooterState | null) => void;
+  onFooterSubmitChange?: (submit: (() => void) | null) => void;
 };
 
 const getInvitationType = (invitation?: string) => invitation ?? "non_students";
 
 const allowsAlumni = (invitationType: string) =>
   invitationType === "alumni" || invitationType === "all_students" || invitationType === "non_students";
+
+const parseEventStartAt = (eventDate?: string | Date, eventStartTime?: string | Date) => {
+  if (!eventDate || !eventStartTime) {
+    return null;
+  }
+
+  const date = eventDate instanceof Date ? new Date(eventDate) : new Date(eventDate);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  if (eventStartTime instanceof Date) {
+    date.setHours(eventStartTime.getHours(), eventStartTime.getMinutes(), eventStartTime.getSeconds(), 0);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const time = String(eventStartTime).trim();
+  const match = time.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || "0");
+  date.setHours(hours, minutes, seconds, 0);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getRefundCutoffAt = (eventDate?: string | Date, eventStartTime?: string | Date) => {
+  const eventStart = parseEventStartAt(eventDate, eventStartTime);
+  if (!eventStart) {
+    return null;
+  }
+
+  return new Date(eventStart.getTime() - 48 * 60 * 60 * 1000);
+};
 
 const getProfileRegexError = (
   profile: RegistrationProfile,
@@ -133,7 +182,66 @@ const getProfileRegexError = (
   return null;
 };
 
-export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }: EventRegistrationFormProps) => {
+const hasRequiredInvitationProfileData = (profile: RegistrationProfile, invitationType: string) => {
+  if (invitationType === "non_members") {
+    return profile.is_student && !profile.is_alumnus && Boolean(profile.study_program.trim());
+  }
+
+  if (invitationType === "alumni") {
+    if (!profile.is_student && !profile.is_alumnus) {
+      return false;
+    }
+    return profile.is_alumnus || Boolean(profile.study_program.trim());
+  }
+
+  if (invitationType === "all_students") {
+    if (!profile.is_student && !profile.is_alumnus) {
+      return false;
+    }
+    if (profile.is_alumnus) {
+      return true;
+    }
+    return Boolean(profile.university_name.trim()) && Boolean(profile.study_program.trim());
+  }
+
+  if (invitationType === "non_students") {
+    if (!profile.is_student) {
+      return true;
+    }
+    return Boolean(profile.university_name.trim()) && Boolean(profile.study_program.trim());
+  }
+
+  return true;
+};
+
+const getDisplayPriceInfo = (
+  isSignedIn: boolean,
+  isAlumnus: boolean,
+  event: {
+    price_member: number;
+    price_nonmember: number;
+    price_alumnus: number;
+  },
+) => {
+  if (isSignedIn) {
+    return { displayPrice: event.price_member, displayPriceTier: "member" as const };
+  }
+
+  if (isAlumnus) {
+    return { displayPrice: event.price_alumnus, displayPriceTier: "alumnus" as const };
+  }
+
+  return { displayPrice: event.price_nonmember, displayPriceTier: "nonmember" as const };
+};
+
+export const EventRegistrationForm = ({
+  event,
+  isSignedIn,
+  user,
+  onRegistered,
+  onFooterStateChange,
+  onFooterSubmitChange,
+}: EventRegistrationFormProps) => {
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(Boolean(event.is_registered));
   const [registrationProfile, setRegistrationProfile] = useState<RegistrationProfile>({
@@ -148,6 +256,9 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
     is_alumnus: false,
   });
   const [fieldAnswers, setFieldAnswers] = useState<Record<string, string | string[]>>({});
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  const [gdprAccepted, setGdprAccepted] = useState(false);
+  const [refundAccepted, setRefundAccepted] = useState(false);
 
   useEffect(() => {
     setIsAlreadyRegistered(Boolean(event.is_registered));
@@ -163,9 +274,19 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
       is_alumnus: false,
     });
     setFieldAnswers({});
+    setTermsDialogOpen(false);
+    setGdprAccepted(false);
+    setRefundAccepted(false);
   }, [event.id, event.is_registered, user]);
 
   const invitationType = getInvitationType(event.invitation);
+  const refundCutoffAt = getRefundCutoffAt(event.date, event.start_time);
+  const formFields = event.form_fields ?? [];
+  const { displayPrice, displayPriceTier } = getDisplayPriceInfo(
+    isSignedIn,
+    registrationProfile.is_alumnus,
+    event,
+  );
 
   const updateProfileField = (field: keyof RegistrationProfile, value: string | boolean) => {
     setRegistrationProfile((prev) => ({
@@ -191,22 +312,12 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
     });
   };
 
-  const getRegistrationPrice = () => {
-    if (isSignedIn) {
-      return event.price_member;
-    }
-    if (registrationProfile.is_alumnus) {
-      return event.price_alumnus;
-    }
-    return event.price_nonmember;
-  };
-
   const isFormReadyForSubmission = () => {
     if (isSubmittingRegistration || isAlreadyRegistered) {
       return false;
     }
 
-    for (const field of event.form_fields || []) {
+    for (const field of formFields) {
       if (!field.is_required) {
         continue;
       }
@@ -232,41 +343,10 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
       return false;
     }
 
-    if (invitationType === "non_members") {
-      return registrationProfile.is_student && !registrationProfile.is_alumnus && Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "alumni") {
-      if (!registrationProfile.is_student && !registrationProfile.is_alumnus) {
-        return false;
-      }
-      if (registrationProfile.is_alumnus) {
-        return true;
-      }
-      return Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "all_students") {
-      if (!registrationProfile.is_student && !registrationProfile.is_alumnus) {
-        return false;
-      }
-      if (registrationProfile.is_alumnus) {
-        return true;
-      }
-      return Boolean(registrationProfile.university_name.trim()) && Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "non_students") {
-      if (!registrationProfile.is_student) {
-        return true;
-      }
-      return Boolean(registrationProfile.university_name.trim()) && Boolean(registrationProfile.study_program.trim());
-    }
-
-    return true;
+    return hasRequiredInvitationProfileData(registrationProfile, invitationType);
   };
 
-  const handleSubmitRegistration = async () => {
+  const submitRegistration = async () => {
     if (isAlreadyRegistered) {
       return;
     }
@@ -329,7 +409,7 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
         return;
       }
 
-      const answers = (event.form_fields || [])
+      const answers = formFields
         .map((field) => {
           const rawValue = fieldAnswers[field.id];
           if (field.field_type === "short_text") {
@@ -366,6 +446,7 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
 
       toast.success("Registration submitted successfully");
       setIsAlreadyRegistered(true);
+      setTermsDialogOpen(false);
       onRegistered(event.id);
     } catch (error: any) {
       toast.error(error.message || "Failed to submit registration");
@@ -373,6 +454,43 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
       setIsSubmittingRegistration(false);
     }
   };
+
+  const handleSubmitRegistration = () => {
+    if (!isFormReadyForSubmission()) {
+      return;
+    }
+    setTermsDialogOpen(true);
+  };
+
+  useEffect(() => {
+    if (!onFooterSubmitChange) {
+      return;
+    }
+
+    onFooterSubmitChange(() => handleSubmitRegistration());
+    return () => onFooterSubmitChange(null);
+  }, [onFooterSubmitChange, handleSubmitRegistration]);
+
+  useEffect(() => {
+    if (!onFooterStateChange) {
+      return;
+    }
+
+    onFooterStateChange({
+      isAlreadyRegistered,
+      isSubmittingRegistration,
+      displayPrice,
+      displayPriceTier,
+    });
+
+    return () => onFooterStateChange(null);
+  }, [
+    isAlreadyRegistered,
+    isSubmittingRegistration,
+    displayPrice,
+    displayPriceTier,
+    onFooterStateChange,
+  ]);
 
   const renderDynamicField = (field: EventFormField) => {
     if (field.field_type === "short_text") {
@@ -454,146 +572,153 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
       <div className="expanded-form-placeholder mt-8 rounded-lg border border-border p-4 md:p-6 space-y-4">
         <h3 className="text-xl font-semibold">Event Registration</h3>
 
-        {isSignedIn ? (
-          <p className="text-sm text-muted-foreground">
-            You are signed in. We will use your saved member profile, so only additional event questions are required.
-          </p>
+        {isAlreadyRegistered ? (
+          <div className="space-y-3 text-sm md:text-base text-muted-foreground">
+            <p className="font-medium text-green-600 dark:text-green-400">
+              <strong>You are already registered, see you soon at the event!</strong>
+            </p>
+            <p>
+              If you want to cancel your registration, please contact our treasurer at [email], or via Whatsapp to [number].
+            </p>
+            <p>
+              <strong>Remember:</strong> No refunds if cancelled within <strong>48 hours</strong> of event start!
+            </p>
+          </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="first_name">First name *</Label>
-                <Input id="first_name" value={registrationProfile.first_name} onChange={(e) => updateProfileField("first_name", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="last_name">Last name *</Label>
-                <Input id="last_name" value={registrationProfile.last_name} onChange={(e) => updateProfileField("last_name", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="email">Email *</Label>
-                <Input id="email" type="email" value={registrationProfile.email} onChange={(e) => updateProfileField("email", e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="phone_number">Phone number *</Label>
-                <Input id="phone_number" value={registrationProfile.phone_number} onChange={(e) => updateProfileField("phone_number", e.target.value)} />
-              </div>
-            </div>
+            {isSignedIn ? (
+              <p className="text-sm text-muted-foreground">
+                You are signed in. We will use your saved member profile, so only additional event questions are required.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="first_name">First name *</Label>
+                    <Input id="first_name" value={registrationProfile.first_name} onChange={(e) => updateProfileField("first_name", e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="last_name">Last name *</Label>
+                    <Input id="last_name" value={registrationProfile.last_name} onChange={(e) => updateProfileField("last_name", e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input id="email" type="email" value={registrationProfile.email} onChange={(e) => updateProfileField("email", e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone_number">Phone number *</Label>
+                    <Input id="phone_number" value={registrationProfile.phone_number} onChange={(e) => updateProfileField("phone_number", e.target.value)} />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <p className="font-medium text-sm">Gender *</p>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="gender"
-                    checked={registrationProfile.gender === "male"}
-                    onChange={() => updateProfileField("gender", "male")}
-                  />
-                  <span>Male 🧔🏻‍♂️</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="gender"
-                    checked={registrationProfile.gender === "female"}
-                    onChange={() => updateProfileField("gender", "female")}
-                  />
-                  <span>Female 🧕🏻</span>
-                </label>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <p className="font-medium text-sm">Gender *</p>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="gender"
+                        checked={registrationProfile.gender === "male"}
+                        onChange={() => updateProfileField("gender", "male")}
+                      />
+                      <span>Male 🧔🏻‍♂️</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="gender"
+                        checked={registrationProfile.gender === "female"}
+                        onChange={() => updateProfileField("gender", "female")}
+                      />
+                      <span>Female 🧕🏻</span>
+                    </label>
+                  </div>
+                </div>
 
-              {showStudentToggle && (
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={registrationProfile.is_student}
-                    onCheckedChange={(checked) => {
-                      const next = Boolean(checked);
-                      updateProfileField("is_student", next);
-                      if (next) {
-                        updateProfileField("is_alumnus", false);
-                      }
-                    }}
-                  />
-                  <span>I am a student {requireStudent ? "*" : ""}</span>
-                </label>
-              )}
-            <div className="flex flex-wrap gap-5">
-              {showAlumni && (
-                <label className="flex items-center gap-2 text-sm">
+                {showStudentToggle && (
+                  <label className="flex items-center gap-2 text-sm">
                     <Checkbox
+                      checked={registrationProfile.is_student}
+                      onCheckedChange={(checked) => {
+                        const next = Boolean(checked);
+                        updateProfileField("is_student", next);
+                        if (next) {
+                          updateProfileField("is_alumnus", false);
+                        }
+                      }}
+                    />
+                    <span>I am a student {requireStudent ? "*" : ""}</span>
+                  </label>
+                )}
+                <div className="flex flex-wrap gap-5">
+                  {showAlumni && (
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
                         checked={registrationProfile.is_alumnus}
                         onCheckedChange={(checked) => {
-                        const next = Boolean(checked);
-                        updateProfileField("is_alumnus", next);
-                        if (next) {
+                          const next = Boolean(checked);
+                          updateProfileField("is_alumnus", next);
+                          if (next) {
                             updateProfileField("is_student", false);
                             updateProfileField("study_program", "");
-                        }
+                          }
                         }}
-                    />
-                    <TouchTooltip
-                    triggerClassName="inline-flex items-center"
-                    contentClassName="text-sm"
-                    content="Only LU alumni!"
-                    >
+                      />
+                      <TouchTooltip
+                        triggerClassName="inline-flex items-center"
+                        contentClassName="text-sm"
+                        content="Only LU alumni!"
+                      >
                         <span>I am an alumnus</span><sup className="text-xxs text-blue-500">?</sup>
-                    </TouchTooltip>
-                </label>
-              )}
-            </div>
+                      </TouchTooltip>
+                    </label>
+                  )}
+                </div>
 
-            {lockUniversityToLund && !registrationProfile.is_alumnus && (
-              <p className="text-sm text-muted-foreground">University: Lund University</p>
+                {lockUniversityToLund && !registrationProfile.is_alumnus && (
+                  <p className="text-sm text-muted-foreground">University: Lund University</p>
+                )}
+
+                {(showUniversityInput || showProgramInput) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {showUniversityInput && (
+                      <div className="space-y-1">
+                        <Label htmlFor="university_name">University *</Label>
+                        <Input id="university_name" value={registrationProfile.university_name} onChange={(e) => updateProfileField("university_name", e.target.value)} />
+                      </div>
+                    )}
+                    {showProgramInput && (
+                      <div className="space-y-1">
+                        <Label htmlFor="study_program">Study program *</Label>
+                        <Input id="study_program" value={registrationProfile.study_program} onChange={(e) => updateProfileField("study_program", e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
-            {(showUniversityInput || showProgramInput) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {showUniversityInput && (
-                  <div className="space-y-1">
-                    <Label htmlFor="university_name">University *</Label>
-                    <Input id="university_name" value={registrationProfile.university_name} onChange={(e) => updateProfileField("university_name", e.target.value)} />
-                  </div>
-                )}
-                {showProgramInput && (
-                  <div className="space-y-1">
-                    <Label htmlFor="study_program">Study program *</Label>
-                    <Input id="study_program" value={registrationProfile.study_program} onChange={(e) => updateProfileField("study_program", e.target.value)} />
-                  </div>
-                )}
+            {formFields.length > 0 && (
+              <div className="space-y-4 pt-2 border-t border-border">
+                <h4 className="text-lg font-semibold">Additional Questions</h4>
+                {formFields.map((field) => renderDynamicField(field))}
               </div>
             )}
           </>
         )}
-
-        {(event.form_fields || []).length > 0 && (
-          <div className="space-y-4 pt-2 border-t border-border">
-            <h4 className="text-lg font-semibold">Additional Questions</h4>
-            {(event.form_fields || []).map((field) => renderDynamicField(field))}
-          </div>
-        )}
       </div>
 
-      <div className="expanded-card-footer flex items-center justify-between gap-4">
-        <div className="text-xl font-semibold">{getRegistrationPrice()} SEK</div>
-        <Button
-          onClick={handleSubmitRegistration}
-          disabled={!isFormReadyForSubmission()}
-          variant={isAlreadyRegistered ? "outline" : "default"}
-          className={isAlreadyRegistered ? "border-green-600 text-green-600 hover:bg-green-50" : ""}
-        >
-          {isAlreadyRegistered ? (
-            <span className="inline-flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" />
-              Registered!
-            </span>
-          ) : isSubmittingRegistration ? (
-            "Submitting..."
-          ) : (
-            "Submit"
-          )}
-        </Button>
-      </div>
+      <EventRegistrationTermsDialog
+        open={termsDialogOpen}
+        onOpenChange={setTermsDialogOpen}
+        gdprAccepted={gdprAccepted}
+        onGdprAcceptedChange={setGdprAccepted}
+        refundAccepted={refundAccepted}
+        onRefundAcceptedChange={setRefundAccepted}
+        onAccept={submitRegistration}
+        loading={isSubmittingRegistration}
+        refundCutoffAt={refundCutoffAt}
+      />
     </>
   );
 };

@@ -1,14 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
-import { EventRegistrationForm } from "@/components/events/EventRegistrationForm";
-import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, Clock, Users, CheckCircle2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
+import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
@@ -34,10 +31,6 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const REGISTERED_EVENTS_SESSION_KEY = "registered_event_ids";
-const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,50}$/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^\+?[0-9][0-9\s-]{6,14}$/;
-const SCHOOL_TEXT_REGEX = /^[A-Za-z0-9À-ÖØ-öø-ÿ .,'()&+\/-]{2,100}$/;
 
 const formatAddress = (addr: String) => {
   const query = "https://www.google.com/maps/search/?api=1&query=" + addr.split(/[\s,]+/).join('+')
@@ -87,7 +80,7 @@ const invitation = (event: events_info, big: boolean = false) => {
     cl = "text-pink-500";
   }
   const size = big ? 5 : 4;
-  return <div className={`flex items-center text-${big ? 'lg' : 'sm'} ${cl} mb-6`}>
+  return <div className={`flex items-center text-${big ? 'lg' : 'sm'} ${cl}`}>
            <Users className={`h-${size} w-${size} mr-${big ? 3 : 2}`} />
            <span>{invite}</span>
          </div>
@@ -96,6 +89,9 @@ const invitation = (event: events_info, big: boolean = false) => {
 const buildIcsDownloadUrl = (event: events_info) => `${API_BASE_URL}/api/events/${event.id}/ics`;
 
 const formatGoogleDate = (value: Date) => value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+
+const formatRegistrationDeadline = (deadline: string | Date) =>
+  new Date(deadline).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 
 const buildGoogleCalendarUrl = (event: events_info) => {
   const date = new Date(event.date);
@@ -212,7 +208,7 @@ const loadPosterUrls = async (basePath: string) => {
 // };
 
 const renderMarkdown = (text: string | null | undefined, className?: string) => (
-  <div className={`prose dark:prose-invert max-w-none text-muted-foreground ${className ?? ""}`.trim()}>
+  <div className={`prose dark:prose-invert max-w-none ${className ?? ""}`.trim()}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeSanitize]}
@@ -242,18 +238,6 @@ type ExpandedEvent = events_info & {
   is_registered?: boolean;
 };
 
-type RegistrationProfile = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string;
-  gender: "male" | "female" | "";
-  is_student: boolean;
-  university_name: string;
-  study_program: string;
-  is_alumnus: boolean;
-};
-
 const Events = () => {
   // const categories = ["All", "Social", "Educational", "Religious", "Community"];
   // const navigate = useNavigate();
@@ -261,10 +245,10 @@ const Events = () => {
   // const [activeCategory, setActiveCategory] = useState("All");
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<ExpandedEvent | null>(null);
+  const [registrationFooterState, setRegistrationFooterState] = useState<EventRegistrationFooterState | null>(null);
+  const registrationSubmitRef = useRef<(() => void) | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [expandedEventPosters, setExpandedEventPosters] = useState<string[]>([]);
-  const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
-  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [sessionRegisteredEventIds, setSessionRegisteredEventIds] = useState<number[]>(() => {
     try {
       const raw = sessionStorage.getItem(REGISTERED_EVENTS_SESSION_KEY);
@@ -277,18 +261,6 @@ const Events = () => {
       return [];
     }
   });
-  const [registrationProfile, setRegistrationProfile] = useState<RegistrationProfile>({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone_number: "",
-    gender: "",
-    is_student: false,
-    university_name: "",
-    study_program: "",
-    is_alumnus: false,
-  });
-  const [fieldAnswers, setFieldAnswers] = useState<Record<string, string | string[]>>({});
   const [cardPosition, setCardPosition] = useState<{
     top: number;
     left: number;
@@ -297,34 +269,11 @@ const Events = () => {
   } | null>(null);
   const cardRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const eventCacheRef = useRef<Map<number, ExpandedEvent>>(new Map());
+  const posterCacheRef = useRef<Map<string, string[]>>(new Map());
 
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : null;
   const isSignedIn = Boolean(user);
-
-  const updateProfileField = (field: keyof RegistrationProfile, value: string | boolean) => {
-    setRegistrationProfile((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const updateAnswer = (fieldId: string, value: string | string[]) => {
-    setFieldAnswers((prev) => ({
-      ...prev,
-      [fieldId]: value,
-    }));
-  };
-
-  const toggleCheckboxAnswer = (fieldId: string, value: string, checked: boolean) => {
-    setFieldAnswers((prev) => {
-      const current = Array.isArray(prev[fieldId]) ? (prev[fieldId] as string[]) : [];
-      if (checked) {
-        return { ...prev, [fieldId]: [...new Set([...current, value])] };
-      }
-      return { ...prev, [fieldId]: current.filter((item) => item !== value) };
-    });
-  };
 
   const isSessionRegistered = (eventId: number) => sessionRegisteredEventIds.includes(eventId);
 
@@ -339,99 +288,44 @@ const Events = () => {
     });
   };
 
-  const getProfileRegexError = (
-    profile: RegistrationProfile,
-    invitationType: string,
-    signedIn: boolean,
-  ): string | null => {
-    if (signedIn) {
-      return null;
+  const handleFooterSubmitChange = useCallback((submit: (() => void) | null) => {
+    registrationSubmitRef.current = submit;
+  }, []);
+
+
+  const priceTag = (event: events_info, overridePrice?: number, overrideTier?: "member" | "nonmember" | "alumnus") => {
+    const price = overridePrice ?? (user ? event.price_member : event.price_nonmember);
+    const tier = overrideTier ?? (user ? "member" : "nonmember");
+    if (tier === "member") {
+      return <div className="flex flex-col items-start leading-tight">
+        <div className="flex flex-wrap items-center gap-x-1.5">
+          <span>{price} SEK</span>
+          <TouchTooltip
+            triggerClassName="inline-flex items-center"
+            contentClassName="text-sm"
+            content="Member price 🌟"
+          >
+            <BadgeCheck className="h-4 w-4 text-green-500" />
+          </TouchTooltip>
+        </div>
+        <span className="mt-0.5 text-xs text-muted-foreground line-through">{event.price_nonmember} SEK</span>
+      </div>
     }
 
-    if (!NAME_REGEX.test(profile.first_name) || !NAME_REGEX.test(profile.last_name)) {
-      return "Please enter a valid first and last name.";
-    }
-    if (!EMAIL_REGEX.test(profile.email)) {
-      return "Please enter a valid email address.";
-    }
-    if (!PHONE_REGEX.test(profile.phone_number)) {
-      return "Please enter a valid phone number.";
-    }
-
-    if (invitationType === "non_members") {
-      if (!profile.is_student || profile.is_alumnus) {
-        return "This invitation requires student status and does not allow alumni.";
-      }
-      if (!SCHOOL_TEXT_REGEX.test(profile.study_program)) {
-        return "Please enter a valid study program.";
-      }
-    }
-
-    if (invitationType === "alumni") {
-      if (!profile.is_student && !profile.is_alumnus) {
-        return "Please confirm student or alumnus status.";
-      }
-      if (!profile.is_alumnus && !SCHOOL_TEXT_REGEX.test(profile.study_program)) {
-        return "Please enter a valid study program.";
-      }
-    }
-
-    if (invitationType === "all_students") {
-      if (!profile.is_student && !profile.is_alumnus) {
-        return "Please confirm student or alumnus status.";
-      }
-      if (!profile.is_alumnus) {
-        if (!SCHOOL_TEXT_REGEX.test(profile.university_name)) {
-          return "Please enter a valid university name.";
-        }
-        if (!SCHOOL_TEXT_REGEX.test(profile.study_program)) {
-          return "Please enter a valid study program.";
-        }
-      }
-    }
-
-    if (invitationType === "non_students" && profile.is_student) {
-      if (!SCHOOL_TEXT_REGEX.test(profile.university_name)) {
-        return "Please enter a valid university name.";
-      }
-      if (!SCHOOL_TEXT_REGEX.test(profile.study_program)) {
-        return "Please enter a valid study program.";
-      }
-    }
-
-    return null;
-  };
-
-  const priceTag = (event: events_info) => {
-    const price = user ? event.price_member : event.price_nonmember;
-    if (user) {
+    if (tier === "alumnus") {
       return <div className="flex flex-wrap items-center gap-x-1.5">
         <span>{price} SEK</span>
         <TouchTooltip
           triggerClassName="inline-flex items-center"
           contentClassName="text-sm"
-          content="Member price 🌟"
+          content="Alumnus price"
         >
-          <BadgeCheck className="h-4 w-4 text-green-500" />
+          <GraduationCap className="h-4 w-4 text-sky-600" />
         </TouchTooltip>
       </div>
     }
+
     return <span>{price} SEK</span>;
-  };
-
-  const getInvitationType = (event?: ExpandedEvent | null) => event?.invitation ?? "non_students";
-
-  const allowsAlumni = (invitationType: string) =>
-    invitationType === "alumni" || invitationType === "all_students" || invitationType === "non_students";
-
-  const getRegistrationPrice = (event: ExpandedEvent) => {
-    if (isSignedIn) {
-      return event.price_member;
-    }
-    if (registrationProfile.is_alumnus) {
-      return event.price_alumnus;
-    }
-    return event.price_nonmember;
   };
 
   useEffect(() => {
@@ -480,7 +374,8 @@ const Events = () => {
     if (!expandedEventId) {
       setExpandedEvent(null);
       setExpandedEventPosters([]);
-      setIsAlreadyRegistered(false);
+      setRegistrationFooterState(null);
+      registrationSubmitRef.current = null;
       return;
     }
 
@@ -511,15 +406,24 @@ const Events = () => {
     let isCancelled = false;
     const basePath = `/${expandedEvent.poster}`;
 
+    const cachedPosters = posterCacheRef.current.get(basePath);
+    if (cachedPosters) {
+      setExpandedEventPosters(cachedPosters);
+      return;
+    }
+
+    setExpandedEventPosters([`${basePath}/0.png`]);
+
     const fetchPosters = async () => {
       try {
         const urls = await loadPosterUrls(basePath);
         if (!isCancelled) {
+          posterCacheRef.current.set(basePath, urls);
           setExpandedEventPosters(urls);
         }
       } catch (error: any) {
         if (!isCancelled) {
-          setExpandedEventPosters([]);
+          setExpandedEventPosters([`${basePath}/0.png`]);
         }
       }
     };
@@ -530,259 +434,6 @@ const Events = () => {
       isCancelled = true;
     };
   }, [expandedEvent?.poster]);
-
-  const handleSubmitRegistration = async () => {
-    if (!expandedEvent) {
-      return;
-    }
-    if (isAlreadyRegistered) {
-      return;
-    }
-
-    setIsSubmittingRegistration(true);
-    try {
-      const invitationType = getInvitationType(expandedEvent);
-      let profilePayload = {
-        ...registrationProfile,
-        study_program: registrationProfile.study_program || null,
-      };
-
-      if (!isSignedIn) {
-        const requiresStudent =
-          invitationType === "non_members" || invitationType === "alumni" || invitationType === "all_students";
-        const shouldLockToLund = invitationType === "non_members" || invitationType === "alumni";
-
-        if (!profilePayload.first_name || !profilePayload.last_name || !profilePayload.email || !profilePayload.phone_number || !profilePayload.gender) {
-          toast.error("Please fill in all required personal details.");
-          setIsSubmittingRegistration(false);
-          return;
-        }
-
-        if (!allowsAlumni(invitationType)) {
-          profilePayload.is_alumnus = false;
-        }
-
-        if (profilePayload.is_alumnus) {
-          profilePayload.is_student = false;
-          profilePayload.study_program = null;
-          if (shouldLockToLund) {
-            profilePayload.university_name = "Lund University";
-          }
-        } else {
-          if (requiresStudent) {
-            if (!profilePayload.is_student) {
-              toast.error("Student status is required for this invitation type.");
-              setIsSubmittingRegistration(false);
-              return;
-            }
-          }
-
-          if (profilePayload.is_student) {
-            if (shouldLockToLund) {
-              profilePayload.university_name = "Lund University";
-            }
-            if (!profilePayload.study_program) {
-              toast.error("Study program is required.");
-              setIsSubmittingRegistration(false);
-              return;
-            }
-            if (invitationType === "all_students" || invitationType === "non_students") {
-              if (!profilePayload.university_name) {
-                toast.error("University name is required for students.");
-                setIsSubmittingRegistration(false);
-                return;
-              }
-            }
-          } else {
-            profilePayload.study_program = null;
-          }
-        }
-      }
-
-      const answers = (expandedEvent.form_fields || [])
-        .map((field) => {
-          const rawValue = fieldAnswers[field.id];
-          if (field.field_type === "short_text") {
-            return {
-              field_id: field.id,
-              short_text_value: typeof rawValue === "string" ? rawValue : "",
-            };
-          }
-          if (field.field_type === "radio_single") {
-            return {
-              field_id: field.id,
-              selected_option_value: typeof rawValue === "string" ? rawValue : "",
-            };
-          }
-          return {
-            field_id: field.id,
-            selected_options_json: Array.isArray(rawValue) ? rawValue : [],
-          };
-        })
-        .filter((answer) => {
-          if ('short_text_value' in answer) {
-            return Boolean(answer.short_text_value?.trim());
-          }
-          if ('selected_option_value' in answer) {
-            return Boolean(answer.selected_option_value);
-          }
-          return Array.isArray(answer.selected_options_json) && answer.selected_options_json.length > 0;
-        });
-
-      const profileRegexError = getProfileRegexError(profilePayload, invitationType, isSignedIn);
-      if (profileRegexError) {
-        toast.error(profileRegexError);
-        setIsSubmittingRegistration(false);
-        return;
-      }
-
-      await apiRequest(`/events/${expandedEvent.id}/register`, 'POST', {
-        profile: profilePayload,
-        answers,
-      });
-
-      toast.success('Registration submitted successfully');
-      setIsAlreadyRegistered(true);
-      markSessionRegistered(expandedEvent.id);
-      setEvents((prev) => prev.map((event) => (
-        event.id === expandedEvent.id ? { ...event, is_registered: true } : event
-      )));
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to submit registration');
-    } finally {
-      setIsSubmittingRegistration(false);
-    }
-  };
-
-  const isFormReadyForSubmission = () => {
-    if (!expandedEvent || isSubmittingRegistration || isAlreadyRegistered) {
-      return false;
-    }
-
-    const invitationType = getInvitationType(expandedEvent);
-    if (getProfileRegexError(registrationProfile, invitationType, isSignedIn)) {
-      return false;
-    }
-
-    for (const field of expandedEvent.form_fields || []) {
-      if (!field.is_required) {
-        continue;
-      }
-      const value = fieldAnswers[field.id];
-      if (field.field_type === "short_text") {
-        if (typeof value !== "string" || !value.trim()) {
-          return false;
-        }
-      } else if (field.field_type === "radio_single") {
-        if (typeof value !== "string" || !value) {
-          return false;
-        }
-      } else if (!Array.isArray(value) || value.length === 0) {
-        return false;
-      }
-    }
-
-    if (isSignedIn) {
-      return true;
-    }
-
-    if (!registrationProfile.first_name || !registrationProfile.last_name || !registrationProfile.email || !registrationProfile.phone_number || !registrationProfile.gender) {
-      return false;
-    }
-
-    if (invitationType === "non_members") {
-      return registrationProfile.is_student && !registrationProfile.is_alumnus && Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "alumni") {
-      if (!registrationProfile.is_student && !registrationProfile.is_alumnus) {
-        return false;
-      }
-      if (registrationProfile.is_alumnus) {
-        return true;
-      }
-      return Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "all_students") {
-      if (!registrationProfile.is_student && !registrationProfile.is_alumnus) {
-        return false;
-      }
-      if (registrationProfile.is_alumnus) {
-        return true;
-      }
-      return Boolean(registrationProfile.university_name.trim()) && Boolean(registrationProfile.study_program.trim());
-    }
-
-    if (invitationType === "non_students") {
-      if (!registrationProfile.is_student) {
-        return true;
-      }
-      return Boolean(registrationProfile.university_name.trim()) && Boolean(registrationProfile.study_program.trim());
-    }
-
-    return true;
-  };
-
-  const renderDynamicField = (field: EventFormField) => {
-    if (field.field_type === "short_text") {
-      return (
-        <div key={field.id} className="space-y-2">
-          <Label htmlFor={`field-${field.id}`}>{field.label}{field.is_required ? ' *' : ''}</Label>
-          <Input
-            id={`field-${field.id}`}
-            value={typeof fieldAnswers[field.id] === 'string' ? (fieldAnswers[field.id] as string) : ''}
-            onChange={(e) => updateAnswer(field.id, e.target.value)}
-            placeholder={field.help_text || ''}
-          />
-        </div>
-      );
-    }
-
-    if (field.field_type === "radio_single") {
-      return (
-        <div key={field.id} className="space-y-2">
-          <p className="font-medium text-sm">{field.label}{field.is_required ? ' *' : ''}</p>
-          <div className="space-y-2">
-            {field.options.map((option) => (
-              <label key={option.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name={`field-${field.id}`}
-                  checked={fieldAnswers[field.id] === option.value}
-                  onChange={() => updateAnswer(field.id, option.value)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div key={field.id} className="space-y-2">
-        <p className="font-medium text-sm">{field.label}{field.is_required ? ' *' : ''}</p>
-        <div className="space-y-2">
-          {field.options.map((option) => {
-            const selected = Array.isArray(fieldAnswers[field.id])
-              ? (fieldAnswers[field.id] as string[])
-              : [];
-            const isChecked = selected.includes(option.value);
-            return (
-              <label key={option.id} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={isChecked}
-                  onCheckedChange={(checked) => toggleCheckboxAnswer(field.id, option.value, Boolean(checked))}
-                />
-                <span>{option.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen flex flex-col page">
@@ -822,9 +473,9 @@ const Events = () => {
                   contentClassName="text-xs"
                   content="Registration deadline"
                   >
-                  <span className="text-xs flex gap-x-1 text-amber-600 mb-1">
+                  <span className="text-xs flex gap-x-1 text-amber-600">
                     <Clock className="h-4 w-4" />
-                    <p>{new Date(event.deadline).toLocaleString('sv-SE', {dateStyle: "short", timeStyle: "short"})}</p>
+                    <p>{formatRegistrationDeadline(event.deadline)}</p>
                   </span>
                 </TouchTooltip>
                   </div>
@@ -874,45 +525,77 @@ const Events = () => {
         isClosing={isClosing}
         onClose={handleCloseExpanded}
         cardPosition={cardPosition}
+        footer={registrationFooterState && expandedEvent ? (
+          <div className="expanded-card-footer flex items-center justify-between gap-4">
+            <div className="text-xl font-semibold">
+              {priceTag(expandedEvent, registrationFooterState.displayPrice, registrationFooterState.displayPriceTier)}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => registrationSubmitRef.current?.()}
+                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration}
+                variant={registrationFooterState.isAlreadyRegistered ? "outline" : "default"}
+                className={registrationFooterState.isAlreadyRegistered ? "border-green-600 text-green-600 hover:bg-green-50" : ""}
+              >
+                {registrationFooterState.isAlreadyRegistered ? (
+                  <span className="inline-flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Registered!
+                  </span>
+                ) : registrationFooterState.isSubmittingRegistration ? (
+                  "Submitting..."
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : null}
       >
         {expandedEvent && (
           <div className="expanded-card-layout">
             <h2 className="text-3xl font-bold mb-4">{expandedEvent.title}</h2>
-            <div className="flex flex-wrap items-center gap-y-1 text-lg text-muted-foreground mb-3">
-              <Calendar className="h-5 w-5 mr-3" />
-              <div className="inline-flex items-center">
-                {expandedEvent.date.toString()}, {expandedEvent.start_time.toString()}-{expandedEvent.end_time.toString()}
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    type="button"
-                    aria-label="Calendar options"
-                    className="ml-1 inline-flex items-center text-muted-foreground hover:opacity-80"
-                  >
-                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <a
-                        href={buildCalendarUrl(expandedEvent)}
-                        target="_blank"
-                      >
-                        Add to calendar
-                      </a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a href={buildIcsDownloadUrl(expandedEvent)}>
-                        Download .ics
-                      </a>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            <div className="grid gap-y-2 mb-6">
+              <div className="flex flex-wrap items-center text-lg text-muted-foreground">
+                <Calendar className="h-5 w-5 mr-3" />
+                <div className="inline-flex items-center">
+                  {expandedEvent.date.toString()}, {expandedEvent.start_time.toString()}-{expandedEvent.end_time.toString()}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      type="button"
+                      aria-label="Calendar options"
+                      className="ml-1 inline-flex items-center text-muted-foreground hover:opacity-80"
+                    >
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={buildCalendarUrl(expandedEvent)}
+                          target="_blank"
+                        >
+                          Add to calendar
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <a href={buildIcsDownloadUrl(expandedEvent)}>
+                          Download .ics
+                        </a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="flex items-center text-lg text-muted-foreground">
+                <MapPin className="h-5 w-5 mr-3" />
+                {formatAddress(expandedEvent.address)}
+              </div>
+              {invitation(expandedEvent, true)}
+              <div className="flex items-center text-lg text-amber-600">
+                <Clock className="h-5 w-5 mr-3" />
+                <p>Deadline: {formatRegistrationDeadline(expandedEvent.deadline)}</p>
               </div>
             </div>
-            <div className="flex items-center text-lg text-muted-foreground mb-3">
-              <MapPin className="h-5 w-5 mr-3" />
-              {formatAddress(expandedEvent.address)}
-            </div>
-            {invitation(expandedEvent, true)}
             <div className="expanded-card-body">
               {expandedEventPosters.length > 0 && (
                 <Carousel className="mb-6 w-[520px] max-w-full mx-auto">
@@ -937,6 +620,8 @@ const Events = () => {
                 event={expandedEvent}
                 isSignedIn={isSignedIn}
                 user={user}
+                onFooterStateChange={setRegistrationFooterState}
+                onFooterSubmitChange={handleFooterSubmitChange}
                 onRegistered={(eventId) => {
                   markSessionRegistered(eventId);
                   setEvents((prev) => prev.map((event) => (
