@@ -111,6 +111,27 @@
   flex-direction: column;
 }
 
+.expanded-card.has-footer {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.expanded-card.has-footer .expanded-card-content {
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.expanded-card-modal-footer {
+  flex: 0 0 auto;
+  padding: 16px 24px 8px;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
 .expanded-card-layout {
   display: flex;
   flex-direction: column;
@@ -127,8 +148,7 @@
 
 .expanded-card-footer {
   flex: 0 0 auto;
-  padding: 16px 0 8px;
-  border-top: 1px solid hsl(var(--border));
+  padding: 8px 0 16px;
   background: hsl(var(--background));
 }
 

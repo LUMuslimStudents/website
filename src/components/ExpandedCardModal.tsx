@@ -14,6 +14,7 @@ interface ExpandedCardModalProps {
     height: number;
   } | null;
   children: ReactNode;
+  footer?: ReactNode;
 }
 
 export const ExpandedCardModal = ({
@@ -22,6 +23,7 @@ export const ExpandedCardModal = ({
   onClose,
   cardPosition,
   children,
+  footer,
 }: ExpandedCardModalProps) => {
   useEffect(() => {
     const handleEscapeKey = (e: KeyboardEvent) => {
@@ -41,7 +43,7 @@ export const ExpandedCardModal = ({
   const modalContent = (
     <div className={`expanded-modal-overlay ${isClosing ? "closing" : ""}`} onClick={onClose}>
       <div
-        className={`expanded-card ${isClosing ? "closing" : ""}`}
+        className={`expanded-card ${isClosing ? "closing" : ""} ${footer ? "has-footer" : ""}`}
         style={{
           "--start-top": `${cardPosition.top}px`,
           "--start-left": `${cardPosition.left}px`,
@@ -63,6 +65,7 @@ export const ExpandedCardModal = ({
           <X className="h-6 w-6" />
         </button>
         <div className="expanded-card-content">{children}</div>
+        {footer ? <div className="expanded-card-modal-footer">{footer}</div> : null}
       </div>
     </div>
   );

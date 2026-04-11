@@ -100,6 +100,15 @@ const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,50}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9][0-9\s-]{6,14}$/;
 const SCHOOL_TEXT_REGEX = /^[A-Za-z0-9À-ÖØ-öø-ÿ .,'()&+\/-]{2,100}$/;
+const FORBIDDEN_REGISTRATION_BODY_KEYS = new Set([
+    'event_id',
+    'user_id',
+    'status',
+    'quoted_price',
+    'payment_required',
+    'invitation_snapshot',
+    'siblings_snapshot',
+]);
 
 type RegistrationProfilePayload = {
     first_name?: string;
@@ -672,8 +681,17 @@ export function setupEventRoutes(app: Express, prisma: PrismaClient) {
                 return res.status(400).json({ error: 'Invalid event id' });
             }
 
+            const forbiddenKey = Object.keys(req.body ?? {}).find((key) => FORBIDDEN_REGISTRATION_BODY_KEYS.has(key));
+            if (forbiddenKey) {
+                return res.status(400).json({ error: `Forbidden registration payload field: ${forbiddenKey}` });
+            }
+
             const bodyProfile = (req.body?.profile ?? {}) as RegistrationProfilePayload;
             const bodyAnswers = Array.isArray(req.body?.answers) ? (req.body.answers as RegistrationAnswerPayload[]) : [];
+
+            if (!bodyAnswers.every((answer) => answer && typeof answer.field_id === 'string' && normalizeTrimmed(answer.field_id))) {
+                return res.status(400).json({ error: 'Invalid answers payload. Each answer must include a valid field_id.' });
+            }
 
             const event = await prisma.events_info.findUnique({ where: { id } });
             if (!event) {
@@ -840,6 +858,19 @@ export function setupEventRoutes(app: Express, prisma: PrismaClient) {
             });
 
             const fieldById = new Map(formFields.map((field) => [field.id, field]));
+            const seenAnswerFieldIds = new Set<string>();
+            for (const answer of bodyAnswers) {
+                const fieldId = normalizeTrimmed(answer.field_id);
+                if (seenAnswerFieldIds.has(fieldId)) {
+                    return res.status(400).json({ error: `Duplicate answer submitted for field id: ${fieldId}` });
+                }
+                seenAnswerFieldIds.add(fieldId);
+
+                if (!fieldById.has(fieldId)) {
+                    return res.status(400).json({ error: `Unknown form field id submitted: ${fieldId}` });
+                }
+            }
+
             const answersByFieldId = new Map(bodyAnswers.map((answer) => [answer.field_id, answer]));
 
             for (const field of formFields) {
@@ -884,6 +915,7 @@ export function setupEventRoutes(app: Express, prisma: PrismaClient) {
                 }
             }
 
+            // Price is always resolved server-side from trusted sources after profile validation.
             const quotedPrice = userRecord
                 ? event.price_member
                 : is_alumnus
