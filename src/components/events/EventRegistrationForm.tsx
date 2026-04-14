@@ -13,15 +13,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9][0-9\s-]{6,14}$/;
 const SCHOOL_TEXT_REGEX = /^[A-Za-z0-9À-ÖØ-öø-ÿ .,'()&+\/-]{2,100}$/;
 
-type EventFormFieldOption = {
-  id: string;
-  value: string;
-  label: string;
-};
+type EventFormFieldOption = string;
 
 type EventFormField = {
   id: string;
-  label: string;
+  question: string;
   help_text?: string | null;
   field_type: "short_text" | "checkbox_multi" | "radio_single";
   is_required: boolean;
@@ -412,31 +408,18 @@ export const EventRegistrationForm = ({
       const answers = formFields
         .map((field) => {
           const rawValue = fieldAnswers[field.id];
-          if (field.field_type === "short_text") {
-            return {
-              field_id: field.id,
-              short_text_value: typeof rawValue === "string" ? rawValue : "",
-            };
-          }
-          if (field.field_type === "radio_single") {
-            return {
-              field_id: field.id,
-              selected_option_value: typeof rawValue === "string" ? rawValue : "",
-            };
-          }
           return {
             field_id: field.id,
-            selected_options_json: Array.isArray(rawValue) ? rawValue : [],
+            value: field.field_type === "checkbox_multi"
+              ? (Array.isArray(rawValue) ? rawValue : [])
+              : (typeof rawValue === "string" ? rawValue : ""),
           };
         })
         .filter((answer) => {
-          if ("short_text_value" in answer) {
-            return Boolean(answer.short_text_value?.trim());
+          if (Array.isArray(answer.value)) {
+            return answer.value.length > 0;
           }
-          if ("selected_option_value" in answer) {
-            return Boolean(answer.selected_option_value);
-          }
-          return Array.isArray(answer.selected_options_json) && answer.selected_options_json.length > 0;
+          return Boolean(String(answer.value || "").trim());
         });
 
       await apiRequest(`/events/${event.id}/register`, "POST", {
@@ -496,12 +479,12 @@ export const EventRegistrationForm = ({
     if (field.field_type === "short_text") {
       return (
         <div key={field.id} className="space-y-2">
-          <Label htmlFor={`field-${field.id}`}>{field.label}{field.is_required ? " *" : ""}</Label>
+          <Label htmlFor={`field-${field.id}`}>{field.question}{field.is_required ? " *" : ""}</Label>
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
           <Input
             id={`field-${field.id}`}
             value={typeof fieldAnswers[field.id] === "string" ? (fieldAnswers[field.id] as string) : ""}
             onChange={(e) => updateAnswer(field.id, e.target.value)}
-            placeholder={field.help_text || ""}
           />
         </div>
       );
@@ -510,17 +493,19 @@ export const EventRegistrationForm = ({
     if (field.field_type === "radio_single") {
       return (
         <div key={field.id} className="space-y-2">
-          <p className="font-medium text-sm">{field.label}{field.is_required ? " *" : ""}</p>
+          <p className="font-medium text-sm">{field.question}{field.is_required ? " *" : ""}</p>
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
           <div className="space-y-2">
             {field.options.map((option) => (
-              <label key={option.id} className="flex items-center gap-2 text-sm">
+              <label key={`${field.id}-${option}`} className="flex items-center gap-2 text-sm">
                 <input
+                  className="organic-radio"
                   type="radio"
                   name={`field-${field.id}`}
-                  checked={fieldAnswers[field.id] === option.value}
-                  onChange={() => updateAnswer(field.id, option.value)}
+                  checked={fieldAnswers[field.id] === option}
+                  onChange={() => updateAnswer(field.id, option)}
                 />
-                <span>{option.label}</span>
+                <span>{option}</span>
               </label>
             ))}
           </div>
@@ -530,20 +515,22 @@ export const EventRegistrationForm = ({
 
     return (
       <div key={field.id} className="space-y-2">
-        <p className="font-medium text-sm">{field.label}{field.is_required ? " *" : ""}</p>
+          <p className="font-medium text-sm">{field.question}{field.is_required ? " *" : ""}</p>
+          {field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}
         <div className="space-y-2">
           {field.options.map((option) => {
             const selected = Array.isArray(fieldAnswers[field.id])
               ? (fieldAnswers[field.id] as string[])
               : [];
-            const isChecked = selected.includes(option.value);
+              const isChecked = selected.includes(option);
             return (
-              <label key={option.id} className="flex items-center gap-2 text-sm">
+                <label key={`${field.id}-${option}`} className="flex items-center gap-2 text-sm">
                 <Checkbox
+                  className="event-multi-checkbox"
                   checked={isChecked}
-                  onCheckedChange={(checked) => toggleCheckboxAnswer(field.id, option.value, Boolean(checked))}
+                    onCheckedChange={(checked) => toggleCheckboxAnswer(field.id, option, Boolean(checked))}
                 />
-                <span>{option.label}</span>
+                  <span>{option}</span>
               </label>
             );
           })}
@@ -616,6 +603,7 @@ export const EventRegistrationForm = ({
                   <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 text-sm">
                       <input
+                        className="organic-radio"
                         type="radio"
                         name="gender"
                         checked={registrationProfile.gender === "male"}
@@ -625,6 +613,7 @@ export const EventRegistrationForm = ({
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input
+                        className="organic-radio"
                         type="radio"
                         name="gender"
                         checked={registrationProfile.gender === "female"}

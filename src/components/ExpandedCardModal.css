@@ -226,6 +226,96 @@
   margin-top: 24px;
 }
 
+/* Dynamic multi-select checkbox style in event registration form */
+.expanded-form-placeholder .event-multi-checkbox {
+  position: relative;
+  overflow: hidden;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 6px !important;
+  border-width: 2px !important;
+  border-color: hsl(var(--border)) !important;
+  background-color: hsl(var(--background)) !important;
+  box-shadow: none !important;
+  transition: border-color var(--motion-fast, 180ms) ease, background-color var(--motion-fast, 180ms) ease;
+}
+
+.expanded-form-placeholder .event-multi-checkbox::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 4px;
+  background-color: hsl(var(--primary));
+  opacity: 0;
+  transform: scale(0.25) rotate(-10deg);
+}
+
+.expanded-form-placeholder .event-multi-checkbox:hover {
+  border-color: hsl(var(--primary) / 0.7) !important;
+}
+
+.expanded-form-placeholder .event-multi-checkbox[data-state="checked"] {
+  border-color: hsl(var(--primary)) !important;
+  background-color: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+}
+
+.expanded-form-placeholder .event-multi-checkbox[data-state="checked"]::before {
+  opacity: 1;
+  animation: eventCheckboxOrganicFill var(--motion-medium, 300ms) var(--ease-organic, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.expanded-form-placeholder .event-multi-checkbox svg {
+  position: relative;
+  z-index: 1;
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0;
+  transform: scale(0.4) rotate(-8deg);
+}
+
+.expanded-form-placeholder .event-multi-checkbox[data-state="checked"] svg {
+  opacity: 1;
+  animation: eventCheckboxTickPop 290ms var(--ease-spring, cubic-bezier(0.2, 0.9, 0.25, 1.2)) 40ms both;
+}
+
+@keyframes eventCheckboxOrganicFill {
+  0% {
+    opacity: 0;
+    transform: scale(0.25) rotate(-10deg);
+    border-radius: 45% 55% 50% 50%;
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.12) rotate(4deg);
+    border-radius: 58% 42% 47% 53%;
+  }
+  75% {
+    transform: scale(0.94) rotate(-2deg);
+    border-radius: 46% 54% 57% 43%;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    border-radius: 4px;
+  }
+}
+
+@keyframes eventCheckboxTickPop {
+  0% {
+    transform: scale(0.35) rotate(-10deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.22) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
 /* Scrollbar styling for expanded card */
 .expanded-card::-webkit-scrollbar {
   width: 8px;

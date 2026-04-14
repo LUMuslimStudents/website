@@ -37,14 +37,13 @@ export type AdminRegistrationProfile = {
 export type AdminRegistrationAnswer = {
   id: string;
   field_id: string;
-  short_text_value: string | null;
-  selected_option_value: string | null;
-  selected_options_json: string[] | null;
-  field_label_snapshot: string;
+  answer_payload: string | string[];
+  field_type_snapshot: string;
+  field_question_snapshot: string;
   created_at: string | null;
   field: {
     id: string;
-    label: string;
+    question: string;
     field_type: string;
     help_text: string | null;
     is_required: boolean;
@@ -53,7 +52,7 @@ export type AdminRegistrationAnswer = {
 
 export type AdminEventFormField = {
   id: string;
-  label: string;
+  question: string;
   field_type: string;
   help_text: string | null;
   is_required: boolean;

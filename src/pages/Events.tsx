@@ -8,6 +8,7 @@ import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap,
 import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeSanitize from "rehype-sanitize";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
@@ -30,7 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const REGISTERED_EVENTS_SESSION_KEY = "registered_event_ids";
+const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
 
 const formatAddress = (addr: String) => {
   const query = "https://www.google.com/maps/search/?api=1&query=" + addr.split(/[\s,]+/).join('+')
@@ -132,6 +133,10 @@ const buildCalendarUrl = (event: events_info) => {
   return buildGoogleCalendarUrl(event);
 };
 
+const isMemberExclusive = (event: events_info) => {
+  return event.invitation === 'members';
+};
+
 const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
 const POSTER_MAX_FILES = 10;
 
@@ -210,7 +215,7 @@ const loadPosterUrls = async (basePath: string) => {
 const renderMarkdown = (text: string | null | undefined, className?: string) => (
   <div className={`prose dark:prose-invert max-w-none ${className ?? ""}`.trim()}>
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
       rehypePlugins={[rehypeSanitize]}
     >
       {text ?? ""}
@@ -218,15 +223,11 @@ const renderMarkdown = (text: string | null | undefined, className?: string) => 
   </div>
 );
 
-type EventFormFieldOption = {
-  id: string;
-  value: string;
-  label: string;
-};
+type EventFormFieldOption = string;
 
 type EventFormField = {
   id: string;
-  label: string;
+  question: string;
   help_text?: string | null;
   field_type: "short_text" | "checkbox_multi" | "radio_single";
   is_required: boolean;
@@ -249,9 +250,9 @@ const Events = () => {
   const registrationSubmitRef = useRef<(() => void) | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [expandedEventPosters, setExpandedEventPosters] = useState<string[]>([]);
-  const [sessionRegisteredEventIds, setSessionRegisteredEventIds] = useState<number[]>(() => {
+  const [persistedRegisteredEventIds, setPersistedRegisteredEventIds] = useState<number[]>(() => {
     try {
-      const raw = sessionStorage.getItem(REGISTERED_EVENTS_SESSION_KEY);
+      const raw = localStorage.getItem(REGISTERED_EVENTS_PERSIST_KEY);
       if (!raw) {
         return [];
       }
@@ -275,15 +276,22 @@ const Events = () => {
   const user = userString ? JSON.parse(userString) : null;
   const isSignedIn = Boolean(user);
 
-  const isSessionRegistered = (eventId: number) => sessionRegisteredEventIds.includes(eventId);
+  const isPersistedRegistered = (eventId: number) => persistedRegisteredEventIds.includes(eventId);
 
-  const markSessionRegistered = (eventId: number) => {
-    setSessionRegisteredEventIds((prev) => {
+  const resolveIsRegistered = (event: ExpandedEvent) => {
+    if (isSignedIn) {
+      return Boolean(event.is_registered);
+    }
+    return Boolean(event.is_registered) || isPersistedRegistered(event.id);
+  };
+
+  const markPersistedRegistered = (eventId: number) => {
+    setPersistedRegisteredEventIds((prev) => {
       if (prev.includes(eventId)) {
         return prev;
       }
       const next = [...prev, eventId];
-      sessionStorage.setItem(REGISTERED_EVENTS_SESSION_KEY, JSON.stringify(next));
+      localStorage.setItem(REGISTERED_EVENTS_PERSIST_KEY, JSON.stringify(next));
       return next;
     });
   };
@@ -297,6 +305,7 @@ const Events = () => {
     const price = overridePrice ?? (user ? event.price_member : event.price_nonmember);
     const tier = overrideTier ?? (user ? "member" : "nonmember");
     if (tier === "member") {
+      const shouldShowStrikethrough = !isMemberExclusive(event) && price < event.price_nonmember;
       return <div className="flex flex-col items-start leading-tight">
         <div className="flex flex-wrap items-center gap-x-1.5">
           <span>{price} SEK</span>
@@ -308,7 +317,9 @@ const Events = () => {
             <BadgeCheck className="h-4 w-4 text-green-500" />
           </TouchTooltip>
         </div>
-        <span className="mt-0.5 text-xs text-muted-foreground line-through">{event.price_nonmember} SEK</span>
+        {shouldShowStrikethrough && (
+          <span className="mt-0.5 text-xs text-muted-foreground line-through">{event.price_nonmember} SEK</span>
+        )}
       </div>
     }
 
@@ -334,7 +345,7 @@ const Events = () => {
         const evs = await apiRequest('/events/current-events');
         const normalized = (evs as ExpandedEvent[]).map((event) => ({
           ...event,
-          is_registered: Boolean(event.is_registered) || isSessionRegistered(event.id),
+          is_registered: resolveIsRegistered(event),
         }));
         setEvents(normalized);
         normalized.forEach((event: ExpandedEvent) => {
@@ -346,7 +357,7 @@ const Events = () => {
     };
 
     fetchEvents();
-  }, []);
+  }, [isSignedIn]);
 
   const handleCardClick = (event: events_info, cardElement: HTMLDivElement) => {
     const rect = cardElement.getBoundingClientRect();
@@ -384,7 +395,7 @@ const Events = () => {
         const event = await apiRequest(`/events/event-by-id?id=${expandedEventId}`);
         const normalizedEvent = {
           ...event,
-          is_registered: Boolean(event.is_registered) || isSessionRegistered(event.id),
+          is_registered: resolveIsRegistered(event),
         };
         setExpandedEvent(normalizedEvent);
         eventCacheRef.current.set(normalizedEvent.id, normalizedEvent);
@@ -395,7 +406,7 @@ const Events = () => {
     };
 
     fetchExpandedEvent();
-  }, [expandedEventId]);
+  }, [expandedEventId, isSignedIn]);
 
   useEffect(() => {
     if (!expandedEvent?.poster) {
@@ -555,7 +566,7 @@ const Events = () => {
         {expandedEvent && (
           <div className="expanded-card-layout">
             <h2 className="text-3xl font-bold mb-4">{expandedEvent.title}</h2>
-            <div className="grid gap-y-2 mb-6">
+            <div className="grid gap-y-2 mb-5">
               <div className="flex flex-wrap items-center text-lg text-muted-foreground">
                 <Calendar className="h-5 w-5 mr-3" />
                 <div className="inline-flex items-center">
@@ -623,7 +634,7 @@ const Events = () => {
                 onFooterStateChange={setRegistrationFooterState}
                 onFooterSubmitChange={handleFooterSubmitChange}
                 onRegistered={(eventId) => {
-                  markSessionRegistered(eventId);
+                  markPersistedRegistered(eventId);
                   setEvents((prev) => prev.map((event) => (
                     event.id === eventId ? { ...event, is_registered: true } : event
                   )));

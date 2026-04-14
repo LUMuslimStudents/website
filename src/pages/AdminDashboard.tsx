@@ -53,7 +53,7 @@ const AdminDashboard = () => {
           <CardContent>
             <Tabs defaultValue="users" className="w-full">
               <TabsList className="mb-6">
-                <TabsTrigger value="users">Users</TabsTrigger>
+                <TabsTrigger value="users">Members</TabsTrigger>
                 <TabsTrigger value="events">Events</TabsTrigger>
               </TabsList>
 
