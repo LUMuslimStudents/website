@@ -39,20 +39,17 @@ CREATE TABLE `event_registration_profiles` (
 CREATE TABLE `event_form_fields` (
     `id` VARCHAR(191) NOT NULL,
     `event_id` INTEGER UNSIGNED NOT NULL,
-    `field_key` VARCHAR(60) NOT NULL,
-    `label` VARCHAR(120) NOT NULL,
-    `help_text` VARCHAR(255) NULL,
+    `question` VARCHAR(255) NOT NULL,
+    `help_text` VARCHAR(500) NULL,
     `field_type` ENUM('short_text', 'checkbox_multi', 'radio_single') NOT NULL,
     `is_required` BOOLEAN NOT NULL DEFAULT false,
     `sort_order` INTEGER NOT NULL DEFAULT 0,
-    `options_json` JSON NULL,
-    `config_json` JSON NULL,
+    `options` JSON NULL,
     `active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
     INDEX `event_form_fields_event_id_sort_order_idx`(`event_id`, `sort_order`),
-    UNIQUE INDEX `uniq_event_field_key`(`event_id`, `field_key`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -61,10 +58,9 @@ CREATE TABLE `event_registration_field_answers` (
     `id` VARCHAR(191) NOT NULL,
     `registration_id` VARCHAR(191) NOT NULL,
     `field_id` VARCHAR(191) NOT NULL,
-    `short_text_value` TEXT NULL,
-    `selected_option_value` VARCHAR(120) NULL,
-    `selected_options_json` JSON NULL,
-    `field_label_snapshot` VARCHAR(120) NOT NULL,
+    `answer_payload` JSON NOT NULL,
+    `field_type_snapshot` ENUM('short_text', 'checkbox_multi', 'radio_single') NOT NULL,
+    `field_question_snapshot` VARCHAR(255) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     INDEX `event_registration_field_answers_registration_id_idx`(`registration_id`),

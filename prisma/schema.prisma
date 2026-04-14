@@ -103,14 +103,12 @@ model event_registration_profiles {
 model event_form_fields {
   id           String                      @id @default(cuid())
   event_id     Int                         @db.UnsignedInt
-  field_key    String                      @db.VarChar(60)
-  label        String                      @db.VarChar(120)
-  help_text    String?                     @db.VarChar(255)
+  question     String                      @db.VarChar(255)
+  help_text    String?                     @db.VarChar(500)
   field_type   EventFormFieldType
   is_required  Boolean                     @default(false)
   sort_order   Int                         @default(0)
-  options_json Json?
-  config_json  Json?
+  options      Json?
   active       Boolean                     @default(true)
   created_at   DateTime                    @default(now())
   updated_at   DateTime                    @updatedAt
@@ -119,17 +117,15 @@ model event_form_fields {
   answers      event_registration_field_answers[]
 
   @@index([event_id, sort_order])
-  @@unique([event_id, field_key], map: "uniq_event_field_key")
 }
 
 model event_registration_field_answers {
   id                    String                @id @default(cuid())
   registration_id       String
   field_id              String
-  short_text_value      String?               @db.Text
-  selected_option_value String?               @db.VarChar(120)
-  selected_options_json Json?
-  field_label_snapshot  String                @db.VarChar(120)
+  answer_payload        Json
+  field_type_snapshot   EventFormFieldType
+  field_question_snapshot String              @db.VarChar(255)
   created_at            DateTime              @default(now())
 
   registration          event_registrations   @relation(fields: [registration_id], references: [id], onDelete: Cascade)

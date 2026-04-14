@@ -24,6 +24,13 @@
     --input: 212 20% 90%;
     --ring: 212 100% 34%;
     --radius: 0.75rem;
+
+    /* Motion foundation for organic/springy UI animations */
+    --motion-fast: 180ms;
+    --motion-medium: 300ms;
+    --motion-slow: 480ms;
+    --ease-organic: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.2);
   }
  
   .dark {
@@ -257,6 +264,173 @@ html {
 .page-exit {
   opacity: 1;
   animation: fadeOut 0.6s ease-in-out forwards;
+}
+
+/* Organic animation for standard round checkboxes */
+.organic-checkbox:not(.event-multi-checkbox) {
+  position: relative;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.organic-checkbox:not(.event-multi-checkbox)::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  background-color: hsl(var(--primary));
+  opacity: 0;
+  transform: scale(0.2) rotate(-10deg);
+}
+
+.organic-checkbox:not(.event-multi-checkbox)[data-state="checked"]::before {
+  opacity: 1;
+  animation: organicRoundCheckboxFill var(--motion-medium, 300ms) var(--ease-organic, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.organic-checkbox:not(.event-multi-checkbox) svg {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: scale(0.45) rotate(-8deg);
+}
+
+.organic-checkbox:not(.event-multi-checkbox)[data-state="checked"] svg {
+  opacity: 1;
+  animation: organicRoundCheckboxTick 280ms var(--ease-spring, cubic-bezier(0.2, 0.9, 0.25, 1.2)) 40ms both;
+}
+
+@keyframes organicRoundCheckboxFill {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-10deg);
+    border-radius: 42% 58% 50% 50%;
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.1) rotate(3deg);
+    border-radius: 58% 42% 48% 52%;
+  }
+  75% {
+    transform: scale(0.95) rotate(-2deg);
+    border-radius: 46% 54% 58% 42%;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    border-radius: 999px;
+  }
+}
+
+@keyframes organicRoundCheckboxTick {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-10deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.2) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Organic animation for radios (native + Radix item) */
+.organic-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  box-shadow: none;
+  transition: border-color var(--motion-fast, 180ms) ease, background-color var(--motion-fast, 180ms) ease;
+}
+
+.organic-radio::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background-color: hsl(var(--primary));
+  opacity: 0;
+  transform: scale(0.25) rotate(-8deg);
+}
+
+.organic-radio:hover {
+  border-color: hsl(var(--primary) / 0.7);
+}
+
+.organic-radio:checked {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--background));
+}
+
+.organic-radio:checked::before {
+  opacity: 1;
+  animation: organicRadioFill var(--motion-medium, 300ms) var(--ease-organic, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.organic-radio-item {
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--motion-fast, 180ms) ease, background-color var(--motion-fast, 180ms) ease;
+}
+
+.organic-radio-item[data-state="checked"] {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--background));
+}
+
+.organic-radio-item span {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.organic-radio-item span::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background-color: hsl(var(--primary));
+  opacity: 0;
+  transform: scale(0.25) rotate(-8deg);
+}
+
+.organic-radio-item[data-state="checked"] span::before {
+  opacity: 1;
+  animation: organicRadioFill var(--motion-medium, 300ms) var(--ease-organic, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.organic-radio-item svg {
+  display: none;
+}
+
+@keyframes organicRadioFill {
+  0% {
+    opacity: 0;
+    transform: scale(0.25) rotate(-8deg);
+    border-radius: 40% 60% 50% 50%;
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.16) rotate(4deg);
+    border-radius: 58% 42% 47% 53%;
+  }
+  75% {
+    transform: scale(0.92) rotate(-2deg);
+    border-radius: 48% 52% 58% 42%;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    border-radius: 999px;
+  }
 }
 
 @keyframes fadeOut {

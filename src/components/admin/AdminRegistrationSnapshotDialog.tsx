@@ -21,6 +21,20 @@ const formatDateTime = (value?: string | null) => {
 
 const renderBoolean = (value: boolean) => (value ? 'Yes' : 'No');
 
+const formatGender = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+  const gender = value.toLowerCase().trim();
+  if (gender === 'male' || gender === 'm') {
+    return 'male 🧔‍♂️';
+  }
+  if (gender === 'female' || gender === 'f') {
+    return 'female 🧕';
+  }
+  return value;
+};
+
 type AdminRegistrationSnapshotDialogProps = {
   registration: AdminEventRegistration;
 };
@@ -61,7 +75,7 @@ export const AdminRegistrationSnapshotDialog = ({ registration }: AdminRegistrat
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Profile status</p>
               <p className="text-sm">Student: {profile ? renderBoolean(profile.is_student) : '—'}</p>
               <p className="text-sm">Alumnus: {profile ? renderBoolean(profile.is_alumnus) : '—'}</p>
-              <p className="text-sm">Gender: {profile?.gender || '—'}</p>
+              <p className="text-sm">Gender: {formatGender(profile?.gender || null)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Linked account</p>
