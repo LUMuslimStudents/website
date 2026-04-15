@@ -42,7 +42,7 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
             if (!event) {
                 return res.status(404).json({ error: 'Event not found' });
             }
-            if (event.deadline < new Date()) {
+            if (event.deadline.getTime() <= Date.now()) {
                 return res.status(400).json({ error: 'Registration deadline has passed.' });
             }
             if (!req.user && event.invitation === EVENT_INVITATION_MEMBERS_ONLY) {
@@ -268,6 +268,14 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
                     : event.price_nonmember;
 
             const result = await prisma.$transaction(async (tx) => {
+                const latestEvent = await tx.events_info.findUnique({ where: { id } });
+                if (!latestEvent) {
+                    throw new Error('Event not found');
+                }
+                if (latestEvent.deadline.getTime() <= Date.now()) {
+                    throw new Error('Registration deadline has passed.');
+                }
+
                 if (userRecord) {
                     const existingMemberRegistration = await tx.event_registrations.findFirst({
                         where: {
@@ -302,8 +310,8 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
                         event_id: id,
                         user_id: userRecord?.id,
                         status: 'pending',
-                        invitation_snapshot: event.invitation,
-                        siblings_snapshot: event.siblings,
+                        invitation_snapshot: latestEvent.invitation,
+                        siblings_snapshot: latestEvent.siblings,
                         quoted_price: quotedPrice,
                         payment_required: false,
                     },
@@ -376,6 +384,9 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
             const message = error instanceof Error ? error.message : 'Internal server error';
             if (message === 'You are already registered for this event.' || message === 'A registration already exists for this email and phone number.') {
                 return res.status(409).json({ error: message });
+            }
+            if (message === 'Registration deadline has passed.') {
+                return res.status(400).json({ error: message });
             }
             res.status(500).json({ error: 'Internal server error' });
         }
