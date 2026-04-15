@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TouchTooltip } from "../ui/tooltip";
 import { EventRegistrationTermsDialog } from "./EventRegistrationTermsDialog";
+import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
 
 const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,50}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,6 +66,7 @@ type EventRegistrationFormProps = {
     form_fields?: EventFormField[];
     is_registered?: boolean;
   };
+  isRegistrationClosed: boolean;
   isSignedIn: boolean;
   user: UserProfile | null;
   onRegistered: (eventId: number) => void;
@@ -232,6 +234,7 @@ const getDisplayPriceInfo = (
 
 export const EventRegistrationForm = ({
   event,
+  isRegistrationClosed,
   isSignedIn,
   user,
   onRegistered,
@@ -309,7 +312,7 @@ export const EventRegistrationForm = ({
   };
 
   const isFormReadyForSubmission = () => {
-    if (isSubmittingRegistration || isAlreadyRegistered) {
+    if (isSubmittingRegistration || isAlreadyRegistered || isRegistrationClosed) {
       return false;
     }
 
@@ -343,7 +346,7 @@ export const EventRegistrationForm = ({
   };
 
   const submitRegistration = async () => {
-    if (isAlreadyRegistered) {
+    if (isAlreadyRegistered || isRegistrationClosed) {
       return;
     }
 
@@ -450,9 +453,14 @@ export const EventRegistrationForm = ({
       return;
     }
 
+    if (isAlreadyRegistered || isRegistrationClosed) {
+      onFooterSubmitChange(null);
+      return;
+    }
+
     onFooterSubmitChange(() => handleSubmitRegistration());
     return () => onFooterSubmitChange(null);
-  }, [onFooterSubmitChange, handleSubmitRegistration]);
+  }, [onFooterSubmitChange, handleSubmitRegistration, isAlreadyRegistered, isRegistrationClosed]);
 
   useEffect(() => {
     if (!onFooterStateChange) {
@@ -560,8 +568,9 @@ export const EventRegistrationForm = ({
         <h3 className="text-xl font-semibold">Event Registration</h3>
 
         {isAlreadyRegistered ? (
-          <div className="space-y-3 text-sm md:text-base text-muted-foreground">
-            <p className="font-medium text-green-600 dark:text-green-400">
+          <div className="space-y-3 rounded-lg border border-green-500/20 bg-green-50/80 p-4 text-sm md:text-base text-green-950 dark:border-green-500/30 dark:bg-green-950/20 dark:text-green-100">
+            <p className="inline-flex items-center gap-2 font-medium">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
               <strong>You are already registered, see you soon at the event!</strong>
             </p>
             <p>
@@ -571,10 +580,20 @@ export const EventRegistrationForm = ({
               <strong>Remember:</strong> No refunds if cancelled within <strong>48 hours</strong> of event start!
             </p>
           </div>
+        ) : isRegistrationClosed ? (
+          <div className="space-y-3 rounded-lg border border-amber-500/20 bg-amber-50/80 p-4 text-sm md:text-base text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-100">
+            <p className="inline-flex items-center gap-2 font-medium">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              Registration closed.
+            </p>
+            <p>
+              The deadline has passed, so new registrations are no longer possible.
+            </p>
+          </div>
         ) : (
           <>
             {isSignedIn ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="rounded-lg border border-sky-500/20 bg-sky-50/80 p-3 text-sm text-sky-950 dark:border-sky-500/30 dark:bg-sky-950/20 dark:text-sky-100">
                 You are signed in. We will use your saved member profile, so only additional event questions are required.
               </p>
             ) : (

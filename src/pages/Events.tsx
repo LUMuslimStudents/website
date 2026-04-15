@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
-import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2 } from "lucide-react";
+import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -29,9 +29,19 @@ import {
 import {
   TouchTooltip,
 } from "@/components/ui/tooltip";
+import { useNavigate, useParams } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
+
+const toEventSlug = (title: string) => title
+  .normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9\s-]/g, "")
+  .replace(/\s+/g, "-")
+  .replace(/-+/g, "-");
 
 const formatAddress = (addr: String) => {
   const query = "https://www.google.com/maps/search/?api=1&query=" + addr.split(/[\s,]+/).join('+')
@@ -93,6 +103,15 @@ const formatGoogleDate = (value: Date) => value.toISOString().replace(/[-:]/g, "
 
 const formatRegistrationDeadline = (deadline: string | Date) =>
   new Date(deadline).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
+
+const isRegistrationClosed = (event?: { deadline?: string | Date | null }) => {
+  if (!event?.deadline) {
+    return false;
+  }
+
+  const deadlineAt = new Date(event.deadline);
+  return !Number.isNaN(deadlineAt.getTime()) && deadlineAt.getTime() <= Date.now();
+};
 
 const buildGoogleCalendarUrl = (event: events_info) => {
   const date = new Date(event.date);
@@ -240,9 +259,14 @@ type ExpandedEvent = events_info & {
 };
 
 const Events = () => {
+  const navigate = useNavigate();
+  const { eventSlug } = useParams<{ eventSlug?: string }>();
+  const normalizedRouteEventSlug = eventSlug ? eventSlug.toLowerCase().trim() : null;
+
   // const categories = ["All", "Social", "Educational", "Religious", "Community"];
   // const navigate = useNavigate();
   const [events, setEvents] = useState<ExpandedEvent[]>([]);
+  const [hasFetchedEvents, setHasFetchedEvents] = useState(false);
   // const [activeCategory, setActiveCategory] = useState("All");
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<ExpandedEvent | null>(null);
@@ -271,6 +295,7 @@ const Events = () => {
   const cardRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const eventCacheRef = useRef<Map<number, ExpandedEvent>>(new Map());
   const posterCacheRef = useRef<Map<string, string[]>>(new Map());
+  const invalidRouteEventRef = useRef<string | null>(null);
 
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : null;
@@ -299,6 +324,39 @@ const Events = () => {
   const handleFooterSubmitChange = useCallback((submit: (() => void) | null) => {
     registrationSubmitRef.current = submit;
   }, []);
+
+  const buildFallbackCardPosition = useCallback(() => {
+    if (typeof window === "undefined") {
+      return {
+        top: 120,
+        left: 24,
+        width: 320,
+        height: 220,
+      };
+    }
+
+    const width = Math.min(window.innerWidth * 0.85, 520);
+    const height = Math.min(window.innerHeight * 0.45, 360);
+    return {
+      top: Math.max((window.innerHeight - height) / 2, 32),
+      left: Math.max((window.innerWidth - width) / 2, 16),
+      width,
+      height,
+    };
+  }, []);
+
+  const openExpandedEvent = useCallback((eventIdToOpen: number, cardElement?: HTMLDivElement | null) => {
+    const rect = cardElement?.getBoundingClientRect();
+    setCardPosition(rect ? {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    } : buildFallbackCardPosition());
+    setExpandedEventId(eventIdToOpen);
+    setIsClosing(false);
+    document.body.style.overflow = "hidden";
+  }, [buildFallbackCardPosition]);
 
 
   const priceTag = (event: events_info, overridePrice?: number, overrideTier?: "member" | "nonmember" | "alumnus") => {
@@ -339,6 +397,28 @@ const Events = () => {
     return <span>{price} SEK</span>;
   };
 
+  const renderRegistrationButtonLabel = (event: ExpandedEvent) => {
+    if (event.is_registered) {
+      return (
+        <span className="inline-flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          Registered!
+        </span>
+      );
+    }
+
+    if (isRegistrationClosed(event)) {
+      return (
+        <span className="inline-flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          Registration closed
+        </span>
+      );
+    }
+
+    return "Register Now";
+  };
+
   useEffect(() => {
     const fetchEvents = async () => {  
       try {
@@ -353,23 +433,42 @@ const Events = () => {
         });
       } catch (error: any) {
         toast.error(error.message || 'Failed to fetch events');
+      } finally {
+        setHasFetchedEvents(true);
       }
     };
 
     fetchEvents();
   }, [isSignedIn]);
 
+  useEffect(() => {
+    if (!normalizedRouteEventSlug) {
+      invalidRouteEventRef.current = null;
+      return;
+    }
+
+    const targetEvent = events.find((event) => toEventSlug(event.title) === normalizedRouteEventSlug);
+
+    if (targetEvent) {
+      invalidRouteEventRef.current = null;
+      if (expandedEventId !== targetEvent.id) {
+        openExpandedEvent(targetEvent.id, cardRefs.current[targetEvent.id]);
+      }
+      return;
+    }
+
+    if (hasFetchedEvents) {
+      if (invalidRouteEventRef.current !== normalizedRouteEventSlug) {
+        toast.error('This event is no longer available for sharing.');
+        invalidRouteEventRef.current = normalizedRouteEventSlug;
+      }
+      navigate('/events', { replace: true });
+    }
+  }, [normalizedRouteEventSlug, events, hasFetchedEvents, expandedEventId, navigate, openExpandedEvent]);
+
   const handleCardClick = (event: events_info, cardElement: HTMLDivElement) => {
-    const rect = cardElement.getBoundingClientRect();
-    setCardPosition({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    });
-    setExpandedEventId(event.id);
-    setIsClosing(false);
-    document.body.style.overflow = "hidden";
+    openExpandedEvent(event.id, cardElement);
+    navigate(`/events/${toEventSlug(event.title)}`);
   };
 
   const handleCloseExpanded = () => {
@@ -378,8 +477,15 @@ const Events = () => {
       setExpandedEventId(null);
       setIsClosing(false);
       document.body.style.overflow = "unset";
+      navigate('/events');
     }, 600);
   };
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
 
   useEffect(() => {
     if (!expandedEventId) {
@@ -510,20 +616,24 @@ const Events = () => {
               </CardContent>
               <CardFooter className="flex justify-between items-center">
                 <div className="font-medium">{priceTag(event)}</div>
-                <Button
-                  variant={event.is_registered ? "outline" : "default"}
-                  className={event.is_registered ? "border-green-600 text-green-600 hover:bg-green-50" : ""}
-                  disabled={Boolean(event.is_registered)}
-                >
-                  {event.is_registered ? (
-                    <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Registered!
+                <div className="flex flex-col items-end gap-2">
+                  {isRegistrationClosed(event) && !event.is_registered && (
+                    <span className="text-xs text-red-600">
+                      Deadline has passed
                     </span>
-                  ) : (
-                    "Register Now"
                   )}
-                </Button>
+                  <Button
+                    variant={event.is_registered || isRegistrationClosed(event) ? "outline" : "default"}
+                    className={event.is_registered
+                      ? "border-green-600 text-green-600 hover:bg-green-50"
+                      : isRegistrationClosed(event)
+                        ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                        : ""}
+                    disabled={Boolean(event.is_registered || isRegistrationClosed(event))}
+                  >
+                    {renderRegistrationButtonLabel(event)}
+                  </Button>
+                </div>
               </CardFooter>
             </Card>
           ))}
@@ -536,6 +646,12 @@ const Events = () => {
         isClosing={isClosing}
         onClose={handleCloseExpanded}
         cardPosition={cardPosition}
+        showShareButton={expandedEventId !== null}
+        shareTitle={expandedEvent?.title ?? "LUMS Event"}
+        shareText={expandedEvent ? `Join me at ${expandedEvent.title}` : "Check out this event"}
+        shareUrl={expandedEvent
+          ? `${window.location.origin}/events/${toEventSlug(expandedEvent.title)}`
+          : undefined}
         footer={registrationFooterState && expandedEvent ? (
           <div className="expanded-card-footer flex items-center justify-between gap-4">
             <div className="text-xl font-semibold">
@@ -544,14 +660,23 @@ const Events = () => {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => registrationSubmitRef.current?.()}
-                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration}
-                variant={registrationFooterState.isAlreadyRegistered ? "outline" : "default"}
-                className={registrationFooterState.isAlreadyRegistered ? "border-green-600 text-green-600 hover:bg-green-50" : ""}
+                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration || isRegistrationClosed(expandedEvent)}
+                variant={registrationFooterState.isAlreadyRegistered || isRegistrationClosed(expandedEvent) ? "outline" : "default"}
+                className={registrationFooterState.isAlreadyRegistered
+                  ? "border-green-600 text-green-600 hover:bg-green-50"
+                  : isRegistrationClosed(expandedEvent)
+                    ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                    : ""}
               >
                 {registrationFooterState.isAlreadyRegistered ? (
                   <span className="inline-flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
                     Registered!
+                  </span>
+                ) : isRegistrationClosed(expandedEvent) ? (
+                  <span className="inline-flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Registration closed
                   </span>
                 ) : registrationFooterState.isSubmittingRegistration ? (
                   "Submitting..."
@@ -629,6 +754,7 @@ const Events = () => {
               {renderMarkdown(expandedEvent.description)}
               <EventRegistrationForm
                 event={expandedEvent}
+                isRegistrationClosed={isRegistrationClosed(expandedEvent)}
                 isSignedIn={isSignedIn}
                 user={user}
                 onFooterStateChange={setRegistrationFooterState}

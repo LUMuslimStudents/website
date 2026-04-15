@@ -10,10 +10,10 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             const isLoggedIn = Boolean(req.user);
             const events = await prisma.events_info.findMany({
                 where: {
-                    deadline: { gte: new Date() },
+                    date: { gte: new Date() },
                     ...(isLoggedIn ? {} : { invitation: { not: 'members' } })
                 },
-                orderBy: { deadline: 'desc' }
+                orderBy: { date: 'desc' }
             });
 
             let registeredEventIds = new Set<number>();

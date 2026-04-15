@@ -89,6 +89,7 @@ export type AdminEventSummary = {
   price_member: number;
   price_nonmember: number;
   price_alumnus: number;
+  poster?: string | null;
   registration_count: number;
 };
 
