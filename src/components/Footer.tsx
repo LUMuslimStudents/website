@@ -1,5 +1,6 @@
-import { Facebook, Instagram, Linkedin, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { FaFacebook, FaInstagram, FaLinkedin } from "react-icons/fa6";
 // import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
 // import { useState } from "react";
@@ -47,17 +48,17 @@ export const Footer = () => {
     {
       name: "Instagram",
       href: "https://www.instagram.com/muslimstudentslu/",
-      icon: Instagram
+      icon: FaInstagram
     },
     {
       name: "LinkedIn",
       href: "https://www.linkedin.com/groups/12774879/",
-      icon: Linkedin
+      icon: FaLinkedin
     },
     {
       name: "Facebook",
       href: "https://www.facebook.com/profile.php?id=100086599076992",
-      icon: Facebook
+      icon: FaFacebook
     }
   ];
 

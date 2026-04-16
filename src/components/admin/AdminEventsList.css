@@ -1,0 +1,66 @@
+.admin-create-slot {
+  margin: 0.25rem 0;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.admin-create-slot-shell {
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: dashed;
+  border-color: hsl(var(--muted-foreground) / 0.6);
+  background-color: hsl(var(--muted) / 0.25);
+  color: hsl(var(--muted-foreground));
+  box-shadow: 0 1px 2px 0 hsl(var(--foreground) / 0.06);
+  transition-property: width, height, border-radius, border-color, background-color, color;
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+  transition-delay: 0ms;
+}
+
+.admin-create-slot:hover .admin-create-slot-shell,
+.admin-create-slot:focus-visible .admin-create-slot-shell {
+  height: 10.75rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border-color: hsl(var(--primary) / 0.45);
+  background-color: hsl(var(--primary) / 0.05);
+  color: hsl(var(--primary));
+  transition-delay: 200ms;
+}
+
+.admin-create-slot-plus {
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  transition: transform 300ms ease;
+}
+
+.admin-create-slot-label {
+  margin-left: 0;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateY(-4px) scale(0.94);
+  opacity: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: max-width 170ms ease-out 200ms, margin-left 420ms ease-out 200ms, opacity 420ms ease-out 200ms, transform 420ms ease-out 200ms;
+}
+
+.admin-create-slot:hover .admin-create-slot-label,
+.admin-create-slot:focus-visible .admin-create-slot-label {
+  margin-left: 0.75rem;
+  max-width: 12rem;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}

@@ -10,6 +10,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             const isLoggedIn = Boolean(req.user);
             const events = await prisma.events_info.findMany({
                 where: {
+                    is_published: true,
                     date: { gte: new Date() },
                     ...(isLoggedIn ? {} : { invitation: { not: 'members' } })
                 },
@@ -48,6 +49,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             const isLoggedIn = Boolean(req.user);
             const events = await prisma.events_info.findMany({
                 where: {
+                    is_published: true,
                     deadline: { lt: new Date() },
                     ...(isLoggedIn ? {} : { invitation: { not: 'members' } })
                 },
@@ -91,7 +93,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
                 where: { id: Number(id) },
             });
 
-            if (!event) {
+            if (!event || (event as { is_published?: boolean }).is_published === false) {
                 return res.status(400).json({ error: 'Event id does not exist in DB.' });
             }
             if (!req.user && event.invitation === 'members') {
@@ -157,7 +159,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             }
 
             const event = await prisma.events_info.findUnique({ where: { id: id } });
-            if (!event) {
+            if (!event || (event as { is_published?: boolean }).is_published === false) {
                 return res.status(404).send('Event not found');
             }
             if (!req.user && event.invitation === 'members') {

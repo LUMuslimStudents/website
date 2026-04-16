@@ -39,9 +39,12 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const typedReq = req as AuthRequest & { uploadIndex?: number };
-        const index = typedReq.uploadIndex ?? 0;
+        const defaultIndex = typedReq.uploadIndex ?? 0;
+        const orderMatch = /^(\d+)__/.exec(file.originalname);
+        const explicitIndex = orderMatch ? Number.parseInt(orderMatch[1], 10) : Number.NaN;
+        const index = Number.isFinite(explicitIndex) ? explicitIndex : defaultIndex;
         const extension = path.extname(file.originalname).toLowerCase();
-        typedReq.uploadIndex = index + 1;
+        typedReq.uploadIndex = defaultIndex + 1;
         cb(null, `${index}${extension}`);
     }
 });

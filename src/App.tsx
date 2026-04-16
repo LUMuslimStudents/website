@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import Membership from "./pages/Membership";
@@ -18,6 +18,10 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 import Checkout from "./pages/StripeCheckout";
+import { AdminUsersRoute } from "@/components/admin/AdminUsersRoute";
+import { AdminEventsTab } from "@/components/admin/AdminEventsTab";
+import { AdminEventDetailRoute } from "@/components/admin/AdminEventDetailRoute";
+import { AdminEventCreateView } from "@/components/admin/AdminEventCreateView";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +45,13 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin" element={<AdminDashboard />}>
+                <Route index element={<Navigate to="users" replace />} />
+                <Route path="users" element={<AdminUsersRoute />} />
+                <Route path="events" element={<AdminEventsTab />} />
+                <Route path="events/new" element={<AdminEventCreateView />} />
+                <Route path="events/:eventId" element={<AdminEventDetailRoute />} />
+              </Route>
               {/* <Route path="/checkout" element={<Checkout />} /> */}
               <Route path="*" element={<NotFound />} />
             </Routes>

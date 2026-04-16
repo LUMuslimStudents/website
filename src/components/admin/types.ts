@@ -78,6 +78,7 @@ export type AdminEventRegistration = {
 export type AdminEventSummary = {
   id: number;
   term: string;
+  is_published?: boolean;
   title: string;
   date: string;
   start_time: string;
