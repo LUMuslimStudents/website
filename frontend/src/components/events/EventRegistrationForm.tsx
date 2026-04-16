@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -359,10 +359,12 @@ export const EventRegistrationForm = ({ event, isSignedIn, user, onRegistered }:
           return Array.isArray(answer.selected_options_json) && answer.selected_options_json.length > 0;
         });
 
-      await apiRequest(`/events/${event.id}/register`, "POST", {
-        profile: profilePayload,
-        answers,
+      const { error: regError } = await supabase.from("event_registrations").insert({
+        event_id: event.id,
+        profile_data: profilePayload,
+        answers: answers
       });
+      if (regError) throw regError;
 
       toast.success("Registration submitted successfully");
       setIsAlreadyRegistered(true);

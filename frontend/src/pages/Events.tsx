@@ -13,7 +13,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import { toast } from 'sonner';
-import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { events_info } from '@prisma/client';
 import {
   DropdownMenu,
@@ -437,7 +437,9 @@ const Events = () => {
   useEffect(() => {
     const fetchEvents = async () => {  
       try {
-        const evs = await apiRequest('/events/current-events');
+        const { data: evs, error } = await supabase.from('events_info').select('*, form_fields:event_form_fields(*)');
+        if (error) throw error;
+        
         const normalized = (evs as ExpandedEvent[]).map((event) => ({
           ...event,
           is_registered: Boolean(event.is_registered) || isSessionRegistered(event.id),
@@ -486,7 +488,14 @@ const Events = () => {
 
     const fetchExpandedEvent = async () => {
       try {
-        const event = await apiRequest(`/events/event-by-id?id=${expandedEventId}`);
+        const { data: event, error } = await supabase
+          .from('events_info')
+          .select('*, form_fields:event_form_fields(*)')
+          .eq('id', expandedEventId)
+          .single();
+          
+        if (error) throw error;
+        
         const normalizedEvent = {
           ...event,
           is_registered: Boolean(event.is_registered) || isSessionRegistered(event.id),
@@ -636,10 +645,12 @@ const Events = () => {
         return;
       }
 
-      await apiRequest(`/events/${expandedEvent.id}/register`, 'POST', {
-        profile: profilePayload,
-        answers,
+      const { error: regError } = await supabase.from('event_registrations').insert({
+        event_id: expandedEvent.id,
+        profile_data: profilePayload,
+        answers: answers
       });
+      if (regError) throw regError;
 
       toast.success('Registration submitted successfully');
       setIsAlreadyRegistered(true);

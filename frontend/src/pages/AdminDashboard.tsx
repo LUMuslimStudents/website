@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,9 +19,10 @@ const AdminDashboard = () => {
 
     const fetchUsers = async () => {
       try {
-        const data = await apiRequest('/admin/users');
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) throw error;
         if (isMounted) {
-          setUsers(data);
+          setUsers(data as AdminUser[]);
         }
       } catch (error: any) {
         toast.error(error.message || 'Failed to fetch users');

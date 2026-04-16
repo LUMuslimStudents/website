@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { apiRequest } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 import { AdminEventSummary } from "./types";
 import { AdminEventsList } from "./AdminEventsList";
@@ -17,9 +17,10 @@ export const AdminEventsTab = () => {
 
     const fetchEvents = async () => {
       try {
-        const data = await apiRequest('/admin/events');
+        const { data, error } = await supabase.from('events_info').select('*');
+        if (error) throw error;
         if (isMounted) {
-          setEvents(data);
+          setEvents(data as AdminEventSummary[]);
         }
       } catch (error: any) {
         toast.error(error.message || 'Failed to fetch events');

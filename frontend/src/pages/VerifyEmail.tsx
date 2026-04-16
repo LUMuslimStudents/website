@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 
 const VerifyEmail = () => {
@@ -13,8 +13,6 @@ const VerifyEmail = () => {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(180); // 3 minutes in seconds
-    const [timerInitialized, setTimerInitialized] = useState(false);
     const email = location.state?.email;
 
     // Redirect if no email provided
@@ -23,41 +21,6 @@ const VerifyEmail = () => {
             navigate('/signup');
         }
     }, [email, navigate]);
-
-    // Fetch actual remaining time on mount
-    useEffect(() => {
-        if (!email || timerInitialized) return;
-
-        const fetchRemainingTime = async () => {
-            try {
-                const response = await apiRequest(`/auth/verification-time-remaining?email=${encodeURIComponent(email)}`, 'GET');
-                setTimeLeft(response.timeRemaining);
-                setTimerInitialized(true);
-            } catch (error: any) {
-                // If error, fall back to default 180 seconds
-                console.warn('Could not fetch remaining time:', error.message);
-                setTimerInitialized(true);
-            }
-        };
-
-        fetchRemainingTime();
-    }, [email, timerInitialized]);
-
-    // Countdown timer
-    useEffect(() => {
-        if (!timerInitialized) return;
-        
-        if (timeLeft <= 0) {
-            toast.error('Verification code expired. Please request a new one.');
-            return;
-        }
-
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => prev - 1);
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [timeLeft, timerInitialized]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,7 +32,12 @@ const VerifyEmail = () => {
 
         setLoading(true);
         try {
-            await apiRequest('/auth/verify-email', 'POST', { email, code });
+            const { error } = await supabase.auth.verifyOtp({ 
+                email, 
+                token: code,
+                type: 'email'
+            });
+            if (error) throw error;
             toast.success('Email verified successfully! Please login.');
             navigate('/login');
         } catch (error: any) {
@@ -82,21 +50,18 @@ const VerifyEmail = () => {
     const handleResendCode = async () => {
         setResending(true);
         try {
-            await apiRequest('/auth/resend-verification-code', 'POST', { email });
+            const { error } = await supabase.auth.resend({ 
+                type: 'signup',
+                email
+            });
+            if (error) throw error;
             toast.success('New verification code sent to your email!');
-            setTimeLeft(180); // Reset timer to 3 minutes
             setCode(''); // Clear the input
         } catch (error: any) {
             toast.error(error.message || 'Failed to resend code');
         } finally {
             setResending(false);
         }
-    };
-
-    const formatTime = (seconds: number) => {
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${minutes}:${secs.toString().padStart(2, '0')}`;
     };
 
     if (!email) return null;
@@ -132,11 +97,7 @@ const VerifyEmail = () => {
                                     />
                                 </div>
 
-                                <div className={`text-center text-sm font-medium ${timeLeft < 60 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                                    Time remaining: {formatTime(timeLeft)}
-                                </div>
-
-                                <Button type="submit" className="w-full" disabled={loading || timeLeft <= 0}>
+                                <Button type="submit" className="w-full" disabled={loading}>
                                     {loading ? 'Verifying...' : 'Verify Email'}
                                 </Button>
                             </form>

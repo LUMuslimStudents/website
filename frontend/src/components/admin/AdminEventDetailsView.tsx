@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, ChevronLeft, Filter, ListFilter, Table2 } from "lucide-react";
 
-import { apiRequest } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -350,9 +350,14 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
 
     const fetchEvent = async () => {
       try {
-        const data = await apiRequest(`/admin/events/${eventId}`);
+        const { data, error } = await supabase
+          .from("events_info")
+          .select("*, form_fields:event_form_fields(*), registrations:event_registrations(*, profile:users(*), linked_user:users(*))")
+          .eq("id", eventId)
+          .single();
+        if (error) throw error;
         if (isMounted) {
-          setEvent(data);
+          setEvent(data as any);
         }
       } catch (error: any) {
         toast.error(error.message || "Failed to fetch event details");
