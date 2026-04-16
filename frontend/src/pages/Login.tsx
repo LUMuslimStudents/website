@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from 'sonner';
-import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 
 const formSchema = z.object({
@@ -32,12 +32,16 @@ const Login = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      const data = await apiRequest('/auth/login', 'POST', values);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (error) throw error;
+      
       toast.success('Logged in successfully!');
 
-      if (data.user.role === 'admin') {
+      if (data.user?.user_metadata?.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');

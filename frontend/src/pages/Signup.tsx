@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/Navbar';
 import { TermsConditionsDialog } from '@/components/membership/TermsConditionsDialog';
 
@@ -58,20 +58,6 @@ const Signup = () => {
         mode: 'onBlur'
     });
 
-    const handleRestart = async () => {
-        setRestarting(true);
-        try {
-            await apiRequest('/auth/pending-signup', 'DELETE', { email: pendingEmail });
-            toast.success('Pending signup removed. You can now sign up again.');
-            form.reset();
-            setPendingDialog(false);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to restart signup');
-        } finally {
-            setRestarting(false);
-        }
-    };
-
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         // Store form values and show conditions dialog
         setPendingFormValues(values);
@@ -85,24 +71,29 @@ const Signup = () => {
 
         setLoading(true);
         try {
-            const response = await apiRequest('/auth/signup', 'POST', pendingFormValues);
-            toast.success('You now must verify your LU email before your account is created.');
-            navigate('/verify-email', { state: { email: pendingFormValues.email } });
+            const { data, error } = await supabase.auth.signUp({
+                email: pendingFormValues.email,
+                password: pendingFormValues.password,
+                options: {
+                    data: {
+                        first_name: pendingFormValues.first_name,
+                        last_name: pendingFormValues.last_name,
+                        gender: pendingFormValues.gender,
+                        study_program: pendingFormValues.study_program,
+                        phone_number: pendingFormValues.phone_number
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            toast.success('Check your student email! Verification link sent.');
+            navigate('/login');
         } catch (error: any) {
-            // Check if error is about pending signup
-            const isNested = typeof error.message === 'object';
-            const errorObj = isNested ? error.message : {};
-            
-            if (error.message?.includes('pending signup') || errorObj.redirectTo) {
-                // Show dialog for pending signup
-                setConditionsDialog(false);
-                setPendingEmail(pendingFormValues.email);
-                setPendingDialog(true);
-            } else {
-                toast.error(error.message || 'Signup failed');
-            }
+            toast.error(error.message || 'Signup failed. Please try again.');
         } finally {
             setLoading(false);
+            setConditionsDialog(false);
         }
     };
 
