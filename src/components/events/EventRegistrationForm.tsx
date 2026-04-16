@@ -49,6 +49,7 @@ type UserProfile = {
 export type EventRegistrationFooterState = {
   isAlreadyRegistered: boolean;
   isSubmittingRegistration: boolean;
+  isFormReady: boolean;
   displayPrice: number;
   displayPriceTier: "member" | "nonmember" | "alumnus";
 };
@@ -470,6 +471,7 @@ export const EventRegistrationForm = ({
     onFooterStateChange({
       isAlreadyRegistered,
       isSubmittingRegistration,
+      isFormReady: isFormReadyForSubmission(),
       displayPrice,
       displayPriceTier,
     });
@@ -481,6 +483,9 @@ export const EventRegistrationForm = ({
     displayPrice,
     displayPriceTier,
     onFooterStateChange,
+    registrationProfile,
+    fieldAnswers,
+    formFields,
   ]);
 
   const renderDynamicField = (field: EventFormField) => {

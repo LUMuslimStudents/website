@@ -1,46 +1,59 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { apiRequest } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { AdminEventsTab } from '@/components/admin/AdminEventsTab';
-import { AdminUsersTab } from '@/components/admin/AdminUsersTab';
-import { AdminUser } from '@/components/admin/types';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const location = useLocation();
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  const activeTab = useMemo(() => {
+    if (location.pathname.startsWith('/admin/events')) {
+      return 'events';
+    }
+    return 'users';
+  }, [location.pathname]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchUsers = async () => {
+    const checkAccess = async () => {
       try {
-        const data = await apiRequest('/admin/users');
-        if (isMounted) {
-          setUsers(data);
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to fetch users');
-        if (error.message?.includes('Access denied')) {
+        await apiRequest('/admin/users');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to open admin dashboard';
+        toast.error(message);
+        if (message.includes('Access denied')) {
           navigate('/');
         }
       } finally {
         if (isMounted) {
-          setLoadingUsers(false);
+          setCheckingAccess(false);
         }
       }
     };
 
-    fetchUsers();
+    checkAccess();
 
     return () => {
       isMounted = false;
     };
   }, [navigate]);
+
+  if (checkingAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container py-10">
+          <p className="text-sm text-muted-foreground">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,20 +64,16 @@ const AdminDashboard = () => {
             <CardTitle className="text-2xl">Admin Dashboard</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="users" className="w-full">
+            <Tabs value={activeTab} onValueChange={(value) => navigate(`/admin/${value}`)} className="w-full">
               <TabsList className="mb-6">
                 <TabsTrigger value="users">Members</TabsTrigger>
                 <TabsTrigger value="events">Events</TabsTrigger>
               </TabsList>
-
-              <TabsContent value="users" className="mt-0">
-                <AdminUsersTab users={users} loading={loadingUsers} />
-              </TabsContent>
-
-              <TabsContent value="events" className="mt-0">
-                <AdminEventsTab />
-              </TabsContent>
             </Tabs>
+
+            <div className="mt-0">
+              <Outlet />
+            </div>
           </CardContent>
         </Card>
       </div>

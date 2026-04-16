@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { $Enums, PrismaClient } from '@prisma/client';
+import { $Enums, Prisma, PrismaClient } from '@prisma/client';
 import { authenticateToken, requireAdmin, AuthRequest } from '../auth';
 import {
     EVENT_REGISTRATION_STATUSES,
@@ -19,8 +19,10 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
     // POST /api/admin/create-event - Create event with image upload (Admin only)
     app.post('/api/admin/create-event', authenticateToken, requireAdmin, upload.array('image', 10), async (req: AuthRequest, res) => {
         try {
-            const { title, date, start_time, end_time, deadline, address, invitation, siblings, price_member, price_nonmember, price_alumnus, description, form_fields } = req.body;
+            const { title, date, start_time, end_time, deadline, address, invitation, siblings, price_member, price_nonmember, price_alumnus, description, form_fields, publish_mode } = req.body;
             const term = process.env.MEMBERSHIP_TERM || 'XXXX';
+            const normalizedPublishMode = String(publish_mode || 'publish').toLowerCase();
+            const isPublished = normalizedPublishMode !== 'draft';
             const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
             const eventSlug = (req as AuthRequest & { eventSlug?: string }).eventSlug || toEventSlug(String(title || 'event'));
 
@@ -66,6 +68,7 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
                             price_alumnus: parseInt(price_alumnus) || 0,
                             description: description || null,
                             poster: `events/${eventSlug}`, // Store relative path
+                            is_published: isPublished,
                         }
                     });
 
@@ -104,6 +107,15 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
             console.log("POST: /admin/create-event");
         } catch (error) {
             console.error('Create event error:', error);
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                const target = Array.isArray(error.meta?.target)
+                    ? (error.meta.target as string[])
+                    : [];
+
+                if (target.includes('title')) {
+                    return res.status(409).json({ error: 'An event with this title already exists.' });
+                }
+            }
             res.status(500).json({ error: 'Internal server error' });
         }
     });

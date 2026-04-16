@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AdminEventSummary } from "./types";
+import "./AdminEventsList.css";
 
 type AdminEventsListProps = {
   events: AdminEventSummary[];
   loading: boolean;
   onOpenEvent: (eventId: number) => void;
+  onCreateEvent: () => void;
 };
 
 const formatDateOnly = (value?: string | null) => {
@@ -81,7 +84,7 @@ const EventPosterThumbnail = ({ event }: { event: AdminEventSummary }) => {
   );
 };
 
-export const AdminEventsList = ({ events, loading, onOpenEvent }: AdminEventsListProps) => {
+export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent }: AdminEventsListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "past">("all");
   const [termFilter, setTermFilter] = useState<string>("all");
@@ -167,12 +170,39 @@ export const AdminEventsList = ({ events, loading, onOpenEvent }: AdminEventsLis
       }));
   }, [sortedEvents]);
 
+  const renderCreateEventSlot = () => (
+    <div
+      className="admin-create-slot"
+      onClick={onCreateEvent}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onCreateEvent();
+        }
+      }}
+    >
+      <div className="admin-create-slot-shell">
+        <Plus className="admin-create-slot-plus" />
+        <span className="admin-create-slot-label">
+          Create new event
+        </span>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading events...</p>;
   }
 
   if (events.length === 0) {
-    return <p className="py-4 text-center text-sm text-muted-foreground">No events found.</p>;
+    return (
+      <div className="space-y-4">
+        {renderCreateEventSlot()}
+        <p className="py-4 text-center text-sm text-muted-foreground">No events found.</p>
+      </div>
+    );
   }
 
   if (filteredEvents.length === 0) {
@@ -395,6 +425,10 @@ export const AdminEventsList = ({ events, loading, onOpenEvent }: AdminEventsLis
             <Badge variant="secondary">{group.events.length} event{group.events.length === 1 ? "" : "s"}</Badge>
           </div>
 
+          {group.term === latestTerm && (
+            renderCreateEventSlot()
+          )}
+
           {group.events.map((event) => {
             const eventIsPast = isPastEvent(event);
 
@@ -407,6 +441,9 @@ export const AdminEventsList = ({ events, loading, onOpenEvent }: AdminEventsLis
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <CardTitle className="text-xl">{event.title}</CardTitle>
+                          <Badge className={event.is_published === false ? "border-amber-200 bg-amber-50 text-amber-700" : "border-blue-200 bg-blue-50 text-blue-700"} variant="outline">
+                            {event.is_published === false ? "Draft" : "Published"}
+                          </Badge>
                           <Badge className={eventIsPast ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"} variant="outline">
                             {eventIsPast ? "Past" : "Upcoming"}
                           </Badge>

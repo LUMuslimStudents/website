@@ -4,12 +4,9 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
+import { EventMarkdown } from "@/components/events/EventMarkdown";
 import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
-import rehypeSanitize from "rehype-sanitize";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { events_info } from '@prisma/client';
@@ -232,14 +229,7 @@ const loadPosterUrls = async (basePath: string) => {
 // };
 
 const renderMarkdown = (text: string | null | undefined, className?: string) => (
-  <div className={`prose dark:prose-invert max-w-none ${className ?? ""}`.trim()}>
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
-      rehypePlugins={[rehypeSanitize]}
-    >
-      {text ?? ""}
-    </ReactMarkdown>
-  </div>
+  <EventMarkdown value={text} className={className} />
 );
 
 type EventFormFieldOption = string;
@@ -297,8 +287,10 @@ const Events = () => {
   const posterCacheRef = useRef<Map<string, string[]>>(new Map());
   const invalidRouteEventRef = useRef<string | null>(null);
 
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : null;
+  const user = useMemo(() => {
+    const userString = localStorage.getItem('user');
+    return userString ? JSON.parse(userString) : null;
+  }, []);
   const isSignedIn = Boolean(user);
 
   const isPersistedRegistered = (eventId: number) => persistedRegisteredEventIds.includes(eventId);
@@ -459,7 +451,7 @@ const Events = () => {
 
     if (hasFetchedEvents) {
       if (invalidRouteEventRef.current !== normalizedRouteEventSlug) {
-        toast.error('This event is no longer available for sharing.');
+        toast.error('This event is no longer available.');
         invalidRouteEventRef.current = normalizedRouteEventSlug;
       }
       navigate('/events', { replace: true });
@@ -660,7 +652,7 @@ const Events = () => {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => registrationSubmitRef.current?.()}
-                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration || isRegistrationClosed(expandedEvent)}
+                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration || isRegistrationClosed(expandedEvent) || !registrationFooterState.isFormReady}
                 variant={registrationFooterState.isAlreadyRegistered || isRegistrationClosed(expandedEvent) ? "outline" : "default"}
                 className={registrationFooterState.isAlreadyRegistered
                   ? "border-green-600 text-green-600 hover:bg-green-50"

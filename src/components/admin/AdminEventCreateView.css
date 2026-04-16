@@ -1,0 +1,816 @@
+/* Fade-in animations for sequential card appearance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelay100 {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelay200 {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelay300 {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelay400 {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDelay500 {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Image carousel fade effect */
+@keyframes imageFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Text scale-in animation for title */
+@keyframes textScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Apply animations */
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in-delay-100 {
+  animation: fadeInDelay100 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 100ms;
+}
+
+.animate-fade-in-delay-200 {
+  animation: fadeInDelay200 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 200ms;
+}
+
+.animate-fade-in-delay-300 {
+  animation: fadeInDelay300 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 300ms;
+}
+
+.animate-fade-in-delay-400 {
+  animation: fadeInDelay400 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 400ms;
+}
+
+.animate-fade-in-delay-500 {
+  animation: fadeInDelay500 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 500ms;
+}
+
+.animate-image-fade-in {
+  animation: imageFadeIn 0.3s ease-in-out forwards;
+}
+
+.animate-text-scale-in {
+  animation: textScaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Smooth transitions for interactive elements */
+input:focus,
+textarea:focus,
+select:focus {
+  transition: all 0.2s ease-out;
+}
+
+/* Hover effects for buttons */
+button {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Input field animations */
+input[type="file"]::file-selector-button {
+  transition: all 0.2s ease-out;
+}
+
+/* Smooth color transitions for badges and labels */
+.rounded-full {
+  transition: all 0.2s ease-out;
+}
+
+/* Image carousel container smooth transitions */
+.prose {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.description-mode-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9999px;
+  padding: 0.25rem;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.9));
+  box-shadow: 0 10px 24px -20px rgba(15, 23, 42, 0.55);
+}
+
+.description-mode-toggle-button {
+  border-radius: 9999px !important;
+  padding-inline: 0.8rem !important;
+  gap: 0.4rem !important;
+  min-width: 4.8rem;
+}
+
+.description-mode-toggle-button.is-active {
+  background: white;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  color: var(--foreground);
+}
+
+.description-mode-toggle-button.is-active:hover {
+  color: white;
+}
+
+.description-editor-shell,
+.description-preview-shell {
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 18px 34px -28px rgba(15, 23, 42, 0.5);
+}
+
+.description-editor-shell .w-md-editor {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.description-editor-shell .w-md-editor-toolbar {
+  border-bottom: 1px solid hsl(var(--border));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  padding: 0.6rem 0.7rem;
+  backdrop-filter: blur(12px);
+}
+
+.description-editor-shell .w-md-editor-content {
+  background: transparent;
+}
+
+.description-editor-shell .w-md-editor:focus,
+.description-editor-shell .w-md-editor:focus-within,
+.description-editor-shell .w-md-editor-text-input:focus,
+.description-editor-shell .w-md-editor-text-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.description-editor-shell .w-md-editor-toolbar ul {
+  gap: 0.15rem;
+}
+
+.description-editor-shell .w-md-editor-toolbar li {
+  margin: 0;
+}
+
+.description-editor-shell .w-md-editor-toolbar li>button {
+  border-radius: 0.8rem;
+  color: hsl(var(--foreground));
+}
+
+.description-editor-shell .w-md-editor-toolbar li>button svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.description-editor-shell .w-md-editor-toolbar li>button:hover,
+.description-editor-shell .w-md-editor-toolbar li>button:focus-visible {
+  background: hsl(var(--muted));
+  color: hsl(var(--primary));
+}
+
+/* Keep the editor text surface unstyled so the built-in MDEditor metrics control cursor alignment. */
+
+.description-preview-shell {
+  min-height: 336px;
+  padding: 1.2rem 1.2rem 1.3rem;
+}
+
+.description-preview-shell .event-markdown-shell {
+  min-height: 100%;
+}
+
+.description-preview-shell .event-markdown-shell .wmde-markdown {
+  font-size: 0.98rem;
+}
+
+.description-preview-shell .event-markdown-shell .wmde-markdown h1,
+.description-preview-shell .event-markdown-shell .wmde-markdown h2,
+.description-preview-shell .event-markdown-shell .wmde-markdown h3 {
+  color: hsl(var(--foreground));
+}
+
+.hero-picker-panel {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.94), transparent 42%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.78));
+}
+
+.hero-picker-field {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.hero-picker-field:focus-within,
+.hero-picker-field:has(button[data-state="open"]),
+.hero-picker-field:has(button[aria-expanded="true"]) {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14);
+  background-color: hsl(var(--background));
+}
+
+.hero-datepicker-shell {
+  z-index: 1;
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-datepicker-shell:focus-within {
+  z-index: 50;
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14), 0 16px 28px -24px rgba(15, 23, 42, 0.38);
+  background-color: hsl(var(--background));
+  transform: translateY(-1px);
+}
+
+.hero-picker-input {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding-inline: 0.1rem;
+}
+
+.hero-picker-input,
+.hero-picker-input:focus,
+.hero-picker-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+.hero-datepicker-shell .react-datepicker-wrapper,
+.hero-datepicker-shell .react-datepicker__input-container {
+  width: 100%;
+}
+
+.hero-datepicker-shell .react-datepicker__input-container input {
+  width: 100%;
+}
+
+.hero-datepicker-popper {
+  z-index: 2000 !important;
+}
+
+.hero-datepicker-popper .react-datepicker-popper {
+  z-index: 2000 !important;
+}
+
+#admin-datepicker-portal {
+  position: relative;
+  z-index: 3500;
+}
+
+.hero-datepicker-popper .react-datepicker {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 1rem;
+  box-shadow: 0 28px 54px -30px rgba(15, 23, 42, 0.5);
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.hero-datepicker-popper .react-datepicker__header {
+  background: linear-gradient(180deg, rgb(255 255 255), rgb(248 250 252));
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.hero-datepicker-popper .react-datepicker__current-month {
+  color: rgb(15 23 42);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.hero-datepicker-popper .react-datepicker__day,
+.hero-datepicker-popper .react-datepicker__time-name {
+  border-radius: 0.8rem;
+  color: rgb(15 23 42);
+}
+
+.hero-datepicker-popper .react-datepicker__day:hover,
+.hero-datepicker-popper .react-datepicker__time-list-item:hover {
+  background: rgb(226 232 240);
+}
+
+.hero-datepicker-popper .react-datepicker__day--selected,
+.hero-datepicker-popper .react-datepicker__day--keyboard-selected,
+.hero-datepicker-popper .react-datepicker__time-list-item--selected {
+  background: linear-gradient(180deg, rgb(30, 111, 226), rgb(8, 60, 133)) !important;
+  color: white !important;
+}
+
+.hero-datepicker-popper .react-datepicker__day--outside-month,
+.hero-datepicker-popper .react-datepicker__day--disabled {
+  color: rgb(148 163 184);
+}
+
+.hero-datepicker-popper .react-datepicker__time-container {
+  border-left: 1px solid rgb(226 232 240);
+  background: white;
+}
+
+.hero-datepicker-popper .react-datepicker__time-list-item {
+  height: auto !important;
+  padding: 0.52rem 0.8rem !important;
+  margin: 0.18rem 0.35rem;
+  border-radius: 0.7rem;
+  color: rgb(15 23 42);
+}
+
+.hero-datepicker-popper .react-datepicker__time-list-item--selected {
+  color: white !important;
+}
+
+.hero-datepicker-popper .react-datepicker__navigation-icon::before {
+  border-color: rgb(148 163 184);
+  border-width: 2px 2px 0 0;
+}
+
+.hero-datepicker-popper .react-datepicker__navigation:hover *::before {
+  border-color: rgb(15 23 42);
+}
+
+.hero-datetime-field {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.hero-datetime-field:focus-within {
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14);
+  background-color: hsl(var(--background));
+}
+
+.hero-datetime-field input {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.hero-datetime-field input[type="date"],
+.hero-datetime-field input[type="time"],
+.hero-datetime-field input[type="datetime-local"] {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.hero-datetime-field input[type="date"]::-webkit-calendar-picker-indicator,
+.hero-datetime-field input[type="time"]::-webkit-calendar-picker-indicator,
+.hero-datetime-field input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  border-radius: 9999px;
+  padding: 2px;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.hero-datetime-field input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.hero-datetime-field input[type="time"]:hover::-webkit-calendar-picker-indicator,
+.hero-datetime-field input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+.hero-clean-input,
+.hero-clean-input:focus,
+.hero-clean-input:focus-visible {
+  box-shadow: none !important;
+  outline: none !important;
+  border-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+.dark .admin-event-create-view .description-mode-toggle {
+  background: hsl(var(--card));
+  box-shadow: 0 10px 24px -20px rgba(0, 0, 0, 0.85);
+}
+
+.dark .admin-event-create-view .description-mode-toggle-button.is-active {
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.dark .admin-event-create-view .description-mode-toggle-button.is-active:hover {
+  color: rgb(248 250 252);
+}
+
+.dark .admin-event-create-view .description-editor-shell,
+.dark .admin-event-create-view .description-preview-shell {
+  background: hsl(var(--card));
+  box-shadow: 0 18px 34px -28px rgba(0, 0, 0, 0.9);
+}
+
+.dark .admin-event-create-view .description-editor-shell .w-md-editor-toolbar {
+  background: hsl(var(--card));
+  border-bottom-color: hsl(var(--border));
+}
+
+.dark .admin-event-create-view .description-editor-shell .w-md-editor-toolbar li>button {
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-event-create-view .description-editor-shell .w-md-editor-toolbar li>button:hover,
+.dark .admin-event-create-view .description-editor-shell .w-md-editor-toolbar li>button:focus-visible {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-event-create-view .description-preview-shell .event-markdown-shell .wmde-markdown h1,
+.dark .admin-event-create-view .description-preview-shell .event-markdown-shell .wmde-markdown h2,
+.dark .admin-event-create-view .description-preview-shell .event-markdown-shell .wmde-markdown h3 {
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-event-create-view .hero-picker-panel,
+.dark .admin-event-create-view .hero-datepicker-shell,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__header,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__time-container {
+  background: hsl(var(--card));
+}
+
+.dark .admin-event-create-view .hero-picker-panel {
+  background: hsl(var(--card));
+}
+
+.dark .admin-event-create-view .hero-datepicker-shell:focus-within {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2), 0 16px 28px -24px rgba(0, 0, 0, 0.7);
+  background-color: hsl(var(--card));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker {
+  border-color: hsl(var(--border));
+  box-shadow: 0 28px 54px -30px rgba(0, 0, 0, 0.85);
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__header {
+  border-bottom-color: hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+.poster-upload-shell {
+  isolation: isolate;
+  border-right: 1px solid rgb(226 232 240 / 0.75);
+}
+
+.poster-preview-surface {
+  background:
+    radial-gradient(circle at 25% 15%, rgb(255 255 255 / 0.95), transparent 45%),
+    linear-gradient(180deg, rgb(248 250 252), rgb(241 245 249));
+}
+
+.poster-preview-surface img {
+  display: block;
+  padding: 0.85rem;
+}
+
+.poster-thumb-card {
+  min-width: 4rem;
+}
+
+@media (max-width: 767px) {
+  .poster-upload-shell {
+    border-right: 0;
+    border-bottom: 1px solid rgb(226 232 240 / 0.75);
+  }
+}
+
+.dark .admin-event-create-view .poster-upload-shell {
+  border-color: rgb(51 65 85 / 0.7);
+}
+
+.dark .admin-event-create-view .poster-preview-surface {
+  background:
+    radial-gradient(circle at 20% 10%, rgb(15 23 42 / 0.6), transparent 45%),
+    linear-gradient(180deg, rgb(15 23 42 / 0.72), rgb(2 6 23 / 0.9));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__current-month,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__day,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__time-name,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__time-list-item {
+  color: hsl(var(--foreground));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__day:hover,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__time-list-item:hover {
+  background: hsl(var(--muted));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__day--outside-month,
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__day--disabled {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__time-container {
+  border-left-color: hsl(var(--border));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__navigation-icon::before {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.dark .admin-event-create-view .hero-datepicker-popper .react-datepicker__navigation:hover *::before {
+  border-color: hsl(var(--foreground));
+}
+
+.question-type-picker {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 30;
+}
+
+.question-type-picker-options {
+  --question-picker-glow-rgb: 59 130 246;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.65rem);
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transform: translateX(-50%) translateY(8px) scale(0.97);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.question-type-picker-options::before {
+  content: "";
+  position: absolute;
+  inset: -2.6rem -3.4rem;
+  border-radius: 2rem;
+  background: radial-gradient(circle at center, rgb(var(--question-picker-glow-rgb) / 0.38), transparent 80%);
+  filter: blur(34px);
+  z-index: -1;
+  pointer-events: none;
+  transition: background 220ms ease;
+}
+
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="short_text"]:hover),
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="short_text"]:focus-visible) {
+  --question-picker-glow-rgb: 59 130 246;
+}
+
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="radio_single"]:hover),
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="radio_single"]:focus-visible) {
+  --question-picker-glow-rgb: 245 158 11;
+}
+
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="checkbox_multi"]:hover),
+.question-type-picker-options:has(.question-type-picker-option[data-question-type="checkbox_multi"]:focus-visible) {
+  --question-picker-glow-rgb: 16 185 129;
+}
+
+.question-type-picker:hover .question-type-picker-options,
+.question-type-picker.is-open .question-type-picker-options {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.question-type-picker-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(255 255 255 / 0.96);
+  color: rgb(51 65 85);
+  padding: 0 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.24), 0 0 18px rgba(148, 163, 184, 0.18);
+  white-space: nowrap;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.question-type-picker-option:hover,
+.question-type-picker-option:focus-visible {
+  border-color: rgb(148 163 184 / 0.5);
+}
+
+.question-type-picker-option[data-question-type="short_text"]:hover,
+.question-type-picker-option[data-question-type="short_text"]:focus-visible {
+  border-color: rgb(59 130 246 / 0.45);
+  background: rgb(239 246 255);
+  color: rgb(30 64 175);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.28), 0 0 24px rgba(59, 130, 246, 0.28), 0 0 46px rgba(59, 130, 246, 0.18);
+}
+
+.question-type-picker-option[data-question-type="radio_single"]:hover,
+.question-type-picker-option[data-question-type="radio_single"]:focus-visible {
+  border-color: rgb(245 158 11 / 0.5);
+  background: rgb(255 251 235);
+  color: rgb(146 64 14);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.28), 0 0 24px rgba(245, 158, 11, 0.26), 0 0 46px rgba(245, 158, 11, 0.16);
+}
+
+.question-type-picker-option[data-question-type="checkbox_multi"]:hover,
+.question-type-picker-option[data-question-type="checkbox_multi"]:focus-visible {
+  border-color: rgb(16 185 129 / 0.5);
+  background: rgb(236 253 245);
+  color: rgb(6 95 70);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.28), 0 0 24px rgba(16, 185, 129, 0.26), 0 0 46px rgba(16, 185, 129, 0.16);
+}
+
+.question-type-picker-trigger {
+  height: 2.75rem !important;
+  width: 2.75rem !important;
+  border-radius: 9999px !important;
+  border: 1px dashed rgb(148 163 184) !important;
+  background: rgb(248 250 252) !important;
+  color: rgb(71 85 105) !important;
+  box-shadow: 0 10px 22px -20px rgba(15, 23, 42, 0.7);
+}
+
+.question-type-picker:hover .question-type-picker-trigger,
+.question-type-picker.is-open .question-type-picker-trigger {
+  border-color: rgb(59 130 246 / 0.4) !important;
+  background: rgb(239 246 255) !important;
+  color: rgb(37 99 235) !important;
+}
+
+.dark .question-type-picker-option {
+  border-color: rgb(51 65 85);
+  background: rgb(15 23 42 / 0.92);
+  color: rgb(203 213 225);
+  box-shadow: 0 0 0 1px rgba(100, 116, 139, 0.26), 0 0 20px rgba(100, 116, 139, 0.22);
+}
+
+.dark .question-type-picker-options::before {
+  background: radial-gradient(circle at center, rgb(var(--question-picker-glow-rgb) / 0.5), transparent 80%);
+}
+
+.dark .question-type-picker-option:hover,
+.dark .question-type-picker-option:focus-visible {
+  border-color: rgb(100 116 139 / 0.65);
+}
+
+.dark .question-type-picker-option[data-question-type="short_text"]:hover,
+.dark .question-type-picker-option[data-question-type="short_text"]:focus-visible {
+  border-color: rgb(59 130 246 / 0.58);
+  background: rgb(30 41 59);
+  color: rgb(147 197 253);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.34), 0 0 26px rgba(59, 130, 246, 0.36), 0 0 50px rgba(59, 130, 246, 0.22);
+}
+
+.dark .question-type-picker-option[data-question-type="radio_single"]:hover,
+.dark .question-type-picker-option[data-question-type="radio_single"]:focus-visible {
+  border-color: rgb(245 158 11 / 0.6);
+  background: rgb(51 35 10);
+  color: rgb(253 230 138);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.34), 0 0 26px rgba(245, 158, 11, 0.34), 0 0 50px rgba(245, 158, 11, 0.2);
+}
+
+.dark .question-type-picker-option[data-question-type="checkbox_multi"]:hover,
+.dark .question-type-picker-option[data-question-type="checkbox_multi"]:focus-visible {
+  border-color: rgb(16 185 129 / 0.6);
+  background: rgb(7 40 30);
+  color: rgb(110 231 183);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.34), 0 0 26px rgba(16, 185, 129, 0.34), 0 0 50px rgba(16, 185, 129, 0.2);
+}
+
+.dark .question-type-picker-trigger {
+  border-color: rgb(71 85 105) !important;
+  background: rgb(15 23 42) !important;
+  color: rgb(203 213 225) !important;
+}
+
+.dark .question-type-picker:hover .question-type-picker-trigger,
+.dark .question-type-picker.is-open .question-type-picker-trigger {
+  border-color: rgb(59 130 246 / 0.55) !important;
+  background: rgb(30 41 59) !important;
+  color: rgb(147 197 253) !important;
+}
+
+@media (max-width: 640px) {
+  .question-type-picker-option {
+    width: min(18.5rem, 82vw);
+    justify-content: flex-start;
+  }
+}
+
+/* Help text input lift effect styling */
+.hero-help-text-input {
+  margin-left: -0.75rem;
+  border: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-help-text-input:hover {
+  background-color: rgb(248 250 252 / 0.5);
+}
+
+.hero-help-text-input,
+.hero-help-text-input:focus,
+.hero-help-text-input:focus-visible {
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+.hero-help-text-input:focus,
+.hero-help-text-input:focus-visible {
+  border-color: hsl(var(--primary) / 0.5) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.14), 0 16px 28px -24px rgba(15, 23, 42, 0.48) !important;
+  background-color: hsl(var(--background));
+  transform: translateY(-1px);
+}
+
+.dark .hero-help-text-input:hover {
+  background-color: rgb(30 41 59 / 0.5);
+}
+
+.dark .hero-help-text-input:focus,
+.dark .hero-help-text-input:focus-visible {
+  border-color: hsl(var(--primary) / 0.2) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2), 0 28px 54px -30px rgba(0, 0, 0, 0.85) !important;
+  background-color: hsl(var(--card));
+}
