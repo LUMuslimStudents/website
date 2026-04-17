@@ -93,7 +93,38 @@ const invitation = (event: events_info, big: boolean = false) => {
          </div>
 }
 
-const buildIcsDownloadUrl = (event: events_info) => `${API_BASE_URL}/api/events/${event.id}/ics`;
+const buildIcsDownloadUrl = (event: events_info) => {
+  const date = new Date(event.date);
+  const [startHour, startMinute] = String(event.start_time).split(":").map(Number);
+  const [endHour, endMinute] = String(event.end_time).split(":").map(Number);
+  const start = new Date(date);
+  const end = new Date(date);
+
+  start.setHours(startHour || 0, startMinute || 0, 0, 0);
+  end.setHours(endHour || 0, endMinute || 0, 0, 0);
+
+  if (end <= start) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  const icsData = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//LUMS//Events//EN',
+    'BEGIN:VEVENT',
+    `DTSTAMP:${formatGoogleDate(new Date())}`,
+    `DTSTART:${formatGoogleDate(start)}`,
+    `DTEND:${formatGoogleDate(end)}`,
+    `SUMMARY:${event.title || ''}`,
+    `DESCRIPTION:${(event.description || '').replace(/\n/g, '\\n')}`,
+    `LOCATION:${(event.address || '').replace(/\n/g, '\\n')}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+  return URL.createObjectURL(blob);
+};
 
 const formatGoogleDate = (value: Date) => value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 
