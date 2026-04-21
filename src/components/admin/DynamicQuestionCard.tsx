@@ -196,7 +196,7 @@ const SharedQuestionLayout = ({
             value={field.question}
             onChange={(event) => onUpdate(field.id, { question: event.target.value })}
             placeholder="Question"
-            className="hero-clean-input h-14 border-none bg-transparent px-0 md:text-2xl font-semibold leading-none tracking-tight shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-4xl md:placeholder:text-2xl placeholder:font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
+            className="hero-clean-input h-14 border-none bg-transparent px-0 md:text-2xl text-2xl font-semibold leading-none tracking-tight shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-2xl md:placeholder:text-2xl placeholder:font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
           />
         </div>
 
