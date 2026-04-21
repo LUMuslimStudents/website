@@ -5,7 +5,6 @@ import { Users, Calendar, LifeBuoy } from "lucide-react";
 import { FAQ } from "@/components/FAQ";
 import { Testimonials } from "@/components/Testimonials";
 import MembershipHero from "@/components/membership/MembershipHero";
-import TestModeAlert from "@/components/membership/TestModeAlert";
 import MembershipPlan from "@/components/membership/MembershipPlan";
 import BenefitCard from "@/components/membership/BenefitCard";
 
@@ -33,11 +32,6 @@ const Membership = () => {
       <Navbar />
       <main className="flex-1 container py-8">
         <MembershipHero />
-        
-        {/* Test mode notice */}
-        {/* <div className="max-w-[500px] mx-auto mb-6">
-          <TestModeAlert />
-        </div> */}
         
         <div className="text-center mb-12 animate-in">
           <h1 className="text-4xl font-bold mb-4">Join LUMS</h1>

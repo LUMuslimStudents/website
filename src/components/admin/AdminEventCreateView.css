@@ -770,13 +770,6 @@ input[type="file"]::file-selector-button {
   color: rgb(147 197 253) !important;
 }
 
-@media (max-width: 640px) {
-  .question-type-picker-option {
-    width: min(18.5rem, 82vw);
-    justify-content: flex-start;
-  }
-}
-
 /* Help text input lift effect styling */
 .hero-help-text-input {
   margin-left: -0.75rem;

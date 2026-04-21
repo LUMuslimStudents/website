@@ -17,7 +17,7 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
-import Checkout from "./pages/StripeCheckout";
+// import Checkout from "./pages/StripeCheckout";
 import { AdminUsersRoute } from "@/components/admin/AdminUsersRoute";
 import { AdminEventsTab } from "@/components/admin/AdminEventsTab";
 import { AdminEventDetailRoute } from "@/components/admin/AdminEventDetailRoute";
@@ -52,7 +52,6 @@ const App = () => (
                 <Route path="events/new" element={<AdminEventCreateView />} />
                 <Route path="events/:eventId" element={<AdminEventDetailRoute />} />
               </Route>
-              {/* <Route path="/checkout" element={<Checkout />} /> */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

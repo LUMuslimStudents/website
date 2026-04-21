@@ -21,10 +21,10 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "]/*": ["./backend/supabase/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "backend/supabase"]
 }

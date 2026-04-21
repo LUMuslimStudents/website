@@ -15,6 +15,7 @@ dist-ssr
 swish/*
 
 public/events/*
+backend/supabase/website-dev_db_pass
 
 # Editor directories and files
 .vscode/*
