@@ -48,7 +48,7 @@ const AdminDashboard = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="container py-10">
+        <div className="container py-10 pt-32">
           <p className="text-sm text-muted-foreground">Loading admin dashboard...</p>
         </div>
       </div>
@@ -58,7 +58,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container py-10">
+      <div className="container py-10 pt-32">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Admin Dashboard</CardTitle>

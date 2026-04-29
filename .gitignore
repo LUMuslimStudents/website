@@ -27,3 +27,5 @@ backend/supabase/website-dev_db_pass
 *.njsproj
 *.sln
 *.sw?
+
+.original-repo/

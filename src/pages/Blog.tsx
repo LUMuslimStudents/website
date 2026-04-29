@@ -35,7 +35,7 @@ const Blog = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-8">
+      <main className="flex-1 pt-32 container py-8">
         <h1 className="text-4xl font-bold mb-8 animate-in">LUMS Blog</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {blogPosts.map((post) => (

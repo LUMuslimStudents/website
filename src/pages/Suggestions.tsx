@@ -51,7 +51,7 @@ const Suggestions = () => {
   return (
     <div className="min-h-screen flex flex-col page">
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1 pt-32">
         <div className="container max-w-2xl py-12">
           <h1 className="text-4xl font-bold text-center text-[#004aac] mb-8">
             Suggestion Box

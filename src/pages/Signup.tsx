@@ -157,7 +157,7 @@ const Signup = () => {
                 loading={loading}
             />
 
-            <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center py-12 pt-32 px-4 sm:px-6 lg:px-8">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle className="text-2xl text-center">Become a member</CardTitle>

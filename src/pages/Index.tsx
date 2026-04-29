@@ -1,156 +1,133 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRef } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { ArrowRight, Calendar, Users, Star } from "lucide-react";
-import { Link } from "react-router-dom";
-import { CTASection } from "@/components/CTASection";
-import { NewsSection } from "@/components/NewsSection";
+import { HeroGeometric } from "@/components/ui/shape-landing-hero";
+import { TimelineContent } from "@/components/ui/timeline-animation";
+import { BentoGrid, type BentoItem } from "@/components/ui/bento-grid";
+import { GradientCTA } from "@/components/ui/call-to-action";
+import { Calendar, Users, Star, BookOpen, Heart, Globe } from "lucide-react";
 
 const Index = () => {
-  const features = [
-    {
-      title: "Community",
-      description: "Connect with fellow Muslim students in Lund",
-      icon: Users,
-    },
-    {
-      title: "Events",
-      description: "Join our regular gatherings and special occasions",
-      icon: Calendar,
-    },
-    {
-      title: "Support",
-      description: "Access resources and support network",
-      icon: Star,
-    },
-  ];
+  const missionRef = useRef<HTMLDivElement>(null);
 
-  const missionVision = [
+  const textVariants = {
+    visible: (i: number) => ({
+      filter: "blur(0px)",
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.3,
+        duration: 0.8,
+      },
+    }),
+    hidden: {
+      filter: "blur(10px)",
+      opacity: 0,
+      y: 20,
+    },
+  };
+
+  const bentoItems: BentoItem[] = [
     {
-      title: "Our Mission",
-      description: "To create a supportive and inclusive environment for Muslim students at Lund University, fostering spiritual growth, academic excellence, and community engagement.",
-      icon: "🎯"
+      title: "Weekly Jum'ah",
+      meta: "Every Friday",
+      description: "Join us for weekly congregational prayers on campus with inspiring khutbahs from visiting speakers and student leaders.",
+      icon: <Users className="w-5 h-5" />,
+      status: "Weekly",
+      tags: ["Prayer", "Community"],
+      colSpan: 2,
+      hasPersistentHover: true,
     },
     {
-      title: "Our Vision",
-      description: "To be a leading Muslim student organization that empowers members to thrive in their academic journey while maintaining their Islamic identity and contributing positively to society.",
-      icon: "👁️"
+      title: "Islamic Classes",
+      meta: "Tuesdays 18:00",
+      description: "Deepen your knowledge with our structured halaqas covering Seerah, Fiqh, and Quranic Tafseer.",
+      icon: <BookOpen className="w-5 h-5" />,
+      status: "New",
+      tags: ["Education", "Knowledge"],
     },
     {
-      title: "Our Values",
-      description: "Unity in diversity, academic excellence, spiritual development, community service, and mutual respect.",
-      icon: "⭐"
-    }
+      title: "Ramadan Iftars",
+      meta: "Upcoming",
+      description: "Experience the joy of breaking fast together during the blessed month with daily community iftars.",
+      icon: <Heart className="w-5 h-5" />,
+      tags: ["Ramadan", "Food"],
+      colSpan: 1,
+    },
+    {
+      title: "Cultural Diversity",
+      meta: "50+ Nationalities",
+      description: "A melting pot of cultures united by faith. Celebrate the beautiful diversity of our Muslim ummah at Lund.",
+      icon: <Globe className="w-5 h-5" />,
+      status: "Always",
+      tags: ["Culture", "Brotherhood", "Sisterhood"],
+      colSpan: 2,
+    },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col page">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1">
-        <div className="container py-12 md:py-24 flex flex-col items-center gradient-bg">
-          <div className="relative">
-            <img 
-              src="/logos/LUMS - Banner Logo_Transparent.png"
-              alt="LUMS Logo" 
-              className="w-96 md:w-96 mb-8 animate-in fade-in duration-1000 relative z-10"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/10 -z-0" />
-          </div>
-          
-          <div className="text-center max-w-3xl mx-auto">
-            {/* <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#004aac] tracking-tight animate-in slide-in-from-bottom duration-700">
-              Welcome to LUMS
-            </h1> */}
-            <p className="text-xl text-muted-foreground mb-8 animate-in slide-in-from-bottom duration-700 delay-200">
-              Lund University Muslim Students - A community dedicated to supporting Muslim students at Lund University
-            </p>
-            <div className="flex gap-4 justify-center animate-in slide-in-from-bottom duration-700 delay-300">
-              <Button 
-                asChild 
-                size="lg"
-                className="bg-[#004aac] hover:bg-[#004aac]/90 transition-all duration-300"
-              >
-                <Link to="/membership">Join Us</Link>
-              </Button>
-              <Button 
-                asChild 
-                variant="outline" 
-                size="lg"
-                className="border-[#004aac] text-[#004aac] hover:bg-[#004aac]/10 transition-all duration-300"
-              >
-                <Link to="/events">Our Events</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <HeroGeometric />
 
-        <section className="py-16 bg-muted">
-          <div className="container">
-            <h2 className="text-3xl font-bold text-center text-[#004aac] mb-12">
-              Mission & Vision
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {missionVision.map((item, index) => (
-                <div 
-                  key={item.title}
-                  className="bg-background p-6 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-                  style={{
-                    animationDelay: `${index * 150}ms`,
-                    opacity: 0,
-                    animation: 'animate-in 0.5s ease-out forwards'
-                  }}
-                >
-                  <div className="text-4xl mb-4 text-center">{item.icon}</div>
-                  <h3 className="text-xl font-semibold mb-3 text-[#004aac] text-center">
-                    {item.title}
-                  </h3>
-                  <p className="text-muted-foreground text-center">
-                    {item.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+        {/* --- Mission & Vision Section (Scroll Reveal) --- */}
+        <section className="py-32 px-4 md:px-8 bg-background relative" ref={missionRef}>
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-background/50 to-transparent pointer-events-none" />
+          <div className="max-w-5xl mx-auto flex flex-col justify-center items-center text-center relative z-10">
+            <TimelineContent
+              as="div"
+              animationNum={0}
+              timelineRef={missionRef}
+              customVariants={textVariants}
+              className="text-sm font-bold tracking-widest text-secondary uppercase mb-6"
+            >
+              Who We Are
+            </TimelineContent>
+
+            <TimelineContent
+              as="h2"
+              animationNum={1}
+              timelineRef={missionRef}
+              customVariants={textVariants}
+              className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-8"
+            >
+              We are on a mission to{" "}
+              <span className="text-primary">empower</span> Muslim students, 
+              foster <span className="text-secondary">spiritual growth</span>, 
+              and build a united <span className="text-primary">community</span> at Lund University.
+            </TimelineContent>
+
+            <TimelineContent
+              as="p"
+              animationNum={2}
+              timelineRef={missionRef}
+              customVariants={textVariants}
+              className="text-lg md:text-2xl text-foreground/70 max-w-3xl leading-relaxed"
+            >
+              Our vision is to be a leading organization that helps members thrive academically while maintaining a strong Islamic identity and contributing positively to Swedish society.
+            </TimelineContent>
           </div>
         </section>
 
-        <NewsSection />
-
-        <section className="px-4 py-16 mx-auto container">
-          <div className="text-center mb-16 relative">
-            <h2 className="text-3xl font-bold text-[#004aac] tracking-tight">
-              Why Join LUMS?
-            </h2>
-            <span className="absolute left-1/2 transform -translate-x-1/2 w-20 h-0.5 bg-[#004aac]/20 mt-4" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <Card 
-                key={feature.title} 
-                className="hover-card card-hover-effect group"
-                style={{ 
-                  animationDelay: `${index * 100}ms`,
-                  opacity: 0,
-                  animation: 'animate-in 0.5s ease-out forwards'
-                }}
-              >
-                <CardHeader>
-                  <feature.icon className="h-8 w-8 mb-2 text-[#004aac] feature-icon" />
-                  <CardTitle className="text-[#004aac] group-hover:translate-x-1 transition-transform duration-300">
-                    {feature.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground group-hover:text-foreground transition-colors duration-300">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+        {/* --- Latest Updates & Events (Bento Grid) --- */}
+        <section className="py-24 bg-muted/30">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
+                What's Happening
+              </h2>
+              <p className="text-lg text-foreground/70 max-w-2xl mx-auto">
+                Stay updated with our latest events, classes, and community gatherings.
+              </p>
+            </div>
+            <BentoGrid items={bentoItems} />
           </div>
         </section>
 
-        <CTASection />
+        {/* --- Why Join Us + Call to Action --- */}
+        <GradientCTA />
+
       </main>
       <Footer />
     </div>

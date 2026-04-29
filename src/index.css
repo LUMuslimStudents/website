@@ -4,25 +4,25 @@
  
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 10% 30%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 10% 30%;
+    --background: 37 75% 96%; /* Cream #fdf6eb */
+    --foreground: 214 100% 15%; /* Deep Blue for text */
+    --card: 0 0% 100%; /* White for cards to pop against cream */
+    --card-foreground: 214 100% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 10% 30%;
-    --primary: 212 100% 34%;  /* LUMS Blue #004aac */
+    --popover-foreground: 214 100% 15%;
+    --primary: 214 100% 34%;  /* Blue #004aac */
     --primary-foreground: 0 0% 100%;
-    --secondary: 35 85% 55%;  /* Warm Gold */
+    --secondary: 36 99% 33%;  /* Gold #a86601 */
     --secondary-foreground: 0 0% 100%;
-    --muted: 212 30% 97%;    /* Light Blue Background */
-    --muted-foreground: 212 20% 40%;
-    --accent: 212 100% 34%;  /* LUMS Blue */
+    --muted: 37 30% 90%;    /* Muted cream/gold */
+    --muted-foreground: 214 20% 40%;
+    --accent: 36 99% 33%;  /* Gold #a86601 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 212 20% 90%;
-    --input: 212 20% 90%;
-    --ring: 212 100% 34%;
+    --border: 37 30% 85%;
+    --input: 37 30% 85%;
+    --ring: 214 100% 34%;
     --radius: 0.75rem;
 
     /* Motion foundation for organic/springy UI animations */
@@ -42,7 +42,7 @@
     --popover-foreground: 210 40% 98%;
     --primary: 212 100% 50%;          /* Brighter LUMS Blue for dark mode */
     --primary-foreground: 210 40% 98%;
-    --secondary: 35 85% 55%;          /* Keep gold color */
+    --secondary: 36 99% 33%;          /* Keep exact gold color */
     --secondary-foreground: 210 40% 98%;
     --muted: 222 47% 15%;             /* Subtle background for muted areas */
     --muted-foreground: 210 40% 80%;  /* Softer text for muted content */

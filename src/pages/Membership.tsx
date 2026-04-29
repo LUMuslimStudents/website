@@ -30,7 +30,7 @@ const Membership = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-8">
+      <main className="flex-1 pt-32 container py-8">
         <MembershipHero />
         
         <div className="text-center mb-12 animate-in">

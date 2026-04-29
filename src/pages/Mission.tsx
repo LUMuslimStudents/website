@@ -23,7 +23,7 @@ const Mission = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1 pt-32">
         <div className="container py-12">
           <h1 className="text-4xl font-bold text-center text-[#004aac] mb-16">
             Mission & Vision
