@@ -11,7 +11,7 @@ if (BACKEND === "REST") {
     schema = "schema.mysql.prisma"; 
   }
   else if (BACKEND === "supabase") {
-    db_url = "VITE_SUPABASE_URL";
+    db_url = "DIRECT_SB_URL";
     schema = "schema.postgres.prisma"; 
 }
 else {

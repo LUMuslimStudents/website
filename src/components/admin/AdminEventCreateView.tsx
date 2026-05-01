@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, forwardRef, SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, InputHTMLAttributes } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format, parse, isValid } from "date-fns";
 import { ArrowLeft, Clock3, HelpCircle, Eye, Code, MapPin, Clock, Calendar, Users, User, GraduationCap, Mail, VenusAndMars, Plus, Type, CircleDot, ListChecks } from "lucide-react";
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
 import { PosterUploader } from "@/components/admin/PosterUploader";
+import { apiRequest } from "@/lib/api";
 import {
   DynamicQuestionCard,
   type DynamicFormFieldDraft,
@@ -35,8 +36,10 @@ import InputMask from "react-input-mask";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "react-datepicker/dist/react-datepicker.css";
 import "./AdminEventCreateView.css";
+import type { AdminEventFormField } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
 
 type PublishMode = "draft" | "publish";
 
@@ -54,6 +57,28 @@ type FormState = {
   price_alumnus: string;
   description: string;
 };
+
+const buildPosterCandidateUrls = (poster: string | null | undefined) => {
+  if (!poster) {
+    return [];
+  }
+
+  if (poster.startsWith("http://") || poster.startsWith("https://")) {
+    return [poster];
+  }
+
+  const normalizedPoster = poster.startsWith("/") ? poster : `/${poster}`;
+  return POSTER_EXTENSIONS.map((ext) => `${API_BASE_URL}${normalizedPoster}/0.${ext}`);
+};
+
+const mapEventFieldToDraft = (field: AdminEventFormField): DynamicFormFieldDraft => ({
+  id: field.id,
+  question: field.question,
+  help_text: field.help_text || "",
+  field_type: field.field_type as DynamicFormFieldType,
+  is_required: field.is_required,
+  options_text: field.options?.join("\n") || "",
+});
 
 const INITIAL_FORM: FormState = {
   title: "",
@@ -227,6 +252,7 @@ const DateTimeMaskedInput = forwardRef<HTMLInputElement, PickerInputProps>((prop
 DateTimeMaskedInput.displayName = "DateTimeMaskedInput";
 
 export const AdminEventCreateView = () => {
+  const { eventId } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [dynamicFormFields, setDynamicFormFields] = useState<DynamicFormFieldDraft[]>([]);
@@ -236,13 +262,73 @@ export const AdminEventCreateView = () => {
   const [questionTypePickerOpen, setQuestionTypePickerOpen] = useState(false);
   const questionTypePickerCloseTimeoutRef = useRef<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [loadingEvent, setLoadingEvent] = useState(Boolean(eventId));
+  const [existingPosterCandidates, setExistingPosterCandidates] = useState<string[]>([]);
   const { resolvedTheme } = useTheme();
+  const isEditing = typeof eventId === "string" && !Number.isNaN(Number(eventId));
+  const parsedEventId = isEditing ? Number(eventId) : null;
+  const invalidEventId = Boolean(eventId) && !isEditing;
 
   const isSubmitting = submittingMode !== null;
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isEditing || parsedEventId === null) {
+      setLoadingEvent(false);
+      setExistingPosterCandidates([]);
+      setForm(INITIAL_FORM);
+      setDynamicFormFields([]);
+      setImages([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingEvent(true);
+
+    const fetchEvent = async () => {
+      try {
+        const data = await apiRequest(`/admin/events/${parsedEventId}`) as AdminEventDetail;
+        if (!isMounted) {
+          return;
+        }
+
+        setForm({
+          title: data.title,
+          date: data.date,
+          start_time: data.start_time,
+          end_time: data.end_time,
+          deadline: data.deadline ? formatDateTimeValue(new Date(data.deadline)) : "",
+          address: data.address,
+          invitation: data.invitation,
+          siblings: data.siblings,
+          price_member: String(data.price_member),
+          price_nonmember: String(data.price_nonmember),
+          price_alumnus: String(data.price_alumnus),
+          description: data.description || "",
+        });
+        setDynamicFormFields((data.form_fields || []).map(mapEventFieldToDraft));
+        setImages([]);
+        setExistingPosterCandidates(buildPosterCandidateUrls(data.poster));
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to load event';
+        toast.error(message);
+        navigate('/admin/events');
+      } finally {
+        if (isMounted) {
+          setLoadingEvent(false);
+        }
+      }
+    };
+
+    void fetchEvent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isEditing, navigate, parsedEventId]);
 
   const colorMode = mounted && resolvedTheme === "dark" ? "dark" : "light";
 
@@ -408,7 +494,7 @@ export const AdminEventCreateView = () => {
       return;
     }
 
-    if (images.length === 0) {
+    if (images.length === 0 && !existingPosterCandidates.length) {
       toast.warning('No poster uploaded. You can still continue.');
     }
 
@@ -468,8 +554,12 @@ export const AdminEventCreateView = () => {
     setSubmittingMode(submitMode);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/create-event`, {
-        method: 'POST',
+      const endpoint = isEditing && parsedEventId !== null
+        ? `/admin/events/${parsedEventId}`
+        : '/admin/create-event';
+
+      const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+        method: isEditing && parsedEventId !== null ? 'PATCH' : 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -478,30 +568,66 @@ export const AdminEventCreateView = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to create event');
+        throw new Error(data?.error || (isEditing ? 'Failed to update event' : 'Failed to create event'));
       }
 
-      const createdEventId = data?.event?.id;
-      toast.success(submitMode === 'draft' ? 'Draft saved.' : 'Event created successfully.');
+      const savedEventId = data?.event?.id ?? parsedEventId;
+      toast.success(
+        submitMode === 'draft'
+          ? (isEditing ? 'Draft updated.' : 'Draft saved.')
+          : (isEditing ? 'Event updated successfully.' : 'Event created successfully.')
+      );
 
-      if (createdEventId) {
-        navigate(`/admin/events/${createdEventId}`);
+      if (savedEventId) {
+        navigate(`/admin/events/${savedEventId}`);
       } else {
         navigate('/admin/events');
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create event');
+      toast.error(error instanceof Error ? error.message : (isEditing ? 'Failed to update event' : 'Failed to create event'));
     } finally {
       setSubmittingMode(null);
     }
   };
 
+  if (invalidEventId) {
+    return (
+      <div className="admin-event-create-view mx-auto max-w-5xl space-y-3 pb-8">
+        <Card className="overflow-hidden border border-slate-200/80 bg-white/95 shadow-sm dark:border-slate-800 dark:bg-slate-950/75">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-200/70 bg-white/65 pb-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
+            <CardTitle className="text-xl font-semibold tracking-tight">Invalid event id</CardTitle>
+            <Button type="button" variant="outline" onClick={() => navigate('/admin/events')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loadingEvent) {
+    return (
+      <div className="admin-event-create-view mx-auto max-w-5xl space-y-3 pb-8">
+        <Card className="overflow-hidden border border-slate-200/80 bg-white/95 shadow-sm dark:border-slate-800 dark:bg-slate-950/75">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-200/70 bg-white/65 pb-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
+            <CardTitle className="text-xl font-semibold tracking-tight">{isEditing ? 'Loading event...' : 'Create event'}</CardTitle>
+            <Button type="button" variant="outline" onClick={() => navigate(isEditing && parsedEventId !== null ? `/admin/events/${parsedEventId}` : '/admin/events')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-event-create-view mx-auto max-w-5xl space-y-3 pb-8">
       <Card className="overflow-hidden border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-slate-100/60 shadow-[0_18px_45px_-25px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/80 dark:shadow-[0_18px_45px_-25px_rgba(0,0,0,0.75)] animate-fade-in">
         <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-200/70 bg-white/65 pb-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
-          <CardTitle className="text-xl font-semibold tracking-tight">Create event</CardTitle>
-          <Button type="button" variant="outline" className="rounded-full bg-white/85 transition-colors duration-200 dark:border-slate-700 dark:bg-slate-900/80 dark:hover:bg-slate-800" onClick={() => navigate('/admin/events')}>
+          <CardTitle className="text-xl font-semibold tracking-tight">{isEditing ? 'Edit event' : 'Create event'}</CardTitle>
+          <Button type="button" variant="outline" className="rounded-full bg-white/85 transition-colors duration-200 dark:border-slate-700 dark:bg-slate-900/80 dark:hover:bg-slate-800" onClick={() => navigate(isEditing && parsedEventId !== null ? `/admin/events/${parsedEventId}` : '/admin/events')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -521,7 +647,7 @@ export const AdminEventCreateView = () => {
             <div className="grid gap-6 md:grid-cols-[1fr_2fr] lg:grid-cols-[460px_1fr]">
               {/* Poster Carousel */}
               <div className="rounded-t-3xl border-b border-slate-200/70 p-4 md:rounded-l-3xl md:rounded-r-none md:border-b-0 md:border-r dark:border-slate-800/80">
-                <PosterUploader files={images} onChange={setImages} />
+                <PosterUploader files={images} onChange={setImages} existingPosterCandidates={existingPosterCandidates} />
               </div>
 
               {/* Title + Details Input */}
@@ -1041,10 +1167,10 @@ export const AdminEventCreateView = () => {
                     void submit('draft');
                   }}
                 >
-                  {submittingMode === 'draft' ? 'Saving draft...' : 'Save draft'}
+                  {submittingMode === 'draft' ? (isEditing ? 'Saving changes...' : 'Saving draft...') : (isEditing ? 'Save draft' : 'Save draft')}
                 </Button>
                 <Button type="submit" className="rounded-full transition-all duration-200 hover:shadow-lg" disabled={isSubmitting || minimumRequiredMissing || dynamicFieldsInvalid}>
-                  {submittingMode === 'publish' ? 'Publishing...' : 'Publish event'}
+                  {submittingMode === 'publish' ? (isEditing ? 'Publishing changes...' : 'Publishing...') : (isEditing ? 'Publish changes' : 'Publish event')}
                 </Button>
               </div>
             </div>

@@ -1,9 +1,9 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
@@ -19,6 +19,7 @@ const formSchema = z.object({
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation() as { state?: { email?: string } };
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -28,6 +29,13 @@ const Login = () => {
       password: '',
     },
   });
+
+  useEffect(() => {
+    const email = location.state?.email;
+    if (email) {
+      form.setValue('email', email);
+    }
+  }, [form, location.state]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
@@ -42,8 +50,8 @@ const Login = () => {
       } else {
         navigate('/');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Login failed');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -67,7 +75,7 @@ const Login = () => {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="john@example.com" {...field} />
+                        <Input type="email" placeholder="ab1234cd-s@student.lu.se" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -87,6 +95,12 @@ const Login = () => {
                     </FormItem>
                   )}
                 />
+
+                <div className="flex justify-end">
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Logging in...' : 'Login'}

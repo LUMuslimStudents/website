@@ -1,8 +1,9 @@
 import { supabaseClient } from "]/supabase";
 
 export const getSupabaseData = async (endpoint: string, method: string = 'GET', body?: any) => {
-    if (endpoint === "/current-events") {
-        const resp = await supabaseClient.from('test').select('*');
+    console.log(endpoint);
+    if (endpoint === "/events/current-events") {
+        const resp = await supabaseClient.from('events_info').select('*');
         if (!resp.success) {
             throw new Error("Upstream DB error");
         }
