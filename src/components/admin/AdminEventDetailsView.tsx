@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronUp, Columns3, Filter, GripHorizontal, ListFilter, Table2, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { apiRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -460,6 +461,7 @@ const AdminGroupedParticipantCard = ({
 };
 
 export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps) => {
+  const navigate = useNavigate();
   const [event, setEvent] = useState<AdminEventDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -473,6 +475,8 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
   const [deleteTargetRegistration, setDeleteTargetRegistration] = useState<AdminEventRegistration | null>(null);
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<string | null>(null);
+  const [updatingPublishState, setUpdatingPublishState] = useState(false);
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [dragHandleCenters, setDragHandleCenters] = useState<Record<string, number>>({});
   const tableViewportRef = useRef<HTMLDivElement | null>(null);
@@ -678,6 +682,29 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
       toast.error(error.message || "Failed to save participant statuses");
     } finally {
       setSavingStatuses(false);
+    }
+  };
+
+  const setPublishState = async (nextIsPublished: boolean) => {
+    if (!event || event.is_published === nextIsPublished) {
+      return;
+    }
+
+    setUpdatingPublishState(true);
+    try {
+      const response = await apiRequest(`/admin/events/${event.id}/publish-state`, "PATCH", { is_published: nextIsPublished }) as {
+        event?: { is_published?: boolean };
+      };
+
+      if (response?.event?.is_published === nextIsPublished) {
+        setEvent((previous) => (previous ? { ...previous, is_published: nextIsPublished } : previous));
+      }
+
+      toast.success(nextIsPublished ? "Event published." : "Event unpublished.");
+    } catch (error: any) {
+      toast.error(error.message || `Failed to ${nextIsPublished ? "publish" : "unpublish"} event`);
+    } finally {
+      setUpdatingPublishState(false);
     }
   };
 
@@ -953,6 +980,9 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
+              <span className={event.is_published === false ? "rounded-full border border-red-200 bg-red-50 px-2 py-1 text-red-700" : "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700"}>
+                {event.is_published === false ? "Draft" : "Published"}
+              </span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{participantCount} registered</span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{event.invitation}</span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{event.siblings}</span>
@@ -1288,7 +1318,38 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                 </p>
               ) : null}
 
-              <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={event.is_published === false ? "default" : "destructive"}
+                    size="sm"
+                    disabled={updatingPublishState}
+                    onClick={() => {
+                      if (event.is_published === false) {
+                        void setPublishState(true);
+                        return;
+                      }
+
+                      setUnpublishConfirmOpen(true);
+                    }}
+                  >
+                    {updatingPublishState
+                      ? (event.is_published === false ? "Publishing..." : "Unpublishing...")
+                      : (event.is_published === false ? "Publish event" : "Unpublish")}
+                  </Button>
+                  {event.is_published === false ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/events/${event.id}/edit`)}
+                    >
+                      Edit draft
+                    </Button>
+                  ) : null}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
                   {pendingStatusUpdateCount > 0 ? (
                     <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
@@ -1353,6 +1414,34 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
               disabled={Boolean(deletingRegistrationId)}
             >
               {deletingRegistrationId ? "Deleting..." : requiresExtraDeleteConfirmation && deleteConfirmStep === 1 ? "Continue" : "Delete registration"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={unpublishConfirmOpen}
+        onOpenChange={setUnpublishConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unpublish this event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the event from public listings. Existing registrations will remain unchanged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingPublishState}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                setUnpublishConfirmOpen(false);
+                void setPublishState(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={updatingPublishState}
+            >
+              {updatingPublishState ? "Unpublishing..." : "Unpublish"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

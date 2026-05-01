@@ -27,6 +27,7 @@ type PosterUploaderProps = {
   files: File[];
   onChange: (files: File[]) => void;
   maxFiles?: number;
+  existingPosterCandidates?: string[];
 };
 
 type SortableThumbProps = {
@@ -79,9 +80,10 @@ const SortableThumb = ({ id, previewUrl, index, isActive, onSelect, onRemove }: 
   );
 };
 
-export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES }: PosterUploaderProps) => {
+export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES, existingPosterCandidates = [] }: PosterUploaderProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [existingPosterIndex, setExistingPosterIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fileIdsRef = useRef(new WeakMap<File, string>());
@@ -129,6 +131,10 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES }
       setCurrentIndex(posterItems.length - 1);
     }
   }, [currentIndex, posterItems.length]);
+
+  useEffect(() => {
+    setExistingPosterIndex(0);
+  }, [existingPosterCandidates]);
 
   const appendFiles = (incoming: File[]) => {
     const imageFiles = incoming.filter((file) => file.type.startsWith("image/"));
@@ -205,6 +211,7 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES }
   const activePoster = posterItems[currentIndex];
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < posterItems.length - 1;
+  const activeExistingPoster = posterItems.length === 0 ? existingPosterCandidates[existingPosterIndex] : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -227,6 +234,15 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES }
               src={activePoster.previewUrl}
               alt={`Event poster ${currentIndex + 1}`}
               className="h-full w-full object-contain"
+            />
+          ) : activeExistingPoster ? (
+            <img
+              src={activeExistingPoster}
+              alt="Existing event poster"
+              className="h-full w-full object-contain"
+              onError={() => {
+                setExistingPosterIndex((index) => index + 1);
+              }}
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500">

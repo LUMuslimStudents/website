@@ -42,3 +42,24 @@ export const sendVerificationEmail = async (email: string, code: string) => {
         return false;
     }
 };
+
+// Helper function to send password reset email
+export const sendPasswordResetEmail = async (email: string, code: string) => {
+    try {
+        await transporter.sendMail({
+            from: EMAIL_USER,
+            to: email,
+            subject: 'Password Reset Code',
+            html: `
+                <h2>Reset Your Password</h2>
+                <p>Your password reset code is: <strong>${code}</strong></p>
+                <p>This code will expire in 10 minutes.</p>
+                <p>If you didn't request this, you can ignore this email.</p>
+            `,
+        });
+        return true;
+    } catch (error) {
+        console.error('Error sending password reset email:', error);
+        return false;
+    }
+};

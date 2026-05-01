@@ -46,6 +46,7 @@ export const AdminEventsTab = () => {
       events={events}
       loading={false}
       onOpenEvent={(eventId) => navigate(`/admin/events/${eventId}`)}
+      onEditEvent={(eventId) => navigate(`/admin/events/${eventId}/edit`)}
       onCreateEvent={() => navigate('/admin/events/new')}
     />
   );

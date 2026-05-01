@@ -2,9 +2,11 @@ import { Express } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { generateVerificationCode, sendVerificationEmail } from './utils';
+import { generateVerificationCode, sendPasswordResetEmail, sendVerificationEmail } from './utils';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_jwt_key_please_change';
+const PASSWORD_RESET_EXPIRATION_MS = 10 * 60 * 1000;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*\d).{6,}$/;
 
 export function setupAuthRoutes(app: Express, prisma: PrismaClient) {
     // POST /api/auth/signup - Create unverified user and send verification code
@@ -198,7 +200,7 @@ export function setupAuthRoutes(app: Express, prisma: PrismaClient) {
             }
 
             // Mark email as verified and update completions
-            let completedVerifications = Array.isArray(pendingSignup.verifications_completed) 
+            const completedVerifications = Array.isArray(pendingSignup.verifications_completed) 
                 ? pendingSignup.verifications_completed 
                 : [];
             
@@ -419,6 +421,105 @@ export function setupAuthRoutes(app: Express, prisma: PrismaClient) {
             console.log("POST: /auth/login");
         } catch (error) {
             console.error('Login error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // POST /api/auth/forgot-password - Send password reset code to email
+    app.post('/api/auth/forgot-password', async (req, res) => {
+        try {
+            const { email } = req.body;
+
+            if (!email) {
+                return res.status(400).json({ error: 'Email is required' });
+            }
+
+            const user = await prisma.users.findFirst({ where: { email } });
+            if (!user) {
+                return res.status(404).json({ error: 'No account found for this email' });
+            }
+
+            const resetCode = generateVerificationCode();
+            const resetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRATION_MS);
+
+            await prisma.password_reset_tokens.upsert({
+                where: { email },
+                create: {
+                    email,
+                    reset_code: resetCode,
+                    expires_at: resetExpiresAt,
+                },
+                update: {
+                    reset_code: resetCode,
+                    expires_at: resetExpiresAt,
+                },
+            });
+
+            const emailSent = await sendPasswordResetEmail(email, resetCode);
+
+            if (!emailSent) {
+                await prisma.password_reset_tokens.delete({ where: { email } });
+                return res.status(500).json({ error: 'Failed to send password reset email' });
+            }
+
+            res.status(200).json({
+                message: 'Password reset code sent to email',
+                email,
+                expiresInSeconds: PASSWORD_RESET_EXPIRATION_MS / 1000,
+            });
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // POST /api/auth/reset-password - Verify code and set new password
+    app.post('/api/auth/reset-password', async (req, res) => {
+        try {
+            const { email, code, password } = req.body;
+
+            if (!email || !code || !password) {
+                return res.status(400).json({ error: 'Email, code and password are required' });
+            }
+
+            if (!PASSWORD_REGEX.test(password)) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters with lowercase and numbers' });
+            }
+
+            const resetToken = await prisma.password_reset_tokens.findUnique({ where: { email } });
+
+            if (!resetToken) {
+                return res.status(400).json({ error: 'No password reset request found for this email' });
+            }
+
+            if (resetToken.expires_at < new Date()) {
+                await prisma.password_reset_tokens.delete({ where: { email } });
+                return res.status(400).json({ error: 'Reset code expired. Please request a new one.' });
+            }
+
+            if (resetToken.reset_code !== code) {
+                return res.status(400).json({ error: 'Invalid reset code' });
+            }
+
+            const user = await prisma.users.findFirst({ where: { email } });
+            if (!user) {
+                await prisma.password_reset_tokens.delete({ where: { email } });
+                return res.status(404).json({ error: 'No account found for this email' });
+            }
+
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            await prisma.users.update({
+                where: { id: user.id },
+                data: { password: hashedPassword },
+            });
+
+            await prisma.password_reset_tokens.delete({ where: { email } });
+
+            res.status(200).json({ message: 'Password reset successfully. You can now log in with your new password.' });
+        } catch (error) {
+            console.error('Reset password error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });

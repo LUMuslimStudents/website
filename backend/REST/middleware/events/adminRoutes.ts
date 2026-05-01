@@ -120,6 +120,172 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
         }
     });
 
+    // PATCH /api/admin/events/:id - Update event details with optional image upload (Admin only)
+    app.patch('/api/admin/events/:id', authenticateToken, requireAdmin, upload.array('image', 10), async (req: AuthRequest, res) => {
+        try {
+            const id = Number(req.params.id);
+            if (Number.isNaN(id)) {
+                removeUploadedFiles(Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : []);
+                return res.status(400).json({ error: 'Invalid event id' });
+            }
+
+            const existingEvent = await prisma.events_info.findUnique({
+                where: { id },
+                select: {
+                    id: true,
+                    poster: true,
+                },
+            });
+
+            if (!existingEvent) {
+                removeUploadedFiles(Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : []);
+                return res.status(404).json({ error: 'Event not found' });
+            }
+
+            const { title, date, start_time, end_time, deadline, address, invitation, siblings, price_member, price_nonmember, price_alumnus, description, form_fields, publish_mode } = req.body;
+            const normalizedPublishMode = String(publish_mode || 'publish').toLowerCase();
+            const isPublished = normalizedPublishMode !== 'draft';
+            const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
+            const eventSlug = (req as AuthRequest & { eventSlug?: string }).eventSlug || toEventSlug(String(title || 'event'));
+
+            if (!title || !date || !start_time || !end_time || !deadline || !address) {
+                removeUploadedFiles(files);
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
+
+            const parsedDate = parseDateOnly(String(date));
+            const parsedStartTime = parseTimeOnly(String(start_time));
+            const parsedEndTime = parseTimeOnly(String(end_time));
+            const parsedDeadline = new Date(String(deadline));
+
+            if (!parsedDate || !parsedStartTime || !parsedEndTime || Number.isNaN(parsedDeadline.getTime())) {
+                removeUploadedFiles(files);
+                return res.status(400).json({
+                    error: 'Invalid date/time format. Use YYYY-MM-DD for date, HH:MM for time, and ISO datetime for deadline.'
+                });
+            }
+
+            const hasFormFields = Object.prototype.hasOwnProperty.call(req.body, 'form_fields');
+            const normalizedFormFields = hasFormFields ? normalizeCreateEventFormFields(form_fields) : { fields: [] };
+            if (hasFormFields && normalizedFormFields.error) {
+                removeUploadedFiles(files);
+                return res.status(400).json({ error: normalizedFormFields.error });
+            }
+
+            const updatedEvent = await prisma.$transaction(async (tx) => {
+                const posterPath = files.length > 0 ? `events/${eventSlug}` : existingEvent.poster;
+
+                const event = await tx.events_info.update({
+                    where: { id },
+                    data: {
+                        title,
+                        date: parsedDate,
+                        start_time: parsedStartTime,
+                        end_time: parsedEndTime,
+                        deadline: parsedDeadline,
+                        address,
+                        invitation: invitation || 'members',
+                        siblings: siblings || 'all',
+                        price_member: parseInt(price_member) || 0,
+                        price_nonmember: parseInt(price_nonmember) || 0,
+                        price_alumnus: parseInt(price_alumnus) || 0,
+                        description: description || null,
+                        poster: posterPath,
+                        is_published: isPublished,
+                    },
+                });
+
+                if (hasFormFields) {
+                    await tx.event_form_fields.updateMany({
+                        where: { event_id: id, active: true },
+                        data: { active: false },
+                    });
+
+                    if (normalizedFormFields.fields.length > 0) {
+                        await tx.event_form_fields.createMany({
+                            data: normalizedFormFields.fields.map((field) => ({
+                                event_id: event.id,
+                                question: field.question,
+                                help_text: field.help_text,
+                                field_type: field.field_type,
+                                is_required: field.is_required,
+                                sort_order: field.sort_order,
+                                options: field.options,
+                            })),
+                        });
+                    }
+                }
+
+                return event;
+            });
+
+            res.status(200).json({
+                message: 'Event updated successfully',
+                event: {
+                    ...updatedEvent,
+                    date: updatedEvent.date.toISOString().split('T')[0],
+                    start_time: updatedEvent.start_time.toISOString().split('T')[1].substring(0, 5),
+                    end_time: updatedEvent.end_time.toISOString().split('T')[1].substring(0, 5),
+                },
+            });
+        } catch (error) {
+            console.error('Update event error:', error);
+            removeUploadedFiles(Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : []);
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                const target = Array.isArray(error.meta?.target)
+                    ? (error.meta.target as string[])
+                    : [];
+
+                if (target.includes('title')) {
+                    return res.status(409).json({ error: 'An event with this title already exists.' });
+                }
+            }
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // PATCH /api/admin/events/:id/publish-state - Update publish status only (Admin only)
+    app.patch('/api/admin/events/:id/publish-state', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+        try {
+            const id = Number(req.params.id);
+            if (Number.isNaN(id)) {
+                return res.status(400).json({ error: 'Invalid event id' });
+            }
+
+            const publishMode = String(req.body?.publish_mode ?? '').toLowerCase();
+            const nextIsPublished = typeof req.body?.is_published === 'boolean'
+                ? req.body.is_published
+                : publishMode
+                    ? publishMode !== 'draft'
+                    : null;
+
+            if (nextIsPublished === null) {
+                return res.status(400).json({ error: 'Missing publish state' });
+            }
+
+            const updatedEvent = await prisma.events_info.update({
+                where: { id },
+                data: { is_published: nextIsPublished },
+            });
+
+            res.json({
+                message: nextIsPublished ? 'Event published successfully' : 'Event unpublished successfully',
+                event: {
+                    ...updatedEvent,
+                    date: updatedEvent.date.toISOString().split('T')[0],
+                    start_time: updatedEvent.start_time.toISOString().split('T')[1].substring(0, 5),
+                    end_time: updatedEvent.end_time.toISOString().split('T')[1].substring(0, 5),
+                },
+            });
+        } catch (error) {
+            console.error('Update event publish state error:', error);
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                return res.status(404).json({ error: 'Event not found' });
+            }
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
     // GET /api/admin/events-with-registrations - Admin only
     app.get('/api/admin/events-with-registrations', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
         try {

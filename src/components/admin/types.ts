@@ -57,6 +57,7 @@ export type AdminEventFormField = {
   help_text: string | null;
   is_required: boolean;
   sort_order: number;
+  options?: string[];
 };
 
 export type AdminEventRegistration = {

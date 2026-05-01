@@ -20,6 +20,7 @@ type AdminEventsListProps = {
   loading: boolean;
   onOpenEvent: (eventId: number) => void;
   onCreateEvent: () => void;
+  onEditEvent: (eventId: number) => void;
 };
 
 const formatDateOnly = (value?: string | null) => {
@@ -84,7 +85,7 @@ const EventPosterThumbnail = ({ event }: { event: AdminEventSummary }) => {
   );
 };
 
-export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent }: AdminEventsListProps) => {
+export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent, onEditEvent }: AdminEventsListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "past">("all");
   const [termFilter, setTermFilter] = useState<string>("all");
@@ -403,8 +404,9 @@ export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent }:
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="link"
           size="sm"
+          className="text-blue-500"
           onClick={() => {
             setSearch("");
             setStatusFilter("all");
@@ -441,10 +443,10 @@ export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent }:
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <CardTitle className="text-xl">{event.title}</CardTitle>
-                          <Badge className={event.is_published === false ? "border-amber-200 bg-amber-50 text-amber-700" : "border-blue-200 bg-blue-50 text-blue-700"} variant="outline">
+                          <Badge className={event.is_published === false ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"} variant="outline">
                             {event.is_published === false ? "Draft" : "Published"}
                           </Badge>
-                          <Badge className={eventIsPast ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"} variant="outline">
+                          <Badge className={eventIsPast ? "border-orange-200 bg-orange-50 text-orange-700" : "border-blue-200 bg-blue-50 text-blue-700"} variant="outline">
                             {eventIsPast ? "Past" : "Upcoming"}
                           </Badge>
                         </div>
@@ -470,7 +472,21 @@ export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent }:
                   <p className="text-sm text-muted-foreground">
                     {event.registration_count > 0 ? `${event.registration_count} participant${event.registration_count === 1 ? '' : 's'} available` : 'No registrations yet'}
                   </p>
-                  <Button variant="default">Open event</Button>
+                  <div className="flex flex-wrap gap-2">
+                    {!event.is_published ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={(clickEvent) => {
+                          clickEvent.stopPropagation();
+                          onEditEvent(event.id);
+                        }}
+                      >
+                        Edit draft
+                      </Button>
+                    ) : null}
+                    <Button variant="default">Open event</Button>
+                  </div>
                 </CardContent>
               </Card>
             );

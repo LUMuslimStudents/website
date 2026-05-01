@@ -15,6 +15,7 @@ import { ThemeProvider } from "next-themes";
 import Suggestions from "./pages/Suggestions";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
 // import Checkout from "./pages/StripeCheckout";
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/mission" element={<Mission />} />
               <Route path="/suggestions" element={<Suggestions />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin" element={<AdminDashboard />}>
@@ -50,6 +52,7 @@ const App = () => (
                 <Route path="users" element={<AdminUsersRoute />} />
                 <Route path="events" element={<AdminEventsTab />} />
                 <Route path="events/new" element={<AdminEventCreateView />} />
+                <Route path="events/:eventId/edit" element={<AdminEventCreateView />} />
                 <Route path="events/:eventId" element={<AdminEventDetailRoute />} />
               </Route>
               <Route path="*" element={<NotFound />} />
