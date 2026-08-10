@@ -1,7 +1,7 @@
 import { Express } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateTokenOptional, AuthRequest } from '../auth';
-import { buildIcsPayload, fixDateTimeFormat, getActiveEventFormFields } from './shared';
+import { buildIcsPayload, fixDateTimeFormat, getEventFormFields } from './shared';
 
 export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
     // GET /api/events/current-events
@@ -9,6 +9,20 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
         try {
             const isLoggedIn = Boolean(req.user);
             const events = await prisma.events_info.findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    date: true,
+                    start_time: true,
+                    end_time: true,
+                    deadline: true,
+                    address: true,
+                    invitation: true,
+                    siblings: true,
+                    price_member: true,
+                    price_nonmember: true,
+                    poster: true,
+                },
                 where: {
                     is_published: true,
                     date: { gte: new Date() },
@@ -21,7 +35,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             if (req.user?.id && events.length > 0) {
                 const registrations = await prisma.event_registrations.findMany({
                     where: {
-                        user_id: BigInt(req.user.id),
+                        user_id: String(req.user.id),
                         status: { not: 'cancelled' },
                         event_id: { in: events.map((event) => event.id) },
                     },
@@ -31,7 +45,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             }
 
             res.json(events.map((event) => ({
-                ...fixDateTimeFormat(event),
+                ...fixDateTimeFormat(event as never),
                 is_registered: registeredEventIds.has(event.id),
             })));
             // res.json(events);
@@ -48,6 +62,20 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
         try {
             const isLoggedIn = Boolean(req.user);
             const events = await prisma.events_info.findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    date: true,
+                    start_time: true,
+                    end_time: true,
+                    deadline: true,
+                    address: true,
+                    invitation: true,
+                    siblings: true,
+                    price_member: true,
+                    price_nonmember: true,
+                    poster: true,
+                },
                 where: {
                     is_published: true,
                     deadline: { lt: new Date() },
@@ -60,7 +88,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             if (req.user?.id && events.length > 0) {
                 const registrations = await prisma.event_registrations.findMany({
                     where: {
-                        user_id: BigInt(req.user.id),
+                        user_id: String(req.user.id),
                         status: { not: 'cancelled' },
                         event_id: { in: events.map((event) => event.id) },
                     },
@@ -70,7 +98,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
             }
 
             res.json(events.map((event) => ({
-                ...fixDateTimeFormat(event),
+                ...fixDateTimeFormat(event as never),
                 is_registered: registeredEventIds.has(event.id),
             })));
             // res.json(events);
@@ -107,7 +135,7 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
                     const existing = await prisma.event_registrations.findFirst({
                         where: {
                             event_id: event.id,
-                            user_id: BigInt(req.user.id),
+                            user_id: String(req.user.id),
                             status: { not: 'cancelled' },
                         },
                         select: { id: true },
@@ -123,13 +151,13 @@ export function setupEventPublicRoutes(app: Express, prisma: PrismaClient) {
                 return;
             }
 
-            const form_fields = await getActiveEventFormFields(prisma, event.id);
+            const form_fields = await getEventFormFields(prisma, event.id);
             let is_registered = false;
             if (req.user?.id) {
                 const existing = await prisma.event_registrations.findFirst({
                     where: {
                         event_id: event.id,
-                        user_id: BigInt(req.user.id),
+                        user_id: String(req.user.id),
                         status: { not: 'cancelled' },
                     },
                     select: { id: true },

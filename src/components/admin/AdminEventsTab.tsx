@@ -10,16 +10,23 @@ import { AdminEventsList } from "./AdminEventsList";
 export const AdminEventsTab = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState<AdminEventSummary[]>([]);
+  const [latestTerm, setLatestTerm] = useState<string>("");
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchEvents = async () => {
+    const fetchData = async () => {
       try {
-        const data = await apiRequest('/admin/events');
+        const [eventsData, currentOptions] = await Promise.all([
+          apiRequest('/admin/events'),
+          apiRequest('/options/current').catch(() => null),
+        ]);
         if (isMounted) {
-          setEvents(data);
+          setEvents(eventsData);
+          if (currentOptions?.term) {
+            setLatestTerm(currentOptions.term);
+          }
         }
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : 'Failed to fetch events');
@@ -30,7 +37,7 @@ export const AdminEventsTab = () => {
       }
     };
 
-    fetchEvents();
+    fetchData();
 
     return () => {
       isMounted = false;
@@ -45,6 +52,7 @@ export const AdminEventsTab = () => {
     <AdminEventsList
       events={events}
       loading={false}
+      latestTerm={latestTerm}
       onOpenEvent={(eventId) => navigate(`/admin/events/${eventId}`)}
       onEditEvent={(eventId) => navigate(`/admin/events/${eventId}/edit`)}
       onCreateEvent={() => navigate('/admin/events/new')}

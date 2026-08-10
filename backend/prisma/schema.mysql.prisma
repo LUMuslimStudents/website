@@ -8,17 +8,38 @@ datasource db {
 }
 
 model users {
-  id            BigInt    @id @unique(map: "id") @default(autoincrement()) @db.UnsignedBigInt
-  first_name    String    @db.VarChar(50)
-  last_name     String    @db.VarChar(50)
-  password      String    @db.VarChar(100)
-  email         String    @unique(map: "email") @db.VarChar(50)
-  role          Role      @default(user)
-  gender        Gender
-  study_program String    @db.VarChar(50)
-  phone_number  String    @unique(map: "phone_number") @db.VarChar(15)
-  term          String    @db.VarChar(4)
-  created_at    DateTime? @default(now()) @db.DateTime(0)
+  id                        String    @id @default(cuid())
+  first_name                String    @db.VarChar(50)
+  last_name                 String    @db.VarChar(50)
+  password                  String    @db.VarChar(100)
+  email                     String    @unique(map: "email") @db.VarChar(50)
+  role                      Role      @default(user)
+  gender                    Gender
+  study_program             String    @db.VarChar(50)
+  phone_number              String    @unique(map: "phone_number") @db.VarChar(15)
+  term                      String    @db.VarChar(4)
+  created_at                DateTime? @default(now()) @db.DateTime(0)
+  email_verified            Boolean   @default(false)
+  verification_token        String?   @db.VarChar(255)
+  verification_token_expires DateTime?
+  email_confirmed_at        DateTime?
+
+  refresh_tokens            refresh_tokens[]
+  password_reset_tokens     password_reset_tokens[]
+}
+
+model refresh_tokens {
+  id          String   @id @default(cuid())
+  user_id     String
+  token_hash  String   @unique(map: "token_hash") @db.VarChar(255)
+  expires_at  DateTime @db.DateTime(0)
+  created_at  DateTime @default(now()) @db.DateTime(0)
+  device_info String?  @db.VarChar(255)
+
+  user        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
 }
 
 model pending_signups {
@@ -43,10 +64,16 @@ model pending_signups {
 
 model password_reset_tokens {
   id          String   @id @default(cuid())
-  email       String   @unique(map: "email") @db.VarChar(50)
-  reset_code  String   @db.VarChar(6)
+  user_id     String
+  email       String   @db.VarChar(50)
+  token_hash  String   @unique(map: "token_hash") @db.VarChar(255)
   expires_at  DateTime @db.DateTime(0)
   created_at  DateTime @default(now()) @db.DateTime(0)
+
+  user        users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
 }
 
 model events_info {
@@ -73,7 +100,7 @@ model events_info {
 model event_registrations {
   id                  String                    @id @default(cuid())
   event_id            Int                       @db.UnsignedInt
-  user_id             BigInt?                   @db.UnsignedBigInt
+  user_id             String?
   status              EventRegistrationStatus   @default(pending)
   invitation_snapshot Invitation
   siblings_snapshot   Siblings
@@ -118,7 +145,6 @@ model event_form_fields {
   is_required  Boolean                     @default(false)
   sort_order   Int                         @default(0)
   options      Json?
-  active       Boolean                     @default(true)
   created_at   DateTime                    @default(now())
   updated_at   DateTime                    @updatedAt
 
@@ -143,6 +169,14 @@ model event_registration_field_answers {
   @@index([registration_id])
   @@index([field_id])
   @@unique([registration_id, field_id], map: "uniq_registration_answer_per_field")
+}
+
+model admin_options {
+  term                          String    @id @db.VarChar(4)
+  price_single_term             Int       @default(150)
+  price_discounted_two_term     Int       @default(300)
+  membership_open               Boolean   @default(true)
+  is_current                    Boolean   @default(false)
 }
 
 enum Role {

@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components/Navbar';
 
 const formSchema = z.object({
@@ -19,17 +20,18 @@ const formSchema = z.object({
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation() as { state?: { email?: string } };
+  const location = useLocation() as {
+    state?: { email?: string; signupSuccess?: boolean };
+  };
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
   });
 
+  // Pre-fill email from signup redirect
   useEffect(() => {
     const email = location.state?.email;
     if (email) {
@@ -37,19 +39,27 @@ const Login = () => {
     }
   }, [form, location.state]);
 
+  // Show signup success toast
+  useEffect(() => {
+    if (location.state?.signupSuccess) {
+      toast.success('Account created! Please check your email and click the confirmation link.');
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.signupSuccess]);
+
+  // Redirect if already logged in (e.g., after email confirmation auto-logs you in)
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'admin' ? '/admin' : '/', { replace: true });
+    }
+  }, [user, navigate]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      const data = await apiRequest('/auth/login', 'POST', values);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      await apiRequest('/auth/login', 'POST', values);
+      // Session is now managed by Supabase — useAuth will pick up the change
       toast.success('Logged in successfully!');
-
-      if (data.user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Login failed');
     } finally {

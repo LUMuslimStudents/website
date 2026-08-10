@@ -50,7 +50,7 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
             }
 
             let userRecord: {
-                id: bigint;
+                id: string;
                 first_name: string;
                 last_name: string;
                 email: string;
@@ -61,7 +61,7 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
 
             if (req.user?.id) {
                 userRecord = await prisma.users.findUnique({
-                    where: { id: BigInt(req.user.id) },
+                    where: { id: req.user.id },
                     select: {
                         id: true,
                         first_name: true,
@@ -198,7 +198,7 @@ export function setupEventRegistrationRoutes(app: Express, prisma: PrismaClient)
             }
 
             const formFields = await prisma.event_form_fields.findMany({
-                where: { event_id: id, active: true },
+                where: { event_id: id },
                 orderBy: { sort_order: 'asc' },
             });
 

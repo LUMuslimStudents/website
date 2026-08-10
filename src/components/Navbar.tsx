@@ -4,17 +4,16 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Navbar = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : null;
+  const { user, signOut } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    await signOut();
     setIsMenuOpen(false);
     navigate('/');
   };

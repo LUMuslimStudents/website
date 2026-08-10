@@ -6,7 +6,7 @@ import {
     RegistrationStatusUpdatePayload,
     fixDateTimeFormat,
     formatDateTime,
-    getActiveEventFormFields,
+    getEventFormFields,
     normalizeCreateEventFormFields,
     parseDateOnly,
     parseTimeOnly,
@@ -20,7 +20,12 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
     app.post('/api/admin/create-event', authenticateToken, requireAdmin, upload.array('image', 10), async (req: AuthRequest, res) => {
         try {
             const { title, date, start_time, end_time, deadline, address, invitation, siblings, price_member, price_nonmember, price_alumnus, description, form_fields, publish_mode } = req.body;
-            const term = process.env.MEMBERSHIP_TERM || 'XXXX';
+
+            // Get the current term from admin options
+            const currentOptions = await prisma.admin_options.findFirst({
+                where: { is_current: true },
+            });
+            const term = currentOptions?.term || 'XXXX';
             const normalizedPublishMode = String(publish_mode || 'publish').toLowerCase();
             const isPublished = normalizedPublishMode !== 'draft';
             const files = Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : [];
@@ -174,6 +179,12 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
 
             const updatedEvent = await prisma.$transaction(async (tx) => {
                 const posterPath = files.length > 0 ? `events/${eventSlug}` : existingEvent.poster;
+                const existingFormFields = await tx.event_form_fields.findMany({
+                    where: { event_id: id },
+                    select: { id: true },
+                });
+                const existingFieldIdSet = new Set(existingFormFields.map((field) => field.id));
+                const seenFieldIds = new Set<string>();
 
                 const event = await tx.events_info.update({
                     where: { id },
@@ -196,22 +207,44 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
                 });
 
                 if (hasFormFields) {
-                    await tx.event_form_fields.updateMany({
-                        where: { event_id: id, active: true },
-                        data: { active: false },
-                    });
+                    for (const field of normalizedFormFields.fields) {
+                        const hasExistingId = Boolean(field.id && existingFieldIdSet.has(field.id));
+                        if (hasExistingId && field.id) {
+                            seenFieldIds.add(field.id);
+                            await tx.event_form_fields.update({
+                                where: { id: field.id },
+                                data: {
+                                    question: field.question,
+                                    help_text: field.help_text,
+                                    field_type: field.field_type,
+                                    is_required: field.is_required,
+                                    sort_order: field.sort_order,
+                                    options: field.options,
+                                },
+                            });
+                        } else {
+                            const createdField = await tx.event_form_fields.create({
+                                data: {
+                                    event_id: event.id,
+                                    question: field.question,
+                                    help_text: field.help_text,
+                                    field_type: field.field_type,
+                                    is_required: field.is_required,
+                                    sort_order: field.sort_order,
+                                    options: field.options,
+                                },
+                            });
+                            seenFieldIds.add(createdField.id);
+                        }
+                    }
 
-                    if (normalizedFormFields.fields.length > 0) {
-                        await tx.event_form_fields.createMany({
-                            data: normalizedFormFields.fields.map((field) => ({
-                                event_id: event.id,
-                                question: field.question,
-                                help_text: field.help_text,
-                                field_type: field.field_type,
-                                is_required: field.is_required,
-                                sort_order: field.sort_order,
-                                options: field.options,
-                            })),
+                    const removedFieldIds = existingFormFields
+                        .map((field) => field.id)
+                        .filter((fieldId) => !seenFieldIds.has(fieldId));
+
+                    if (removedFieldIds.length > 0) {
+                        await tx.event_form_fields.deleteMany({
+                            where: { event_id: id, id: { in: removedFieldIds } },
                         });
                     }
                 }
@@ -319,7 +352,7 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
                 new Set(
                     events
                         .flatMap((event) => event.registrations.map((registration) => registration.user_id))
-                        .filter((userId): userId is bigint => userId !== null)
+                        .filter((userId): userId is string => userId !== null)
                 )
             );
 
@@ -428,13 +461,13 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
                 return res.status(404).json({ error: 'Event not found' });
             }
 
-            const form_fields = await getActiveEventFormFields(prisma, event.id);
+            const form_fields = await getEventFormFields(prisma, event.id);
 
             const userIds = Array.from(
                 new Set(
                     event.registrations
                         .map((registration) => registration.user_id)
-                        .filter((userId): userId is bigint => userId !== null)
+                        .filter((userId): userId is string => userId !== null)
                 )
             );
 

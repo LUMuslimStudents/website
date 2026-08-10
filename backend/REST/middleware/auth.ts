@@ -3,10 +3,13 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_jwt_key_please_change';
+const ACCESS_TOKEN_EXPIRY = '15m';
+const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const TEMP_TOKEN_EXPIRY = '5m'; // for password reset flow
 
 export interface AuthRequest extends Request {
     user?: {
-        id: number;
+        id: string;
         email: string;
         role: string;
     };
@@ -17,15 +20,18 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: 'Access denied. No token provided.' });
+        return res.status(401).json({ error: 'Access denied. No token provided.', code: 'NO_TOKEN' });
     }
 
     try {
         const verified = jwt.verify(token, JWT_SECRET) as any;
         req.user = verified;
         next();
-    } catch (error) {
-        res.status(400).json({ error: 'Invalid token.' });
+    } catch (error: any) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+        }
+        return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
     }
 };
 
@@ -42,7 +48,8 @@ export const authenticateTokenOptional = (req: AuthRequest, res: Response, next:
         req.user = verified;
         next();
     } catch (error) {
-        res.status(401).json({ error: 'Invalid token.' });
+        // Token invalid/expired — proceed without user (optional auth)
+        next();
     }
 };
 
@@ -52,3 +59,23 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
     }
     next();
 };
+
+/** Generate a short-lived access token (JWT). */
+export const generateAccessToken = (user: { id: string; email: string; role: string }): string => {
+    return jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: ACCESS_TOKEN_EXPIRY }
+    );
+};
+
+/** Generate a temporary access token for password reset flow (5 min). */
+export const generateTempAccessToken = (user: { id: string; email: string; role: string }): string => {
+    return jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: TEMP_TOKEN_EXPIRY }
+    );
+};
+
+export { JWT_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS, TEMP_TOKEN_EXPIRY };

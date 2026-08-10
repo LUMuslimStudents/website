@@ -9,6 +9,7 @@ import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap,
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { events_info } from '@prisma/client';
 import {
   DropdownMenu,
@@ -28,7 +29,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useNavigate, useParams } from "react-router-dom";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
 
 const toEventSlug = (title: string) => title
@@ -94,8 +94,6 @@ const invitation = (event: events_info, big: boolean = false) => {
          </div>
 }
 
-const buildIcsDownloadUrl = (event: events_info) => `${API_BASE_URL}/api/events/${event.id}/ics`;
-
 const formatGoogleDate = (value: Date) => value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 
 const formatRegistrationDeadline = (deadline: string | Date) =>
@@ -136,18 +134,14 @@ const buildGoogleCalendarUrl = (event: events_info) => {
 };
 
 const buildCalendarUrl = (event: events_info) => {
-  const icsUrl = buildIcsDownloadUrl(event);
-
-  if (typeof navigator === "undefined") {
-    return buildGoogleCalendarUrl(event);
-  }
-
-  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (isIos) {
-    return icsUrl;
-  }
   return buildGoogleCalendarUrl(event);
 };
+
+const sanitizeIcsFileName = (title: string) =>
+  title
+    .trim()
+    .replace(/[^a-zA-Z0-9-_ ]+/g, "")
+    .replace(/\s+/g, "-") || "event";
 
 const isMemberExclusive = (event: events_info) => {
   return event.invitation === 'members';
@@ -286,11 +280,10 @@ const Events = () => {
   const eventCacheRef = useRef<Map<number, ExpandedEvent>>(new Map());
   const posterCacheRef = useRef<Map<string, string[]>>(new Map());
   const invalidRouteEventRef = useRef<string | null>(null);
+  const activeExpandedEventIdRef = useRef<number | null>(null);
+  const detailFetchTimerRef = useRef<number | null>(null);
 
-  const user = useMemo(() => {
-    const userString = localStorage.getItem('user');
-    return userString ? JSON.parse(userString) : null;
-  }, []);
+  const { user } = useAuth();
   const isSignedIn = Boolean(user);
 
   const isPersistedRegistered = (eventId: number) => persistedRegisteredEventIds.includes(eventId);
@@ -338,6 +331,7 @@ const Events = () => {
   }, []);
 
   const openExpandedEvent = useCallback((eventIdToOpen: number, cardElement?: HTMLDivElement | null) => {
+    activeExpandedEventIdRef.current = eventIdToOpen;
     const rect = cardElement?.getBoundingClientRect();
     setCardPosition(rect ? {
       top: rect.top,
@@ -349,6 +343,31 @@ const Events = () => {
     setIsClosing(false);
     document.body.style.overflow = "hidden";
   }, [buildFallbackCardPosition]);
+
+  const scheduleExpandedEventDetails = useCallback((eventIdToFetch: number) => {
+    if (detailFetchTimerRef.current) {
+      window.clearTimeout(detailFetchTimerRef.current);
+      detailFetchTimerRef.current = null;
+    }
+
+    detailFetchTimerRef.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const event = await apiRequest(`/events/event-by-id?id=${eventIdToFetch}`);
+          const normalizedEvent = {
+            ...event,
+            is_registered: resolveIsRegistered(event),
+          };
+          if (activeExpandedEventIdRef.current === eventIdToFetch) {
+            setExpandedEvent(normalizedEvent);
+            eventCacheRef.current.set(normalizedEvent.id, normalizedEvent);
+          }
+        } catch (error: any) {
+          toast.error(error.message || "Failed to fetch event");
+        }
+      })();
+    }, 600);
+  }, []);
 
 
   const priceTag = (event: events_info, overridePrice?: number, overrideTier?: "member" | "nonmember" | "alumnus") => {
@@ -444,7 +463,9 @@ const Events = () => {
     if (targetEvent) {
       invalidRouteEventRef.current = null;
       if (expandedEventId !== targetEvent.id) {
+        setExpandedEvent(targetEvent);
         openExpandedEvent(targetEvent.id, cardRefs.current[targetEvent.id]);
+        scheduleExpandedEventDetails(targetEvent.id);
       }
       return;
     }
@@ -456,12 +477,39 @@ const Events = () => {
       }
       navigate('/events', { replace: true });
     }
-  }, [normalizedRouteEventSlug, events, hasFetchedEvents, expandedEventId, navigate, openExpandedEvent]);
+  }, [normalizedRouteEventSlug, events, hasFetchedEvents, expandedEventId, navigate, openExpandedEvent, scheduleExpandedEventDetails]);
 
   const handleCardClick = (event: events_info, cardElement: HTMLDivElement) => {
+    const listEvent = events.find((currentEvent) => currentEvent.id === event.id);
+    if (listEvent) {
+      setExpandedEvent(listEvent);
+      eventCacheRef.current.set(listEvent.id, listEvent);
+    }
     openExpandedEvent(event.id, cardElement);
+    scheduleExpandedEventDetails(event.id);
     navigate(`/events/${toEventSlug(event.title)}`);
   };
+
+  const handleIcsDownload = useCallback(async (event: events_info) => {
+    try {
+      const payload = await apiRequest(`/events/${event.id}/ics`);
+      if (typeof payload !== "string") {
+        throw new Error("Invalid ICS response");
+      }
+
+      const blob = new Blob([payload], { type: "text/calendar;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `${sanitizeIcsFileName(event.title)}.ics`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate calendar file");
+    }
+  }, []);
 
   const handleCloseExpanded = () => {
     setIsClosing(true);
@@ -476,6 +524,9 @@ const Events = () => {
   useEffect(() => {
     return () => {
       document.body.style.overflow = "unset";
+      if (detailFetchTimerRef.current) {
+        window.clearTimeout(detailFetchTimerRef.current);
+      }
     };
   }, []);
 
@@ -485,26 +536,14 @@ const Events = () => {
       setExpandedEventPosters([]);
       setRegistrationFooterState(null);
       registrationSubmitRef.current = null;
+      activeExpandedEventIdRef.current = null;
+      if (detailFetchTimerRef.current) {
+        window.clearTimeout(detailFetchTimerRef.current);
+        detailFetchTimerRef.current = null;
+      }
       return;
     }
-
-    const fetchExpandedEvent = async () => {
-      try {
-        const event = await apiRequest(`/events/event-by-id?id=${expandedEventId}`);
-        const normalizedEvent = {
-          ...event,
-          is_registered: resolveIsRegistered(event),
-        };
-        setExpandedEvent(normalizedEvent);
-        eventCacheRef.current.set(normalizedEvent.id, normalizedEvent);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to fetch event");
-        setExpandedEvent(null);
-      }
-    };
-
-    fetchExpandedEvent();
-  }, [expandedEventId, isSignedIn]);
+  }, [expandedEventId]);
 
   useEffect(() => {
     if (!expandedEvent?.poster) {
@@ -513,7 +552,7 @@ const Events = () => {
     }
 
     let isCancelled = false;
-    const basePath = `/${expandedEvent.poster}`;
+    const basePath = expandedEvent.poster;
 
     const cachedPosters = posterCacheRef.current.get(basePath);
     if (cachedPosters) {
@@ -600,7 +639,7 @@ const Events = () => {
               </CardHeader>
               <CardContent>
                 <img
-                  src={`/${event.poster}/0.png`}
+                  src={`${event.poster}/0.png`}
                   alt="No poster available"
                   className="aspect-square w-96 rounded-md object-cover"
                   loading="lazy"
@@ -705,10 +744,13 @@ const Events = () => {
                           Add to calendar
                         </a>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <a href={buildIcsDownloadUrl(expandedEvent)}>
-                          Download .ics
-                        </a>
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          void handleIcsDownload(expandedEvent);
+                        }}
+                      >
+                        Download .ics
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

@@ -150,6 +150,7 @@ export type EventFormFieldResponse = {
 type CreateEventFormFieldPayload = {
     question?: string;
     help_text?: string | null;
+    id?: string;
     field_type?: string;
     is_required?: boolean | string;
     options?: unknown;
@@ -160,6 +161,7 @@ type NormalizedCreateEventFormField = {
     question: string;
     help_text: string | null;
     field_type: $Enums.EventFormFieldType;
+    id?: string;
     is_required: boolean;
     sort_order: number;
     options?: EventFormOption[];
@@ -233,6 +235,7 @@ export const normalizeCreateEventFormFields = (value: unknown): { fields: Normal
             return { fields: [], error: `Invalid form field at index ${index}.` };
         }
 
+        const id = normalizeTrimmed(rawField.id) || undefined;
         const question = normalizeTrimmed(rawField.question);
         if (!question) {
             return { fields: [], error: `Form field question is required at index ${index}.` };
@@ -265,6 +268,7 @@ export const normalizeCreateEventFormFields = (value: unknown): { fields: Normal
         }
 
         normalizedFields.push({
+            id,
             question,
             help_text: normalizeTrimmed(rawField.help_text) || null,
             field_type,
@@ -277,9 +281,9 @@ export const normalizeCreateEventFormFields = (value: unknown): { fields: Normal
     return { fields: normalizedFields };
 };
 
-export const getActiveEventFormFields = async (prisma: PrismaClient, eventId: number): Promise<EventFormFieldResponse[]> => {
+export const getEventFormFields = async (prisma: PrismaClient, eventId: number): Promise<EventFormFieldResponse[]> => {
     const fields = await prisma.event_form_fields.findMany({
-        where: { event_id: eventId, active: true },
+        where: { event_id: eventId },
         orderBy: { sort_order: 'asc' },
     });
 

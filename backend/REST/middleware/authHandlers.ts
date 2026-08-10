@@ -1,525 +1,397 @@
 import { Express } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { generateVerificationCode, sendPasswordResetEmail, sendVerificationEmail } from './utils';
+import {
+    generateToken,
+    hashToken,
+    sendVerificationLink,
+    sendPasswordResetLink,
+} from './utils';
+import {
+    AuthRequest,
+    authenticateToken,
+    generateAccessToken,
+    generateTempAccessToken,
+    REFRESH_TOKEN_EXPIRY_MS,
+} from './auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_jwt_key_please_change';
-const PASSWORD_RESET_EXPIRATION_MS = 10 * 60 * 1000;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*\d).{6,}$/;
+const VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TOKEN_EXPIRY_MS = 10 * 60 * 1000;
 
 export function setupAuthRoutes(app: Express, prisma: PrismaClient) {
-    // POST /api/auth/signup - Create unverified user and send verification code
+
+    // ── POST /api/auth/signup ───────────────────────────────────────────────
     app.post('/api/auth/signup', async (req, res) => {
         try {
+            console.log('POST: /auth/signup');
             const { first_name, last_name, email, password, gender, study_program, phone_number } = req.body;
 
             if (!email || !password || !first_name || !last_name || !gender || !study_program || !phone_number) {
                 return res.status(400).json({ error: 'Missing required fields' });
             }
 
-            // Gender validation
             if (gender !== 'male' && gender !== 'female') {
                 return res.status(400).json({ error: 'Invalid gender value' });
             }
 
-            // Regex validation
             const nameRegex = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/;
             const emailRegex = /^[a-zA-Z0-9.-]{5,}@student.lu.se$/;
             const phoneRegex = /^[\d\s+\-()]+$/;
             const programRegex = /^[a-zA-Z\s&()-]+$/;
-            const passwordRegex = /^(?=.*[a-z])(?=.*\d).{6,}$/;
 
             if (!nameRegex.test(first_name)) {
                 return res.status(400).json({ error: 'First name contains invalid characters' });
             }
-
             if (!nameRegex.test(last_name)) {
                 return res.status(400).json({ error: 'Last name contains invalid characters' });
             }
-
             if (!emailRegex.test(email)) {
                 return res.status(400).json({ error: 'Not an LU student mail' });
             }
-
             if (!phoneRegex.test(phone_number)) {
                 return res.status(400).json({ error: 'Phone number contains invalid characters' });
             }
-
             if (!programRegex.test(study_program)) {
                 return res.status(400).json({ error: 'Study program contains invalid characters' });
             }
-
-            if (!passwordRegex.test(password)) {
+            if (!PASSWORD_REGEX.test(password)) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters with lowercase and numbers' });
             }
 
-            // Check if user exists
-            const existingUser = await prisma.users.findFirst({
-                where: { 
-                    OR: [
-                        { email },
-                        { phone_number }
-                    ]
-                }
+            const currentOptions = await prisma.admin_options.findFirst({
+                where: { is_current: true },
             });
+            if (!currentOptions) {
+                return res.status(400).json({ error: 'No active term configured. Please contact an administrator.' });
+            }
+            if (!currentOptions.membership_open) {
+                return res.status(400).json({ error: 'Membership registration is currently closed.' });
+            }
+            const currentTerm = currentOptions.term;
 
+            const existingUser = await prisma.users.findFirst({
+                where: { OR: [{ email }, { phone_number }] },
+            });
             if (existingUser) {
                 if (existingUser.email === email) {
-                    return res.status(400).json({ error: 'Email already exists' });
+                    return res.status(400).json({ error: 'A user with this email already exists.' });
                 }
                 if (existingUser.phone_number === phone_number) {
-                    return res.status(400).json({ error: 'Phone number already exists' });
+                    return res.status(400).json({ error: 'Phone number already in use.' });
                 }
             }
 
-            // Check if pending signup exists
-            const existingPending = await prisma.pending_signups.findFirst({
-                where: { 
-                    OR: [
-                        { email },
-                        { phone_number }
-                    ]
-                }
-            });
-
-            if (existingPending) {
-                // Check if entire signup has expired
-                const signupExpired = existingPending.expires_at < new Date();
-                
-                // Check if verification code has expired
-                const codeExpired = !existingPending.email_verification_expires || 
-                                   existingPending.email_verification_expires < new Date();
-
-                if (existingPending.email === email) {
-                    if (signupExpired) {
-                        // Delete expired pending signup
-                        await prisma.pending_signups.delete({ where: { id: existingPending.id } });
-                        return res.status(400).json({ 
-                            error: 'Previous signup expired. Please sign up again.'
-                        });
-                    }
-
-                    // Code is still valid
-                    return res.status(400).json({ 
-                        error: 'Email already has a pending signup',
-                        message: 'You have an incomplete signup in progress. Please go to the verification page to complete it.',
-                        pendingSignupId: existingPending.id,
-                        email: existingPending.email,
-                        codeExpired: false,
-                        redirectTo: '/verify-email'
-                    });
-                }
-                if (existingPending.phone_number === phone_number) {
-                    return res.status(400).json({ 
-                        error: 'Phone number already has a pending signup',
-                        message: 'You have an incomplete signup in progress. Please go to the verification page to complete it.',
-                        pendingSignupId: existingPending.id,
-                        email: existingPending.email,
-                        redirectTo: '/verify-email'
-                    });
-                }
-            }
-
-            // Hash password
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
-            // Generate email verification code
-            const emailVerificationCode = generateVerificationCode();
-            const emailVerificationExpires = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes from now
-            const signupExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours for entire signup
+            const verificationToken = generateToken();
+            const verificationTokenHash = hashToken(verificationToken);
+            const verificationTokenExpires = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MS);
 
-            // Create pending signup (NOT a real user account yet)
-            const pendingSignup = await prisma.pending_signups.create({
+            const user = await prisma.users.create({
                 data: {
                     first_name,
                     last_name,
                     email,
-                    phone_number,
-                    gender: gender,
                     password: hashedPassword,
+                    phone_number,
+                    gender,
                     study_program: study_program || '',
-                    email_verification_code: emailVerificationCode,
-                    email_verification_expires: emailVerificationExpires,
-                    verifications_completed: [], // Will track completed verifications
-                    expires_at: signupExpiresAt,
-                }
+                    role: 'user',
+                    term: currentTerm,
+                    email_verified: false,
+                    verification_token: verificationTokenHash,
+                    verification_token_expires: verificationTokenExpires,
+                },
             });
 
-            // Send verification email
-            const emailSent = await sendVerificationEmail(email, emailVerificationCode);
-            
+            const emailSent = await sendVerificationLink(email, verificationToken);
             if (!emailSent) {
-                // Delete the pending signup if email fails to send
-                await prisma.pending_signups.delete({ where: { id: pendingSignup.id } });
-                return res.status(500).json({ error: 'Failed to send verification email' });
+                console.warn('Failed to send verification link to:', email);
             }
 
-            res.status(201).json({ 
-                message: 'Verification code sent to email. Complete all verifications to create account.',
-                email: email,
-                pendingSignupId: pendingSignup.id 
+            res.status(201).json({
+                message: 'Account created! Please check your email and click the confirmation link to verify your account.',
+                flow: 'link' as const,
+                userId: user.id,
             });
-            console.log("POST: /auth/signup");
         } catch (error) {
             console.error('Signup error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });
 
-    // POST /api/auth/verify-email - Verify email and check if all verifications complete
-    app.post('/api/auth/verify-email', async (req, res) => {
+    // ── GET /api/auth/confirm-email ─────────────────────────────────────────
+    app.get('/api/auth/confirm-email', async (req, res) => {
         try {
-            const { email, code } = req.body;
-
-            if (!email || !code) {
-                return res.status(400).json({ error: 'Email and verification code required' });
+            console.log('GET: /auth/confirm-email');
+            const { token } = req.query;
+            if (!token || typeof token !== 'string') {
+                return res.status(400).json({ error: 'Missing or invalid verification token.' });
+            }
+            const tokenHash = hashToken(token);
+            const user = await prisma.users.findFirst({
+                where: { verification_token: tokenHash },
+            });
+            if (!user) {
+                return res.status(400).json({ error: 'Invalid verification token.' });
+            }
+            if (!user.verification_token_expires || user.verification_token_expires < new Date()) {
+                return res.status(400).json({ error: 'Verification token expired. Please sign up again.' });
             }
 
-            // Find pending signup
-            const pendingSignup = await prisma.pending_signups.findUnique({ where: { email } });
-            if (!pendingSignup) {
-                return res.status(400).json({ error: 'No pending signup found' });
-            }
-
-            // Check if signup expired
-            if (pendingSignup.expires_at < new Date()) {
-                await prisma.pending_signups.delete({ where: { email } });
-                return res.status(400).json({ error: 'Signup expired. Please sign up again.' });
-            }
-
-            // Check if email code matches
-            if (pendingSignup.email_verification_code !== code) {
-                return res.status(400).json({ error: 'Invalid verification code' });
-            }
-
-            // Check if code expired
-            if (!pendingSignup.email_verification_expires || pendingSignup.email_verification_expires < new Date()) {
-                return res.status(400).json({ error: 'Verification code expired' });
-            }
-
-            // Mark email as verified and update completions
-            const completedVerifications = Array.isArray(pendingSignup.verifications_completed) 
-                ? pendingSignup.verifications_completed 
-                : [];
-            
-            if (!completedVerifications.includes('email')) {
-                completedVerifications.push('email');
-            }
-
-            // Check if all required verifications are complete
-            // For now, only email is required. Add 'payment' here in the future
-            const requiredVerifications = ['email'];
-            const allVerificationsComplete = requiredVerifications.every(v => completedVerifications.includes(v));
-
-            if (allVerificationsComplete) {
-                // Create actual user account
-                const user = await prisma.users.create({
-                    data: {
-                        first_name: pendingSignup.first_name,
-                        last_name: pendingSignup.last_name,
-                        email: pendingSignup.email,
-                        password: pendingSignup.password,
-                        phone_number: pendingSignup.phone_number,
-                        study_program: pendingSignup.study_program,
-                        role: 'user',
-                        gender: pendingSignup.gender,
-                        term: process.env.MEMBERSHIP_TERM || 'XXXX',
-                    }
-                });
-
-                // Delete pending signup
-                await prisma.pending_signups.delete({ where: { email } });
-
-                res.status(200).json({ 
-                    message: 'Email verified! Account created successfully.',
-                    userId: user.id 
-                });
-            } else {
-                // Update pending signup with verified email
-                await prisma.pending_signups.update({
-                    where: { email },
-                    data: {
-                        email_verified_at: new Date(),
-                        verifications_completed: completedVerifications,
-                        email_verification_code: null,
-                        email_verification_expires: null,
-                    }
-                });
-
-                res.status(200).json({ 
-                    message: 'Email verified. Complete remaining verifications to create account.',
-                    pendingVerifications: requiredVerifications.filter(v => !completedVerifications.includes(v))
-                });
-            }
-            console.log("POST: /auth/verify-email");
-        } catch (error) {
-            console.error('Verification error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    // POST /api/auth/resend-verification-code - Resend verification code
-    app.post('/api/auth/resend-verification-code', async (req, res) => {
-        try {
-            const { email } = req.body;
-
-            if (!email) {
-                return res.status(400).json({ error: 'Email is required' });
-            }
-
-            // Find pending signup
-            const pendingSignup = await prisma.pending_signups.findUnique({ where: { email } });
-            if (!pendingSignup) {
-                return res.status(400).json({ error: 'No pending signup found for this email' });
-            }
-
-            // Check if signup expired
-            if (pendingSignup.expires_at < new Date()) {
-                await prisma.pending_signups.delete({ where: { email } });
-                return res.status(400).json({ error: 'Signup expired. Please sign up again.' });
-            }
-
-            // Generate new verification code
-            const newVerificationCode = generateVerificationCode();
-            const newVerificationExpires = new Date(Date.now() + 3 * 60 * 1000);
-
-            // Update pending signup
-            await prisma.pending_signups.update({
-                where: { email },
+            await prisma.users.update({
+                where: { id: user.id },
                 data: {
-                    email_verification_code: newVerificationCode,
-                    email_verification_expires: newVerificationExpires,
-                }
+                    email_verified: true,
+                    email_confirmed_at: new Date(),
+                    verification_token: null,
+                    verification_token_expires: null,
+                },
             });
 
-            // Send verification email
-            const emailSent = await sendVerificationEmail(email, newVerificationCode);
-            
-            if (!emailSent) {
-                return res.status(500).json({ error: 'Failed to send verification email' });
+            const wantsJson = req.headers.accept?.includes('application/json');
+            if (wantsJson) {
+                return res.status(200).json({ message: 'Email verified successfully! You can now log in.' });
             }
-
-            res.status(200).json({ message: 'Verification code sent to your email' });
-
-            console.log("POST: /auth/resend-verification-code");
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            res.redirect(`${frontendUrl}/login?emailConfirmed=true`);
         } catch (error) {
-            console.error('Resend error:', error);
+            console.error('Confirm email error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });
 
-    // GET /api/auth/verification-time-remaining - Get remaining time for verification code
-    app.get('/api/auth/verification-time-remaining', async (req, res) => {
-        try {
-            const { email } = req.query;
-
-            if (!email || typeof email !== 'string') {
-                return res.status(400).json({ error: 'Email is required' });
-            }
-
-            // Find pending signup
-            const pendingSignup = await prisma.pending_signups.findUnique({ where: { email } });
-            if (!pendingSignup) {
-                return res.status(400).json({ error: 'No pending signup found' });
-            }
-
-            // Check if signup expired
-            if (pendingSignup.expires_at < new Date()) {
-                await prisma.pending_signups.delete({ where: { email } });
-                return res.status(400).json({ error: 'Signup expired. Please sign up again.' });
-            }
-
-            // Check if code expired
-            if (!pendingSignup.email_verification_expires || pendingSignup.email_verification_expires < new Date()) {
-                return res.status(400).json({ 
-                    error: 'Verification code expired',
-                    codeExpired: true,
-                    timeRemaining: 0
-                });
-            }
-
-            // Calculate remaining time in seconds
-            const now = new Date().getTime();
-            const expireTime = pendingSignup.email_verification_expires.getTime();
-            const timeRemaining = Math.ceil((expireTime - now) / 1000);
-
-            res.status(200).json({ 
-                timeRemaining: Math.max(0, timeRemaining),
-                codeExpired: false
-            });
-
-            console.log("GET: /auth/verification-time-remaining");
-        } catch (error) {
-            console.error('Get time remaining error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    // DELETE /api/auth/pending-signup - Delete pending signup and start over
-    app.delete('/api/auth/pending-signup', async (req, res) => {
-        try {
-            const { email } = req.body;
-
-            if (!email) {
-                return res.status(400).json({ error: 'Email is required' });
-            }
-
-            // Find and delete pending signup
-            const pendingSignup = await prisma.pending_signups.findUnique({ where: { email } });
-            if (!pendingSignup) {
-                return res.status(400).json({ error: 'No pending signup found' });
-            }
-
-            await prisma.pending_signups.delete({ where: { email } });
-
-            res.status(200).json({ message: 'Pending signup removed. You can sign up again.' });
-
-            console.log("DELETE: /auth/pending-signup");
-        } catch (error) {
-            console.error('Delete pending signup error:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    // POST /api/auth/login
+    // ── POST /api/auth/login ────────────────────────────────────────────────
     app.post('/api/auth/login', async (req, res) => {
         try {
+            console.log('POST: /auth/login');
             const { email, password } = req.body;
+            if (!email || !password) {
+                return res.status(400).json({ error: 'Email and password are required' });
+            }
 
             const user = await prisma.users.findUnique({ where: { email } });
             if (!user) {
                 return res.status(400).json({ error: 'Invalid credentials' });
             }
 
-            // User can only login if account was created (all verifications complete)
-            // If user is in pending_signups, they haven't completed all verifications
-
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
                 return res.status(400).json({ error: 'Invalid credentials' });
             }
 
-            const token = jwt.sign(
-                { id: user.id, email: user.email, role: user.role },
-                JWT_SECRET,
-                { expiresIn: '1h' }
-            );
+            const accessToken = generateAccessToken({
+                id: user.id, email: user.email, role: user.role,
+            });
+            const refreshToken = generateToken();
+            const refreshTokenHash = hashToken(refreshToken);
 
-            res.json({
-                token,
-                user: {
-                    id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    email: user.email,
-                    role: user.role
-                }
+            await prisma.refresh_tokens.deleteMany({ where: { user_id: user.id } });
+            await prisma.refresh_tokens.create({
+                data: {
+                    user_id: user.id,
+                    token_hash: refreshTokenHash,
+                    expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+                },
             });
 
-            console.log("POST: /auth/login");
+            res.json({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_in: 900,
+                user: {
+                    id: user.id, email: user.email,
+                    first_name: user.first_name, last_name: user.last_name,
+                    role: user.role,
+                },
+            });
         } catch (error) {
             console.error('Login error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });
 
-    // POST /api/auth/forgot-password - Send password reset code to email
+    // ── POST /api/auth/refresh ──────────────────────────────────────────────
+    app.post('/api/auth/refresh', async (req, res) => {
+        try {
+            console.log('POST: /auth/refresh');
+            const { refresh_token } = req.body;
+            if (!refresh_token || typeof refresh_token !== 'string') {
+                return res.status(400).json({ error: 'Refresh token is required' });
+            }
+            const tokenHash = hashToken(refresh_token);
+            const storedToken = await prisma.refresh_tokens.findUnique({
+                where: { token_hash: tokenHash },
+                include: { user: true },
+            });
+            if (!storedToken) {
+                return res.status(401).json({ error: 'Invalid refresh token' });
+            }
+            if (storedToken.expires_at < new Date()) {
+                await prisma.refresh_tokens.delete({ where: { id: storedToken.id } });
+                return res.status(401).json({ error: 'Refresh token expired' });
+            }
+
+            const newRefreshToken = generateToken();
+            const newRefreshTokenHash = hashToken(newRefreshToken);
+            await prisma.$transaction([
+                prisma.refresh_tokens.delete({ where: { id: storedToken.id } }),
+                prisma.refresh_tokens.create({
+                    data: {
+                        user_id: storedToken.user_id,
+                        token_hash: newRefreshTokenHash,
+                        expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+                    },
+                }),
+            ]);
+
+            const accessToken = generateAccessToken({
+                id: storedToken.user.id, email: storedToken.user.email, role: storedToken.user.role,
+            });
+            res.json({ access_token: accessToken, refresh_token: newRefreshToken, expires_in: 900 });
+        } catch (error) {
+            console.error('Refresh error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // ── GET /api/auth/user ──────────────────────────────────────────────────
+    app.get('/api/auth/user', authenticateToken, async (req: AuthRequest, res) => {
+        try {
+            console.log('GET: /auth/user');
+            const user = await prisma.users.findUnique({ where: { id: req.user!.id } });
+            if (!user) return res.status(404).json(null);
+            res.json({
+                id: user.id, email: user.email,
+                first_name: user.first_name, last_name: user.last_name,
+                phone_number: user.phone_number, gender: user.gender,
+                study_program: user.study_program, role: user.role,
+                term: user.term,
+                created_at: user.created_at?.toISOString() ?? null,
+            });
+        } catch (error) {
+            console.error('Get user error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // ── POST /api/auth/signout ──────────────────────────────────────────────
+    app.post('/api/auth/signout', async (req, res) => {
+        try {
+            console.log('POST: /auth/signout');
+            const { refresh_token } = req.body || {};
+            if (refresh_token && typeof refresh_token === 'string') {
+                const tokenHash = hashToken(refresh_token);
+                await prisma.refresh_tokens.deleteMany({ where: { token_hash: tokenHash } });
+            }
+            res.json({ message: 'Signed out successfully' });
+        } catch (error) {
+            console.error('Signout error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // ── POST /api/auth/forgot-password ──────────────────────────────────────
     app.post('/api/auth/forgot-password', async (req, res) => {
         try {
+            console.log('POST: /auth/forgot-password');
             const { email } = req.body;
-
-            if (!email) {
-                return res.status(400).json({ error: 'Email is required' });
-            }
+            if (!email) return res.status(400).json({ error: 'Email is required' });
 
             const user = await prisma.users.findFirst({ where: { email } });
             if (!user) {
-                return res.status(404).json({ error: 'No account found for this email' });
+                return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
             }
 
-            const resetCode = generateVerificationCode();
-            const resetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRATION_MS);
-
-            await prisma.password_reset_tokens.upsert({
-                where: { email },
-                create: {
-                    email,
-                    reset_code: resetCode,
-                    expires_at: resetExpiresAt,
-                },
-                update: {
-                    reset_code: resetCode,
-                    expires_at: resetExpiresAt,
+            const resetToken = generateToken();
+            const resetTokenHash = hashToken(resetToken);
+            await prisma.password_reset_tokens.deleteMany({ where: { user_id: user.id } });
+            await prisma.password_reset_tokens.create({
+                data: {
+                    user_id: user.id, email: user.email,
+                    token_hash: resetTokenHash,
+                    expires_at: new Date(Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_MS),
                 },
             });
 
-            const emailSent = await sendPasswordResetEmail(email, resetCode);
-
+            const emailSent = await sendPasswordResetLink(email, resetToken);
             if (!emailSent) {
-                await prisma.password_reset_tokens.delete({ where: { email } });
-                return res.status(500).json({ error: 'Failed to send password reset email' });
+                await prisma.password_reset_tokens.deleteMany({ where: { user_id: user.id } });
+                console.warn('Failed to send password reset link to:', email);
             }
 
-            res.status(200).json({
-                message: 'Password reset code sent to email',
-                email,
-                expiresInSeconds: PASSWORD_RESET_EXPIRATION_MS / 1000,
-            });
+            res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
         } catch (error) {
             console.error('Forgot password error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });
 
-    // POST /api/auth/reset-password - Verify code and set new password
-    app.post('/api/auth/reset-password', async (req, res) => {
+    // ── POST /api/auth/verify-reset ─────────────────────────────────────────
+    app.post('/api/auth/verify-reset', async (req, res) => {
         try {
-            const { email, code, password } = req.body;
-
-            if (!email || !code || !password) {
-                return res.status(400).json({ error: 'Email, code and password are required' });
+            console.log('POST: /auth/verify-reset');
+            const { token_hash } = req.body;
+            if (!token_hash || typeof token_hash !== 'string') {
+                return res.status(400).json({ error: 'Missing reset token.' });
+            }
+            const tokenHash = hashToken(token_hash);
+            const storedToken = await prisma.password_reset_tokens.findFirst({
+                where: { token_hash: tokenHash },
+            });
+            if (!storedToken) {
+                return res.status(400).json({ error: 'Invalid or expired reset token.' });
+            }
+            if (storedToken.expires_at < new Date()) {
+                await prisma.password_reset_tokens.delete({ where: { id: storedToken.id } });
+                return res.status(400).json({ error: 'Reset token expired. Please request a new one.' });
+            }
+            const user = await prisma.users.findUnique({ where: { id: storedToken.user_id } });
+            if (!user) {
+                await prisma.password_reset_tokens.delete({ where: { id: storedToken.id } });
+                return res.status(404).json({ error: 'User not found.' });
             }
 
+            const tempAccessToken = generateTempAccessToken({
+                id: user.id, email: user.email, role: user.role,
+            });
+            res.json({
+                message: 'Token verified. You can now set a new password.',
+                access_token: tempAccessToken,
+                expires_in: 300,
+                user: { id: user.id, email: user.email },
+            });
+        } catch (error) {
+            console.error('Verify reset error:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // ── POST /api/auth/update-password ──────────────────────────────────────
+    app.post('/api/auth/update-password', authenticateToken, async (req: AuthRequest, res) => {
+        try {
+            console.log('POST: /auth/update-password');
+            const { password } = req.body;
+            if (!password || typeof password !== 'string') {
+                return res.status(400).json({ error: 'Password is required' });
+            }
             if (!PASSWORD_REGEX.test(password)) {
                 return res.status(400).json({ error: 'Password must be at least 6 characters with lowercase and numbers' });
             }
 
-            const resetToken = await prisma.password_reset_tokens.findUnique({ where: { email } });
-
-            if (!resetToken) {
-                return res.status(400).json({ error: 'No password reset request found for this email' });
-            }
-
-            if (resetToken.expires_at < new Date()) {
-                await prisma.password_reset_tokens.delete({ where: { email } });
-                return res.status(400).json({ error: 'Reset code expired. Please request a new one.' });
-            }
-
-            if (resetToken.reset_code !== code) {
-                return res.status(400).json({ error: 'Invalid reset code' });
-            }
-
-            const user = await prisma.users.findFirst({ where: { email } });
-            if (!user) {
-                await prisma.password_reset_tokens.delete({ where: { email } });
-                return res.status(404).json({ error: 'No account found for this email' });
-            }
-
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
-
             await prisma.users.update({
-                where: { id: user.id },
+                where: { id: req.user!.id },
                 data: { password: hashedPassword },
             });
+            await prisma.password_reset_tokens.deleteMany({ where: { user_id: req.user!.id } });
 
-            await prisma.password_reset_tokens.delete({ where: { email } });
-
-            res.status(200).json({ message: 'Password reset successfully. You can now log in with your new password.' });
+            res.json({ message: 'Password updated successfully! You can now log in with your new password.' });
         } catch (error) {
-            console.error('Reset password error:', error);
+            console.error('Update password error:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });

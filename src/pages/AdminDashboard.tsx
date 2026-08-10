@@ -15,6 +15,9 @@ const AdminDashboard = () => {
     if (location.pathname.startsWith('/admin/events')) {
       return 'events';
     }
+    if (location.pathname.startsWith('/admin/settings')) {
+      return 'settings';
+    }
     return 'users';
   }, [location.pathname]);
 
@@ -68,6 +71,7 @@ const AdminDashboard = () => {
               <TabsList className="mb-6">
                 <TabsTrigger value="users">Members</TabsTrigger>
                 <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
             </Tabs>
 

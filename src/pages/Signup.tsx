@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
@@ -45,9 +44,6 @@ const formSchema = z.object({
 const Signup = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const [pendingDialog, setPendingDialog] = useState(false);
-    const [pendingEmail, setPendingEmail] = useState('');
-    const [restarting, setRestarting] = useState(false);
     const [conditionsDialog, setConditionsDialog] = useState(false);
     const [refundPolicy, setrefundPolicy] = useState(false);
     const [GDPRTerm, setGDPRTerm] = useState(false);
@@ -58,22 +54,7 @@ const Signup = () => {
         mode: 'onBlur'
     });
 
-    const handleRestart = async () => {
-        setRestarting(true);
-        try {
-            await apiRequest('/auth/pending-signup', 'DELETE', { email: pendingEmail });
-            toast.success('Pending signup removed. You can now sign up again.');
-            form.reset();
-            setPendingDialog(false);
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to restart signup');
-        } finally {
-            setRestarting(false);
-        }
-    };
-
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        // Store form values and show conditions dialog
         setPendingFormValues(values);
         setrefundPolicy(false);
         setGDPRTerm(false);
@@ -85,22 +66,11 @@ const Signup = () => {
 
         setLoading(true);
         try {
-            const response = await apiRequest('/auth/signup', 'POST', pendingFormValues);
-            toast.success('You now must verify your LU email before your account is created.');
-            navigate('/verify-email', { state: { email: pendingFormValues.email } });
+            await apiRequest('/auth/signup', 'POST', pendingFormValues);
+            toast.success('Account created! Please check your email and click the confirmation link to verify your account.');
+            navigate('/login', { state: { email: pendingFormValues.email, signupSuccess: true } });
         } catch (error: any) {
-            // Check if error is about pending signup
-            const isNested = typeof error.message === 'object';
-            const errorObj = isNested ? error.message : {};
-            
-            if (error.message?.includes('pending signup') || errorObj.redirectTo) {
-                // Show dialog for pending signup
-                setConditionsDialog(false);
-                setPendingEmail(pendingFormValues.email);
-                setPendingDialog(true);
-            } else {
-                toast.error(error.message || 'Signup failed');
-            }
+            toast.error(error.message || 'Signup failed');
         } finally {
             setLoading(false);
         }
@@ -109,41 +79,6 @@ const Signup = () => {
     return (
         <div className="min-h-screen bg-background">
             <Navbar />
-            
-            {/* Pending Signup Dialog */}
-            <AlertDialog open={pendingDialog} onOpenChange={setPendingDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Incomplete Signup Found</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            You already have a signup in progress for {pendingEmail}.
-                            Would you like to continue verifying it or start over?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="flex gap-3">
-                        <AlertDialogCancel asChild>
-                            <Button variant="outline" className="flex-1">Close</Button>
-                        </AlertDialogCancel>
-                        <Button 
-                            variant="destructive" 
-                            onClick={handleRestart}
-                            disabled={restarting}
-                            className="flex-1"
-                        >
-                            {restarting ? 'Restarting...' : 'Restart'}
-                        </Button>
-                        <Button 
-                            onClick={() => {
-                                setPendingDialog(false);
-                                navigate('/verify-email', { state: { email: pendingEmail } });
-                            }}
-                            className="flex-1"
-                        >
-                            Verify LU Email
-                        </Button>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
 
             {/* Terms & Conditions Dialog */}
             <TermsConditionsDialog

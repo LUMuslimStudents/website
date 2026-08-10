@@ -7,6 +7,7 @@ import { ArrowLeft, Clock3, HelpCircle, Eye, Code, MapPin, Clock, Calendar, User
 import MDEditor, { type ICommand } from "@uiw/react-md-editor";
 import DatePicker from "react-datepicker";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,9 +37,8 @@ import InputMask from "react-input-mask";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "react-datepicker/dist/react-datepicker.css";
 import "./AdminEventCreateView.css";
-import type { AdminEventFormField } from "./types";
+import type { AdminEventDetail, AdminEventFormField } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
 
 type PublishMode = "draft" | "publish";
@@ -63,12 +63,8 @@ const buildPosterCandidateUrls = (poster: string | null | undefined) => {
     return [];
   }
 
-  if (poster.startsWith("http://") || poster.startsWith("https://")) {
-    return [poster];
-  }
-
-  const normalizedPoster = poster.startsWith("/") ? poster : `/${poster}`;
-  return POSTER_EXTENSIONS.map((ext) => `${API_BASE_URL}${normalizedPoster}/0.${ext}`);
+  const normalizedPoster = poster.replace(/\/$/, '');
+  return POSTER_EXTENSIONS.map((ext) => `${normalizedPoster}/0.${ext}`);
 };
 
 const mapEventFieldToDraft = (field: AdminEventFormField): DynamicFormFieldDraft => ({
@@ -265,6 +261,7 @@ export const AdminEventCreateView = () => {
   const [loadingEvent, setLoadingEvent] = useState(Boolean(eventId));
   const [existingPosterCandidates, setExistingPosterCandidates] = useState<string[]>([]);
   const { resolvedTheme } = useTheme();
+  const { user } = useAuth();
   const isEditing = typeof eventId === "string" && !Number.isNaN(Number(eventId));
   const parsedEventId = isEditing ? Number(eventId) : null;
   const invalidEventId = Boolean(eventId) && !isEditing;
@@ -504,17 +501,18 @@ export const AdminEventCreateView = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    // Auth check
+    if (!user) {
       toast.error('You must be logged in as admin.');
       navigate('/login');
       return;
     }
 
-    const formData = new FormData();
     const normalizedDeadline = form.deadline.includes(" ")
       ? form.deadline.replace(" ", "T")
       : form.deadline;
+
+    const formData = new FormData();
 
     formData.append('title', form.title);
     formData.append('date', form.date);
@@ -536,18 +534,18 @@ export const AdminEventCreateView = () => {
         const options = normalizeDynamicFieldOptions(field.options_text);
 
         return {
+          id: field.id || undefined,
           question,
-          help_text: helpText || undefined,
+          help_text: helpText || null,
           field_type: field.field_type,
           is_required: field.is_required,
           sort_order: index,
-          options: field.field_type === "short_text" ? undefined : options,
+          options: field.field_type === "short_text" ? null : options,
         };
       }),
     ));
 
     images.forEach((image, displayOrder) => {
-      // Include display order in multipart filename so backend can persist exact UI order.
       formData.append('image', image, `${displayOrder}__${image.name}`);
     });
 
@@ -558,18 +556,9 @@ export const AdminEventCreateView = () => {
         ? `/admin/events/${parsedEventId}`
         : '/admin/create-event';
 
-      const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
-        method: isEditing && parsedEventId !== null ? 'PATCH' : 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const method = isEditing && parsedEventId !== null ? 'PATCH' : 'POST';
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || (isEditing ? 'Failed to update event' : 'Failed to create event'));
-      }
+      const data = await apiRequest(endpoint, method, formData);
 
       const savedEventId = data?.event?.id ?? parsedEventId;
       toast.success(

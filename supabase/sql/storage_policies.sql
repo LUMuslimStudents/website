@@ -1,0 +1,41 @@
+-- ============================================================================
+-- Supabase Storage: events bucket setup
+-- ============================================================================
+-- Storage RLS cannot be managed via CLI (storage.policies is internal).
+-- Follow these steps for initial setup or when recreating the project.
+--
+-- ── 1. Create the bucket (Supabase Dashboard) ──────────────────────────────
+--    Storage → New Bucket → Name: "events" → ✅ Public bucket → Create
+--
+-- ── 2. Add RLS policies (Storage → events → Policies → New Policy) ─────────
+--    ┌───────────┬──────────────────────┬────────────────────────────────────┐
+--    │ Operation │ Name                 │ Expression                         │
+--    ├───────────┼──────────────────────┼────────────────────────────────────┤
+--    │ INSERT    │ Admin upload         │ (SELECT public.is_admin())         │
+--    │ UPDATE    │ Admin update         │ (SELECT public.is_admin())         │
+--    │ DELETE    │ Admin delete         │ (SELECT public.is_admin())         │
+--    └───────────┴──────────────────────┴────────────────────────────────────┘
+--    SELECT is public by default (bucket is public).
+--
+-- ── 3. (Alternative) Run this in Supabase SQL Editor if available ──────────
+--    The SQL below may work from the dashboard SQL Editor but NOT via CLI.
+--    Uncomment and run if the storage.policies table exists in your project.
+--
+-- INSERT INTO storage.policies (name, bucket_id, operation, definition)
+-- SELECT 'Admin upload', 'events', 'INSERT', '(SELECT public.is_admin())'
+-- WHERE NOT EXISTS (
+--   SELECT 1 FROM storage.policies WHERE bucket_id = 'events' AND operation = 'INSERT'
+-- );
+--
+-- INSERT INTO storage.policies (name, bucket_id, operation, definition)
+-- SELECT 'Admin update', 'events', 'UPDATE', '(SELECT public.is_admin())'
+-- WHERE NOT EXISTS (
+--   SELECT 1 FROM storage.policies WHERE bucket_id = 'events' AND operation = 'UPDATE'
+-- );
+--
+-- INSERT INTO storage.policies (name, bucket_id, operation, definition)
+-- SELECT 'Admin delete', 'events', 'DELETE', '(SELECT public.is_admin())'
+-- WHERE NOT EXISTS (
+--   SELECT 1 FROM storage.policies WHERE bucket_id = 'events' AND operation = 'DELETE'
+-- );
+-- ============================================================================

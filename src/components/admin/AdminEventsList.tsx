@@ -18,6 +18,7 @@ import "./AdminEventsList.css";
 type AdminEventsListProps = {
   events: AdminEventSummary[];
   loading: boolean;
+  latestTerm?: string;
   onOpenEvent: (eventId: number) => void;
   onCreateEvent: () => void;
   onEditEvent: (eventId: number) => void;
@@ -33,8 +34,6 @@ const formatDateOnly = (value?: string | null) => {
 };
 
 const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const toDateTime = (date: string, time: string) => {
   const parsed = new Date(`${date}T${time}`);
@@ -54,12 +53,8 @@ const buildPosterCandidateUrls = (poster: string | null | undefined) => {
     return [];
   }
 
-  if (poster.startsWith("http://") || poster.startsWith("https://")) {
-    return [poster];
-  }
-
-  const normalizedPoster = poster.startsWith("/") ? poster : `/${poster}`;
-  return POSTER_EXTENSIONS.map((ext) => `${API_BASE_URL}${normalizedPoster}/0.${ext}`);
+  const normalizedPoster = poster.replace(/\/$/, '');
+  return POSTER_EXTENSIONS.map((ext) => `${normalizedPoster}/0.${ext}`);
 };
 
 const EventPosterThumbnail = ({ event }: { event: AdminEventSummary }) => {
@@ -85,7 +80,7 @@ const EventPosterThumbnail = ({ event }: { event: AdminEventSummary }) => {
   );
 };
 
-export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent, onEditEvent }: AdminEventsListProps) => {
+export const AdminEventsList = ({ events, loading, latestTerm: propLatestTerm, onOpenEvent, onCreateEvent, onEditEvent }: AdminEventsListProps) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "past">("all");
   const [termFilter, setTermFilter] = useState<string>("all");
@@ -103,7 +98,7 @@ export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent, o
     [events]
   );
 
-  const latestTerm = allTerms[0] || "";
+  const latestTerm = propLatestTerm || allTerms[0] || "";
 
   const filteredEvents = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -164,7 +159,11 @@ export const AdminEventsList = ({ events, loading, onOpenEvent, onCreateEvent, o
     }
 
     return Array.from(grouped.entries())
-      .sort(([termA], [termB]) => termB.localeCompare(termA))
+      .sort(([termA], [termB]) => {
+        if (termA === latestTerm) return -1;
+        if (termB === latestTerm) return 1;
+        return termB.localeCompare(termA);
+      })
       .map(([term, termEvents]) => ({
         term,
         events: termEvents,

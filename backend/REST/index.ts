@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import { setupAuthRoutes } from './middleware/authHandlers';
 import { setupUserRoutes } from './middleware/userHandlers';
 import { setupEventRoutes } from './middleware/eventHandlers';
+import { setupAdminOptionsRoutes } from './middleware/adminOptionsHandlers';
 
 (BigInt.prototype as any).toJSON = function () {
   const int = Number.parseInt(this.toString());
@@ -25,6 +26,7 @@ app.use(express.static('public')); // Serve static files (images, etc)
 setupAuthRoutes(app, prisma);
 setupEventRoutes(app, prisma);
 setupUserRoutes(app, prisma);
+setupAdminOptionsRoutes(app, prisma);
 
 
 app.listen(PORT, () => {
