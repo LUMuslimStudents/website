@@ -18,6 +18,7 @@ import {
   login,
   requestPasswordReset,
   verifyResetToken,
+  verifySignupToken,
   updatePassword,
   getCurrentUser,
   signOut,
@@ -28,6 +29,13 @@ import {
   getCurrentAdminOptions,
   upsertAdminOptions,
 } from ']/services/adminOptions/adminOptions';
+import {
+  getMembershipStatus,
+  createMembershipCheckout,
+  createEventCheckout,
+  verifyPayment,
+  cancelMembership,
+} from ']/services/payments/payments';
 
 // ── Event data exports ──────────────────────────────────────────────────────
 
@@ -58,6 +66,9 @@ export const authForgotPasswordData = async (email: string, redirectTo: string) 
 
 export const authVerifyResetData = async (token_hash: string, redirectTo: string) =>
   verifyResetToken(token_hash, redirectTo);
+
+export const authVerifySignupData = async (token_hash: string) =>
+  verifySignupToken(token_hash);
 
 export const authUpdatePasswordData = async (password: string) =>
   updatePassword(password);
@@ -97,7 +108,6 @@ export const adminUpdateEventPublishStateData = async (
   eventId: number,
   isPublished: boolean,
 ) => adminUpdateEventPublishState(eventId, isPublished);
-
 export const adminUpdateRegistrationStatusesData = async (
   eventId: number,
   updates: Parameters<typeof adminUpdateRegistrationStatuses>[1],
@@ -117,3 +127,19 @@ export const adminOptionsCurrentData = async () => getCurrentAdminOptions();
 export const adminOptionsUpsertData = async (
   input: Parameters<typeof upsertAdminOptions>[0],
 ) => upsertAdminOptions(input);
+
+// ── Membership & payments exports ───────────────────────────────────────────
+
+export const membershipStatusData = async () => getMembershipStatus();
+
+export const membershipCheckoutData = async (
+  plan: Parameters<typeof createMembershipCheckout>[0],
+) => createMembershipCheckout(plan);
+
+export const membershipCancelData = async () => cancelMembership();
+
+export const eventCheckoutData = async (registrationId: string) =>
+  createEventCheckout(registrationId);
+
+export const paymentVerifyData = async (sessionId: string) =>
+  verifyPayment(sessionId);

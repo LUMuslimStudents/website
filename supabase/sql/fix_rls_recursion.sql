@@ -82,7 +82,9 @@ CREATE OR REPLACE FUNCTION public.check_role_change()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.role IS DISTINCT FROM OLD.role THEN
-    IF NOT public.is_admin() THEN
+    -- Enforce only for authenticated app users. Dashboard sessions
+    -- (SQL Editor = postgres, Table Editor = service_role) bypass this guard.
+    IF COALESCE(auth.role(), '') = 'authenticated' AND NOT public.is_admin() THEN
       RAISE EXCEPTION 'Only admins can change user roles';
     END IF;
   END IF;

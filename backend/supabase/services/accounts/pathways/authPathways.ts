@@ -85,12 +85,39 @@ export const signOut = async () => {
   return { message: 'Signed out successfully' };
 };
 
+// ── Signup email confirmation (PKCE exchange) ──────────────────────────────
+
+/**
+ * Verify the signup confirmation link (token_hash from the email).
+ * Establishes the user's session — after this the membership gate takes over
+ * and redirects them to the payment page.
+ */
+export const verifySignupToken = async (tokenHash: string) => {
+  if (!tokenHash) {
+    throw new Error('Missing signup token.');
+  }
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: 'signup',
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    message: 'Email confirmed. Complete your membership payment to continue.',
+    user: data.user,
+  };
+};
+
 // ── Password Reset (link-based) ─────────────────────────────────────────────
 
 /**
  * Send a password-reset link to the user's email.
  *
- * `redirectTo` must be a URL on your site (e.g. `https://lums.lu.se/reset-password`).
+ * `redirectTo` must be a URL on your site.
  * After clicking the link, the user lands on that page with `?token_hash=...&type=recovery`
  * in the URL — call `verifyResetToken` to complete the PKCE flow.
  */
@@ -118,8 +145,7 @@ export const requestPasswordReset = async (
  * Verify the reset token from the email link (PKCE exchange).
  * On success the user is authenticated — call `updatePassword` next.
  */
-export const verifyResetToken = async (token_hash: string, redirectTo: string) => {
-  if (!token_hash) {
+export const verifyResetToken = async (token_hash: string, redirectTo: string) => {  if (!token_hash) {
     throw new Error('Missing reset token.');
   }
 
@@ -159,10 +185,13 @@ export const updatePassword = async (password: string) => {
 // ── Admin ───────────────────────────────────────────────────────────────────
 
 /**
- * List all users. Requires admin role (checked against `public.users.role`).
+ * List all users (with emails + membership payment status).
+ * The heavy lifting happens in the admin-list-users edge function, which
+ * verifies the caller's admin role SERVER-SIDE and enriches the rows with
+ * emails from auth.users (emails don't exist in public.users).
  */
 export const getUsers = async () => {
-  // Verify the caller is authenticated and has admin role
+  // Quick client-side check for a friendlier error message.
   const {
     data: { user },
     error: authError,
@@ -172,27 +201,23 @@ export const getUsers = async () => {
     throw new Error('Access denied. Not authenticated.');
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    console.error('[getUsers] Profile role fetch error:', profileError.message, profileError);
-    throw new Error('Access denied. Admin role required.');
-  }
-
-  if (profile?.role !== 'admin') {
-    throw new Error('Access denied. Admin role required.');
-  }
-
-  const { data, error } = await supabase.from('users').select('*');
+  const { data, error } = await supabase.functions.invoke('admin-list-users', {
+    body: {},
+  });
 
   if (error) {
-    console.error('[getUsers] All-users fetch error:', error.message, error);
-    throw new Error(error.message);
+    let message = error.message;
+    const context = (error as { context?: Response })?.context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = (await context.json()) as { error?: string };
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message || 'Access denied. Admin role required.');
   }
 
-  return data;
+  return (data as { users?: unknown[] })?.users ?? [];
 };

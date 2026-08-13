@@ -69,6 +69,7 @@ type EventRegistrationFormProps = {
   };
   isRegistrationClosed: boolean;
   isSignedIn: boolean;
+  isPaidMember: boolean;
   user: UserProfile | null;
   onRegistered: (eventId: number) => void;
   onFooterStateChange?: (footerState: EventRegistrationFooterState | null) => void;
@@ -214,7 +215,7 @@ const hasRequiredInvitationProfileData = (profile: RegistrationProfile, invitati
 };
 
 const getDisplayPriceInfo = (
-  isSignedIn: boolean,
+  isPaidMember: boolean,
   isAlumnus: boolean,
   event: {
     price_member: number;
@@ -222,7 +223,7 @@ const getDisplayPriceInfo = (
     price_alumnus: number;
   },
 ) => {
-  if (isSignedIn) {
+  if (isPaidMember) {
     return { displayPrice: event.price_member, displayPriceTier: "member" as const };
   }
 
@@ -237,6 +238,7 @@ export const EventRegistrationForm = ({
   event,
   isRegistrationClosed,
   isSignedIn,
+  isPaidMember,
   user,
   onRegistered,
   onFooterStateChange,
@@ -283,7 +285,7 @@ export const EventRegistrationForm = ({
   const refundCutoffAt = getRefundCutoffAt(event.date, event.start_time);
   const formFields = event.form_fields ?? [];
   const { displayPrice, displayPriceTier } = getDisplayPriceInfo(
-    isSignedIn,
+    isPaidMember,
     registrationProfile.is_alumnus,
     event,
   );
@@ -426,7 +428,7 @@ export const EventRegistrationForm = ({
           return Boolean(String(answer.value || "").trim());
         });
 
-      await apiRequest(`/events/${event.id}/register`, "POST", {
+      const registration = await apiRequest(`/events/${event.id}/register`, "POST", {
         profile: profilePayload,
         answers,
       });
@@ -435,6 +437,22 @@ export const EventRegistrationForm = ({
       setIsAlreadyRegistered(true);
       setTermsDialogOpen(false);
       onRegistered(event.id);
+
+      // Paid event → redirect to Stripe-hosted Checkout.
+      if (registration?.payment_required && registration?.registration_id) {
+        try {
+          const { url } = await apiRequest(`/events/${event.id}/checkout`, "POST", {
+            registration_id: registration.registration_id,
+          });
+          window.location.assign(url);
+          return;
+        } catch (checkoutError: any) {
+          toast.error(
+            checkoutError?.message ||
+              'Registration saved, but the payment page could not be opened. Please try again.',
+          );
+        }
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to submit registration");
     } finally {

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,6 +32,8 @@ const formSchema = z.object({
 
     gender: z.enum(['male', 'female'], { errorMap: () => ({ message: 'Please select a gender' }) }),
 
+    plan: z.enum(['single_term', 'two_term']),
+
     study_program: z.string()
         .min(2, 'Study program is required')
         .regex(/^[a-zA-Z\s&()-]+$/, 'Study program can only contain letters, numbers, spaces, and basic symbols'),
@@ -48,10 +50,39 @@ const Signup = () => {
     const [refundPolicy, setrefundPolicy] = useState(false);
     const [GDPRTerm, setGDPRTerm] = useState(false);
     const [pendingFormValues, setPendingFormValues] = useState<z.infer<typeof formSchema> | null>(null);
+    const [prices, setPrices] = useState<{ single: number; two: number }>({ single: 150, two: 300 });
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const options = await apiRequest('/options/current', 'GET');
+                if (!cancelled && options) {
+                    setPrices({
+                        single: options.price_single_term ?? 150,
+                        two: options.price_discounted_two_term ?? 300,
+                    });
+                }
+            } catch {
+                // Fall back to defaults
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        mode: 'onBlur'
+        mode: 'onBlur',
+        defaultValues: {
+            first_name: '',
+            last_name: '',
+            email: '',
+            password: '',
+            gender: '' as unknown as 'male' | 'female',
+            plan: 'single_term' as const,
+            study_program: '',
+            phone_number: '',
+        },
     });
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -202,6 +233,49 @@ const Signup = () => {
                                             <FormControl>
                                                 <Input placeholder="+46 71 234 5678" {...field} />
                                             </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="plan"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Membership plan</FormLabel>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('single_term')}
+                                                    className={`flex flex-col items-start rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                                                        field.value === 'single_term'
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-border hover:border-primary/50'
+                                                    }`}
+                                                >
+                                                    <p className="font-medium">Single term</p>
+                                                    <p className="text-lg font-bold">{prices.single} SEK</p>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('two_term')}
+                                                    className={`flex flex-col items-start rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                                                        field.value === 'two_term'
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-border hover:border-primary/50'
+                                                    }`}
+                                                >
+                                                    <p className="font-medium">Two terms</p>
+                                                    <p className="text-sm text-muted-foreground line-through">
+                                                        {prices.single * 2} SEK
+                                                    </p>
+                                                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                                                        {prices.two} SEK
+                                                    </p>
+                                                </button>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}

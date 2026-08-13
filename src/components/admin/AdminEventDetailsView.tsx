@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronUp, Columns3, Filter, GripHorizontal, ListFilter, Table2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -48,6 +48,7 @@ import {
   AdminEventRegistration,
 } from "./types";
 import { AdminRegistrationSnapshotDialog } from "./AdminRegistrationSnapshotDialog";
+import { AdminDataTable } from "./AdminDataTable";
 
 type AdminEventDetailProps = {
   eventId: number;
@@ -76,6 +77,9 @@ type TableColumn = {
   getSearchValue: (row: ParticipantRow) => string;
   getSortValue: (row: ParticipantRow) => string;
   getDisplayValue: (row: ParticipantRow) => string;
+  renderCell?: (row: ParticipantRow) => React.ReactNode;
+  headerClassName?: string;
+  cellClassName?: string;
   placeholder?: string;
 };
 
@@ -465,11 +469,6 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
   const [event, setEvent] = useState<AdminEventDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [sortColumnId, setSortColumnId] = useState<string>("participant");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
-  const [columnOrder, setColumnOrder] = useState<string[]>([]);
-  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>([]);
   const [statusDrafts, setStatusDrafts] = useState<Record<string, RegistrationStatus>>({});
   const [savingStatuses, setSavingStatuses] = useState(false);
   const [deleteTargetRegistration, setDeleteTargetRegistration] = useState<AdminEventRegistration | null>(null);
@@ -477,20 +476,11 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<string | null>(null);
   const [updatingPublishState, setUpdatingPublishState] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
-  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
-  const [dragHandleCenters, setDragHandleCenters] = useState<Record<string, number>>({});
-  const tableViewportRef = useRef<HTMLDivElement | null>(null);
-  const headerCellRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setViewMode("table");
-    setSortColumnId("participant");
-    setSortDirection("asc");
-    setColumnFilters({});
-    setColumnOrder([]);
-    setVisibleColumnIds([]);
     setStatusDrafts({});
 
     const fetchEvent = async () => {
@@ -518,103 +508,6 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
     };
   }, [eventId, onBack]);
 
-  const allColumns = useMemo(() => {
-    if (!event) {
-      return [] as TableColumn[];
-    }
-    return [...buildBaseColumns(), ...buildDynamicColumns(event.form_fields || [])];
-  }, [event]);
-
-  useEffect(() => {
-    if (allColumns.length === 0) {
-      return;
-    }
-
-    const allIds = allColumns.map((column) => column.id);
-    setColumnOrder((previous) => {
-      if (previous.length === 0) {
-        return ensurePinnedColumnsFirst(allIds);
-      }
-
-      const retained = previous.filter((id) => allIds.includes(id));
-      const appended = allIds.filter((id) => !retained.includes(id));
-      return ensurePinnedColumnsFirst([...retained, ...appended]);
-    });
-  }, [allColumns]);
-
-  useEffect(() => {
-    if (allColumns.length === 0) {
-      return;
-    }
-
-    const allIds = allColumns.map((column) => column.id);
-    setVisibleColumnIds((previous) => {
-      if (previous.length === 0) {
-        return ensurePinnedColumnsFirst(allIds);
-      }
-
-      const retained = previous.filter((id) => allIds.includes(id));
-      const appended = allIds.filter((id) => !retained.includes(id));
-      const next = [...retained, ...appended];
-      return ensurePinnedColumnsFirst(next);
-    });
-  }, [allColumns]);
-
-  const orderedColumns = useMemo(() => {
-    if (allColumns.length === 0) {
-      return [] as TableColumn[];
-    }
-
-    const map = new Map(allColumns.map((column) => [column.id, column]));
-    return columnOrder.map((id) => map.get(id)).filter((column): column is TableColumn => Boolean(column));
-  }, [allColumns, columnOrder]);
-
-  const visibleOrderedColumns = useMemo(
-    () => orderedColumns.filter((column) => visibleColumnIds.includes(column.id)),
-    [orderedColumns, visibleColumnIds]
-  );
-
-  useEffect(() => {
-    if (visibleOrderedColumns.length === 0) {
-      return;
-    }
-
-    if (!visibleOrderedColumns.some((column) => column.id === sortColumnId)) {
-      setSortColumnId(visibleOrderedColumns[0].id);
-      setSortDirection("asc");
-    }
-  }, [visibleOrderedColumns, sortColumnId]);
-
-  const participantRows = useMemo(() => {
-    if (!event || visibleOrderedColumns.length === 0) {
-      return [] as ParticipantRow[];
-    }
-
-    const rows = buildParticipantRows(event, statusDrafts);
-
-    const filteredRows = rows.filter((row) =>
-      visibleOrderedColumns.every((column) => {
-        const filterValue = normalizeText(columnFilters[column.id]);
-        if (!filterValue) {
-          return true;
-        }
-        return normalizeText(column.getSearchValue(row)).includes(filterValue);
-      })
-    );
-
-    const activeSortColumn = visibleOrderedColumns.find((column) => column.id === sortColumnId) || visibleOrderedColumns[0];
-
-    return [...filteredRows].sort((left, right) => {
-      const leftValue = normalizeText(activeSortColumn.getSortValue(left));
-      const rightValue = normalizeText(activeSortColumn.getSortValue(right));
-      const comparison = leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: "base" });
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-  }, [columnFilters, event, statusDrafts, visibleOrderedColumns, sortColumnId, sortDirection]);
-
-  const pendingStatusUpdateCount = Object.keys(statusDrafts).length;
-  const requiresExtraDeleteConfirmation = deleteTargetRegistration?.status === "confirmed";
-
   const requestRegistrationDelete = (registration: AdminEventRegistration) => {
     setDeleteTargetRegistration(registration);
     setDeleteConfirmStep(1);
@@ -631,6 +524,76 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
       return next;
     });
   };
+
+  const columns = useMemo(() => {
+    if (!event) {
+      return [] as TableColumn[];
+    }
+
+    const base = [...buildBaseColumns(), ...buildDynamicColumns(event.form_fields || [])];
+    return base.map((column) => {
+      if (column.id === ACTIONS_COLUMN_ID) {
+        return {
+          ...column,
+          renderCell: (row: ParticipantRow) => (
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => requestRegistrationDelete(row.registration)}
+              disabled={deletingRegistrationId === row.registration.id}
+              title="Delete registration"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ),
+          headerClassName: "w-[52px] min-w-[52px] max-w-[52px]",
+        };
+      }
+
+      if (column.id === STATUS_COLUMN_ID) {
+        return {
+          ...column,
+          renderCell: (row: ParticipantRow) => (
+            <Select
+              value={row.currentStatus}
+              onValueChange={(value) =>
+                handleStatusChange(
+                  row.registration.id,
+                  value as RegistrationStatus,
+                  row.registration.status as RegistrationStatus,
+                )
+              }
+            >
+              <SelectTrigger className="h-8 w-[140px]">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                {REGISTRATION_STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {formatStatusLabel(status)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ),
+        };
+      }
+
+      return column;
+    });
+  }, [event, deletingRegistrationId, statusDrafts]);
+
+  const participantRows = useMemo(() => {
+    if (!event) {
+      return [] as ParticipantRow[];
+    }
+    return buildParticipantRows(event, statusDrafts);
+  }, [event, statusDrafts]);
+
+  const pendingStatusUpdateCount = Object.keys(statusDrafts).length;
+  const requiresExtraDeleteConfirmation = deleteTargetRegistration?.status === "confirmed";
 
   const saveStatusChanges = async () => {
     if (!event || pendingStatusUpdateCount === 0) {
@@ -747,180 +710,8 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
     }
   };
 
-  const exportAsCsv = () => {
-    if (!event || visibleOrderedColumns.length === 0) {
-      return;
-    }
-
-    const headers = visibleOrderedColumns.map((column) => column.fullLabel || column.label);
-    const rows = participantRows.map((row) =>
-      visibleOrderedColumns.map((column) => {
-        const rawValue = column.getDisplayValue(row);
-        return escapeCsvValue(String(rawValue ?? ""));
-      }).join(",")
-    );
-
-    const csvContent = [
-      headers.map((header) => escapeCsvValue(header)).join(","),
-      ...rows,
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-participants.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const toggleColumnVisibility = (columnId: string, nextChecked: boolean) => {
-    if ((columnId === ACTIONS_COLUMN_ID || columnId === STATUS_COLUMN_ID) && !nextChecked) {
-      return;
-    }
-
-    setVisibleColumnIds((previous) => {
-      if (nextChecked) {
-        if (previous.includes(columnId)) {
-          return previous;
-        }
-        return ensurePinnedColumnsFirst([...previous, columnId]);
-      }
-
-      if (previous.length <= 1) {
-        return previous;
-      }
-
-      return previous.filter((id) => id !== columnId);
-    });
-  };
-
-  const moveColumnInOrder = (columnId: string, direction: "up" | "down") => {
-    if (columnId === ACTIONS_COLUMN_ID || columnId === STATUS_COLUMN_ID) {
-      return;
-    }
-
-    setColumnOrder((previous) => {
-      const index = previous.indexOf(columnId);
-      if (index === -1) {
-        return previous;
-      }
-
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= previous.length) {
-        return previous;
-      }
-
-      const next = [...previous];
-      const [moved] = next.splice(index, 1);
-      next.splice(targetIndex, 0, moved);
-      return ensurePinnedColumnsFirst(next);
-    });
-  };
-
-  const handleSort = (columnId: string) => {
-    if (sortColumnId === columnId) {
-      setSortDirection((previous) => (previous === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortColumnId(columnId);
-    setSortDirection("asc");
-  };
-
-  const handleColumnDrop = (targetColumnId: string) => {
-    if (!draggedColumnId || draggedColumnId === targetColumnId) {
-      return;
-    }
-    if (
-      draggedColumnId === ACTIONS_COLUMN_ID ||
-      targetColumnId === ACTIONS_COLUMN_ID ||
-      draggedColumnId === STATUS_COLUMN_ID ||
-      targetColumnId === STATUS_COLUMN_ID
-    ) {
-      setDraggedColumnId(null);
-      return;
-    }
-
-    setColumnOrder((previous) => {
-      const from = previous.indexOf(draggedColumnId);
-      const to = previous.indexOf(targetColumnId);
-      if (from === -1 || to === -1) {
-        return previous;
-      }
-
-      const next = [...previous];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return ensurePinnedColumnsFirst(next);
-    });
-    setDraggedColumnId(null);
-  };
-
-  const handleLenientColumnDrop = (clientX: number) => {
-    if (!draggedColumnId || visibleOrderedColumns.length === 0) {
-      setDraggedColumnId(null);
-      return;
-    }
-
-    const closest = visibleOrderedColumns
-      .map((column) => {
-        const node = headerCellRefs.current[column.id];
-        if (!node) {
-          return null;
-        }
-
-        const rect = node.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        return {
-          id: column.id,
-          distance: Math.abs(clientX - centerX),
-        };
-      })
-      .filter((item): item is { id: string; distance: number } => Boolean(item))
-      .sort((a, b) => a.distance - b.distance)[0];
-
-    if (!closest) {
-      setDraggedColumnId(null);
-      return;
-    }
-
-    handleColumnDrop(closest.id);
-  };
-
-  const updateDragHandleCenters = () => {
-    const viewportNode = tableViewportRef.current;
-    if (!viewportNode || visibleOrderedColumns.length === 0) {
-      return;
-    }
-
-    const viewportRect = viewportNode.getBoundingClientRect();
-    const nextCenters: Record<string, number> = {};
-
-    for (const column of visibleOrderedColumns) {
-      const cellNode = headerCellRefs.current[column.id];
-      if (!cellNode) {
-        continue;
-      }
-
-      const cellRect = cellNode.getBoundingClientRect();
-      nextCenters[column.id] = cellRect.left - viewportRect.left + cellRect.width / 2;
-    }
-
-    setDragHandleCenters(nextCenters);
-  };
-
-  useEffect(() => {
-    updateDragHandleCenters();
-  }, [visibleOrderedColumns, participantRows.length]);
-
-  useEffect(() => {
-    const handleResize = () => updateDragHandleCenters();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [visibleOrderedColumns]);
+  // Table machinery (sorting, filtering, column reorder, CSV) now lives in
+  // the shared AdminDataTable component.
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading event details...</p>;
@@ -1018,299 +809,26 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={exportAsCsv}>
-                    Export as CSV
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" size="sm" className="gap-2">
-                        <Columns3 className="h-4 w-4" />
-                        Columns
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="bottom" align="end" className="w-56 max-h-72 overflow-y-auto">
-                      <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {orderedColumns
-                        .filter((column) => column.id !== ACTIONS_COLUMN_ID && column.id !== STATUS_COLUMN_ID)
-                        .map((column, index, dropdownColumns) => {
-                      const isPinnedColumn = column.id === ACTIONS_COLUMN_ID || column.id === STATUS_COLUMN_ID;
-                      const isVisible = isPinnedColumn ? true : visibleColumnIds.includes(column.id);
-                      const disableToggle = isPinnedColumn || (isVisible && visibleColumnIds.length === 1);
-                      const menuLabel = column.fullLabel
-                        ? `${column.label} - ${truncateLabel(column.fullLabel, 42)}`
-                        : column.label;
-
-                        return (
-                          <DropdownMenuCheckboxItem
-                            key={column.id}
-                            checked={isVisible}
-                            disabled={disableToggle}
-                            draggable={!isPinnedColumn}
-                            onDragStart={() => {
-                              if (!isPinnedColumn) {
-                                setDraggedColumnId(column.id);
-                              }
-                            }}
-                            onDragEnd={() => {
-                              if (!isPinnedColumn) {
-                                setDraggedColumnId(null);
-                              }
-                            }}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDrop={(event) => {
-                              event.preventDefault();
-                              if (!isPinnedColumn) {
-                                handleColumnDrop(column.id);
-                              }
-                            }}
-                            onSelect={(event) => event.preventDefault()}
-                            onCheckedChange={(checked) => toggleColumnVisibility(column.id, checked === true)}
-                            title={column.fullLabel || column.label}
-                            className="flex items-center gap-2"
-                          >
-                            {!isPinnedColumn ? (
-                              <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                            ) : (
-                              <span className="w-3.5" aria-hidden="true" />
-                            )}
-                            <span className="min-w-0 flex-1 truncate">{menuLabel}</span>
-                            <span className="ml-auto flex items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                disabled={isPinnedColumn || index === 0}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  if (!isPinnedColumn) {
-                                    moveColumnInOrder(column.id, "up");
-                                  }
-                                }}
-                                title="Move column up"
-                              >
-                                <ChevronUp className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                disabled={isPinnedColumn || index === dropdownColumns.length - 1}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  if (!isPinnedColumn) {
-                                    moveColumnInOrder(column.id, "down");
-                                  }
-                                }}
-                                title="Move column down"
-                              >
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              </Button>
-                            </span>
-                            {disableToggle ? <span className="sr-only">At least one column must remain visible</span> : null}
-                          </DropdownMenuCheckboxItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="overflow-hidden rounded-md border">
-                  <div
-                    ref={tableViewportRef}
-                    className="overflow-x-auto"
-                    onScroll={updateDragHandleCenters}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      handleLenientColumnDrop(event.clientX);
-                    }}
+              <AdminDataTable
+                columns={columns}
+                rows={participantRows}
+                rowKey={(row) => row.registration.id}
+                csvFileName={`${event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-participants.csv`}
+                pinnedColumnIds={[ACTIONS_COLUMN_ID, STATUS_COLUMN_ID]}
+                defaultSortColumnId="participant"
+                getRowTint={(row) => getRowStatusTint(row.currentStatus)}
+                toolbarRight={
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={pendingStatusUpdateCount === 0 || savingStatuses}
+                    onClick={saveStatusChanges}
                   >
-                    <Table>
-                        <TableHeader className="bg-muted/60">
-                          <TableRow className="border-b border-border/80">
-                            {visibleOrderedColumns.map((column) => {
-                              const isSorted = sortColumnId === column.id;
-                              const dynamicColumn = isDynamicColumn(column.id);
-                              const isActionsColumn = column.id === ACTIONS_COLUMN_ID;
-
-                            return (
-                              <TableHead
-                                key={column.id}
-                                className={`relative ${isActionsColumn ? "w-[52px] min-w-[52px] max-w-[52px]" : "min-w-[180px]"} px-3 pt-5 pb-2 align-top ${dynamicColumn ? "bg-slate-200/80 dark:bg-slate-800/55" : "bg-muted/60"}`}
-                                ref={(node) => {
-                                  headerCellRefs.current[column.id] = node;
-                                }}
-                              >
-                                {isActionsColumn ? null : (
-                                  <div
-                                    className="flex items-center justify-between gap-2"
-                                  >
-                              <button
-                                type="button"
-                                onClick={() => handleSort(column.id)}
-                                className="inline-flex items-center gap-1 font-semibold hover:underline"
-                                title={column.fullLabel || column.label}
-                              >
-                                {column.label}
-                                <ArrowUpDown className={`h-3.5 w-3.5 ${isSorted ? "text-foreground" : "text-muted-foreground"}`} />
-                                {isSorted ? <span className="text-[10px] uppercase">{sortDirection}</span> : null}
-                              </button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant={columnFilters[column.id] ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-7 px-2"
-                                  >
-                                    <Filter className="h-3.5 w-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-64 p-2">
-                                  <DropdownMenuLabel className="px-0 py-0 text-xs font-semibold">
-                                    Filter {column.fullLabel || column.label}
-                                  </DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <Input
-                                    value={columnFilters[column.id] || ""}
-                                    onChange={(event) =>
-                                      setColumnFilters((previous) => ({
-                                        ...previous,
-                                        [column.id]: event.target.value,
-                                      }))
-                                    }
-                                    placeholder={column.placeholder || "Filter"}
-                                    className="h-8 text-xs"
-                                  />
-                                  <div className="mt-2 flex justify-end">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        setColumnFilters((previous) => ({
-                                          ...previous,
-                                          [column.id]: "",
-                                        }))
-                                      }
-                                    >
-                                      Clear
-                                    </Button>
-                                  </div>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                                  </div>
-                                )}
-                              </TableHead>
-                            );
-                          })}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {participantRows.map((row) => (
-                          <TableRow key={row.registration.id} className={getRowStatusTint(row.currentStatus)}>
-                            {visibleOrderedColumns.map((column) => {
-                              const dynamicColumn = isDynamicColumn(column.id);
-                              if (column.id === ACTIONS_COLUMN_ID) {
-                                return (
-                                  <TableCell key={column.id} className="align-top">
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                    onClick={() => requestRegistrationDelete(row.registration)}
-                                      disabled={deletingRegistrationId === row.registration.id}
-                                      title="Delete registration"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TableCell>
-                                );
-                              }
-                              if (column.id === "participation_status") {
-                                return (
-                                  <TableCell key={column.id} className="align-top">
-                                    <Select
-                                      value={row.currentStatus}
-                                      onValueChange={(value) =>
-                                        handleStatusChange(
-                                          row.registration.id,
-                                          value as RegistrationStatus,
-                                          row.registration.status as RegistrationStatus
-                                        )
-                                      }
-                                    >
-                                      <SelectTrigger className="h-8 w-[140px]">
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {REGISTRATION_STATUS_OPTIONS.map((status) => (
-                                          <SelectItem key={status} value={status}>
-                                            {formatStatusLabel(status)}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                );
-                              }
-
-                              return (
-                                <TableCell key={column.id} className={`align-top whitespace-pre-wrap ${dynamicColumn ? getDynamicStatusTint(row.currentStatus) : ""}`}>
-                                  {column.getDisplayValue(row)}
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
-                  {visibleOrderedColumns.map((column) => {
-                    if (column.id === ACTIONS_COLUMN_ID || column.id === STATUS_COLUMN_ID) {
-                      return null;
-                    }
-
-                    const center = dragHandleCenters[column.id];
-                    if (typeof center !== "number") {
-                      return null;
-                    }
-
-                    return (
-                      <button
-                        key={`drag-handle-${column.id}`}
-                        type="button"
-                        draggable
-                        onDragStart={() => setDraggedColumnId(column.id)}
-                        onDragEnd={() => setDraggedColumnId(null)}
-                        style={{ left: `${center}px` }}
-                        className={`pointer-events-auto absolute top-0 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border bg-background px-1.5 py-0.5 text-muted-foreground/80 transition-all duration-150 ease-out cursor-grab active:cursor-grabbing hover:text-foreground hover:border-primary/40 hover:bg-muted/50 ${draggedColumnId === column.id ? "scale-105 border-primary/50 bg-primary/10 text-foreground" : ""}`}
-                        title="Drag to reorder column"
-                        aria-label={`Drag handle for ${(column.fullLabel || column.label)} column`}
-                      >
-                        <GripHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {participantRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No participants matched the current column filters.</p>
-              ) : null}
+                    {savingStatuses ? "Saving..." : "Save changes"}
+                  </Button>
+                }
+              />
 
               {pendingStatusUpdateCount > 0 ? (
                 <p className="text-xs text-muted-foreground">
@@ -1356,18 +874,8 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                       {pendingStatusUpdateCount} unsaved change{pendingStatusUpdateCount === 1 ? "" : "s"}
                     </span>
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    disabled={pendingStatusUpdateCount === 0 || savingStatuses}
-                    onClick={saveStatusChanges}
-                  >
-                    {savingStatuses ? "Saving..." : "Save changes"}
-                  </Button>
                 </div>
               </div>
-
             </div>
           )}
         </CardContent>

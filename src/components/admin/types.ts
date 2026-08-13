@@ -1,12 +1,17 @@
 export interface AdminUser {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email?: string | null;
   role: string;
   study_program: string;
   phone_number: string;
-  created_at: string;
+  gender?: string;
+  term?: string | null;
+  created_at?: string | null;
+  membership_status: 'paid' | 'unpaid';
+  membership_plan?: string | null;
+  membership_paid_at?: string | null;
 }
 
 export type AdminLinkedUser = {

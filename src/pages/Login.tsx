@@ -47,11 +47,34 @@ const Login = () => {
     }
   }, [location.state?.signupSuccess]);
 
-  // Redirect if already logged in (e.g., after email confirmation auto-logs you in)
+  // Redirect if already logged in (e.g., after email confirmation auto-logs you in).
+  // Gate: unpaid users are sent to the membership page before app content.
   useEffect(() => {
-    if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/', { replace: true });
+    if (!user) return;
+
+    if (user.role === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
     }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await apiRequest('/membership/status', 'GET');
+        if (cancelled) return;
+        if (status?.membershipOpen && !status?.paid) {
+          navigate('/membership', { state: { checkoutRequired: true }, replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
+      } catch {
+        if (!cancelled) navigate('/', { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, navigate]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {

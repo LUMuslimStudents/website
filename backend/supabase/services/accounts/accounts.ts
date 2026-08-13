@@ -12,6 +12,7 @@ export {
     login,
     requestPasswordReset,
     verifyResetToken,
+    verifySignupToken,
     updatePassword,
     getCurrentUser,
     signOut,

@@ -5,6 +5,7 @@ import {
   authSignOutData,
   authForgotPasswordData,
   authVerifyResetData,
+  authVerifySignupData,
   authUpdatePasswordData,
   adminUsersData,
   eventData,
@@ -23,6 +24,11 @@ import {
   adminOptionsData,
   adminOptionsCurrentData,
   adminOptionsUpsertData,
+  membershipStatusData,
+  membershipCheckoutData,
+  membershipCancelData,
+  eventCheckoutData,
+  paymentVerifyData,
 } from ']/SupabaseSource';
 import { supabase } from ']/client';
 
@@ -175,6 +181,11 @@ export const SupabaseRequest = async (
     return authVerifyResetData(body?.token_hash, redirectTo);
   }
 
+  // ── Auth: Verify signup confirmation link (PKCE) ────────────────
+  if (endpoint === '/auth/verify-signup' && method === 'POST') {
+    return authVerifySignupData(body?.token_hash);
+  }
+
   // ── Auth: Update password (after reset) ─────────────────────────
   if (endpoint === '/auth/update-password' && method === 'POST') {
     return authUpdatePasswordData(body?.password);
@@ -294,7 +305,33 @@ export const SupabaseRequest = async (
   if (endpoint === '/options/current' && method === 'GET') {
     return adminOptionsCurrentData();
   }
+  // ── Membership status (login gate + membership page) ───────────
+  if (endpoint === '/membership/status' && method === 'GET') {
+    return membershipStatusData();
+  }
 
+  // ── Membership checkout → Stripe hosted page ───────────────────
+  if (endpoint === '/membership/checkout' && method === 'POST') {
+    return membershipCheckoutData(body?.plan);
+  }
+
+  // ── Membership cancel (checkout page → delete account) ──────────
+  if (endpoint === '/membership/cancel' && method === 'POST') {
+    return membershipCancelData();
+  }
+
+  // ── Event registration checkout → Stripe hosted page ───────────
+  const eventCheckoutMatch = endpoint.match(/^\/events\/(\d+)\/checkout$/);
+  if (eventCheckoutMatch && method === 'POST') {
+    return eventCheckoutData(body?.registration_id);
+  }
+
+  // ── Verify payment (success page) ──────────────────────────────
+  if (endpoint.startsWith('/payment/verify') && method === 'GET') {
+    const sessionId = getQueryParam(endpoint, 'session_id');
+    if (!sessionId) throw new Error('session_id is required');
+    return paymentVerifyData(sessionId);
+  }
   
   throw new Error('API request invalid');
 };

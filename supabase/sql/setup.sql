@@ -35,6 +35,16 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE "public"."PaymentStatus" AS ENUM ('unpaid', 'paid', 'refunded', 'failed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE "public"."MembershipPlan" AS ENUM ('single_term', 'two_term');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ── Tables ──────────────────────────────────────────────────────────────────
 
 -- users table (profile data, mirrors auth.users.id)
@@ -77,17 +87,23 @@ CREATE TABLE IF NOT EXISTS public.events_info (
 CREATE TABLE IF NOT EXISTS public.event_registrations (
     id                  UUID                      PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id            INT                       NOT NULL REFERENCES public.events_info(id) ON DELETE CASCADE,
-    user_id             UUID                      REFERENCES public.users(id),
+    user_id             UUID                      REFERENCES public.users(id) ON DELETE CASCADE,
     status              "EventRegistrationStatus" NOT NULL DEFAULT 'pending',
     invitation_snapshot "Invitation"              NOT NULL,
     siblings_snapshot   "Siblings"                NOT NULL,
-    quoted_price        INT                       NOT NULL,
-    payment_required    BOOLEAN                   NOT NULL DEFAULT false,
-    submitted_at        TIMESTAMPTZ               NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ               NOT NULL DEFAULT now(),
+    quoted_price         INT                       NOT NULL,
+    payment_required     BOOLEAN                   NOT NULL DEFAULT false,
+    stripe_session_id    VARCHAR(255),
+    payment_status       "PaymentStatus"           NOT NULL DEFAULT 'unpaid',
+    payment_completed_at TIMESTAMPTZ,
+    submitted_at         TIMESTAMPTZ               NOT NULL DEFAULT now(),
+    updated_at           TIMESTAMPTZ               NOT NULL DEFAULT now(),
 
     CONSTRAINT uniq_member_registration_per_event UNIQUE (event_id, user_id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_event_registrations_stripe_session
+    ON public.event_registrations (stripe_session_id);
 
 CREATE INDEX IF NOT EXISTS idx_event_registrations_event_status
     ON public.event_registrations (event_id, status, submitted_at);
@@ -155,6 +171,22 @@ CREATE TABLE IF NOT EXISTS public.admin_options (
     is_current                    BOOLEAN      NOT NULL DEFAULT false
 );
 
+-- membership_payments
+CREATE TABLE IF NOT EXISTS public.membership_payments (
+    id                UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID             NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    term              VARCHAR(4)       NOT NULL,
+    plan              "MembershipPlan" NOT NULL,
+    amount            INT              NOT NULL,
+    stripe_session_id VARCHAR(255)     UNIQUE,
+    payment_status    "PaymentStatus"  NOT NULL DEFAULT 'unpaid',
+    paid_at           TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ      NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_membership_payments_user_term
+    ON public.membership_payments (user_id, term);
+
 -- ── Enable Row Level Security on all tables ─────────────────────────────────
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -164,6 +196,7 @@ ALTER TABLE public.event_registration_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_form_fields ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registration_field_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.membership_payments ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ────────────────────────────────────────────────────────────
 -- See also: supabase/sql/rls_policies.sql for the canonical policy definitions.
@@ -193,17 +226,10 @@ CREATE POLICY "admins_read_all_users" ON public.users
     FOR SELECT
     USING (public.is_admin());
 
--- users: allow upsert of own row (for signup confirmation)
+-- Users have NO self-write access: rows are created by the server-side
+-- handle_new_user trigger and updated only by admins (or dashboard sessions).
 DROP POLICY IF EXISTS "users_insert_own" ON public.users;
-CREATE POLICY "users_insert_own" ON public.users
-    FOR INSERT
-    WITH CHECK (auth.uid() = id);
-
 DROP POLICY IF EXISTS "users_update_own" ON public.users;
-CREATE POLICY "users_update_own" ON public.users
-    FOR UPDATE
-    USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
 
 -- events_info: public read for published events, admin read
 DROP POLICY IF EXISTS "events_public_read" ON public.events_info;
@@ -311,9 +337,9 @@ CREATE OR REPLACE FUNCTION public.check_role_change()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.role IS DISTINCT FROM OLD.role THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'
-    ) THEN
+    -- Enforce only for authenticated app users. Dashboard sessions
+    -- (SQL Editor = postgres, Table Editor = service_role) bypass this guard.
+    IF COALESCE(auth.role(), '') = 'authenticated' AND NOT public.is_admin() THEN
       RAISE EXCEPTION 'Only admins can change user roles';
     END IF;
   END IF;
@@ -326,3 +352,21 @@ CREATE TRIGGER prevent_role_escalation
   BEFORE UPDATE ON public.users
   FOR EACH ROW
   EXECUTE FUNCTION public.check_role_change();
+
+-- ── Trigger: force role='user' on non-admin inserts ────────────────────────
+
+CREATE OR REPLACE FUNCTION public.check_role_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF COALESCE(auth.role(), '') = 'authenticated' AND NOT public.is_admin() THEN
+    NEW.role := 'user';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS prevent_role_insert_escalation ON public.users;
+CREATE TRIGGER prevent_role_insert_escalation
+  BEFORE INSERT ON public.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_role_insert();

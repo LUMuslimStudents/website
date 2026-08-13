@@ -39,6 +39,9 @@ const FORBIDDEN_REGISTRATION_BODY_KEYS = new Set([
   'status',
   'quoted_price',
   'payment_required',
+  'stripe_session_id',
+  'payment_status',
+  'payment_completed_at',
   'invitation_snapshot',
   'siblings_snapshot',
 ]);
@@ -149,9 +152,33 @@ export const submitRegistration = async (
     };
   }
 
+  // ── Membership status (paid for the current term) ──────────────────────
+  // "Member" means a paid membership_payments row for the current term —
+  // simply having an account is NOT enough.
+  let hasPaidMembership = false;
+  if (userRecord) {
+    const { data: currentOptions } = await supabase
+      .from('admin_options')
+      .select('term')
+      .eq('is_current', true)
+      .maybeSingle();
+
+    if (currentOptions) {
+      const { data: paidRow } = await supabase
+        .from('membership_payments')
+        .select('id')
+        .eq('user_id', userRecord.id)
+        .eq('term', currentOptions.term as string)
+        .eq('payment_status', 'paid')
+        .maybeSingle();
+
+      hasPaidMembership = Boolean(paidRow);
+    }
+  }
+
   // ── Members-only guard ─────────────────────────────────────────────────
-  if (!userRecord && event.invitation === 'members') {
-    throw new Error('This event is only available to members.');
+  if (!hasPaidMembership && event.invitation === 'members') {
+    throw new Error('This event is only available to paid members.');
   }
 
   // ── Resolve profile fields ─────────────────────────────────────────────
@@ -349,7 +376,7 @@ export const submitRegistration = async (
   }
 
   // ── Resolve price ──────────────────────────────────────────────────────
-  const quotedPrice = userRecord
+  const quotedPrice = hasPaidMembership
     ? event.price_member
     : is_alumnus
       ? event.price_alumnus
@@ -381,7 +408,7 @@ export const submitRegistration = async (
     invitation_snapshot: event.invitation,
     siblings_snapshot: event.siblings,
     quoted_price: quotedPrice,
-    payment_required: false,
+    payment_required: quotedPrice > 0,
     submitted_at: now,
     updated_at: now,
   });
@@ -444,6 +471,7 @@ export const submitRegistration = async (
     message: 'Registration submitted successfully',
     registration_id: registrationId,
     status: 'pending',
+    payment_required: quotedPrice > 0,
   };
 };
 

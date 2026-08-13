@@ -285,6 +285,25 @@ const Events = () => {
 
   const { user } = useAuth();
   const isSignedIn = Boolean(user);
+  const [isPaidMember, setIsPaidMember] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsPaidMember(false);
+      return;
+    }
+    let cancelled = false;
+    apiRequest('/membership/status', 'GET')
+      .then((status) => {
+        if (!cancelled) setIsPaidMember(Boolean(status?.paid));
+      })
+      .catch(() => {
+        if (!cancelled) setIsPaidMember(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const isPersistedRegistered = (eventId: number) => persistedRegisteredEventIds.includes(eventId);
 
@@ -371,7 +390,7 @@ const Events = () => {
 
 
   const priceTag = (event: events_info, overridePrice?: number, overrideTier?: "member" | "nonmember" | "alumnus") => {
-    const price = overridePrice ?? (user ? event.price_member : event.price_nonmember);
+    const price = overridePrice ?? (isPaidMember ? event.price_member : event.price_nonmember);
     const tier = overrideTier ?? (user ? "member" : "nonmember");
     if (tier === "member") {
       const shouldShowStrikethrough = !isMemberExclusive(event) && price < event.price_nonmember;
@@ -790,6 +809,7 @@ const Events = () => {
                 event={expandedEvent}
                 isRegistrationClosed={isRegistrationClosed(expandedEvent)}
                 isSignedIn={isSignedIn}
+                isPaidMember={isPaidMember}
                 user={user}
                 onFooterStateChange={setRegistrationFooterState}
                 onFooterSubmitChange={handleFooterSubmitChange}

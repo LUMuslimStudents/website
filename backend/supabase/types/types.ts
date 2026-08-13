@@ -182,10 +182,13 @@ export type Database = {
           event_id: number
           id: string
           invitation_snapshot: Database["public"]["Enums"]["Invitation"]
+          payment_completed_at: string | null
           payment_required: boolean
+          payment_status: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price: number
           siblings_snapshot: Database["public"]["Enums"]["Siblings"]
           status: Database["public"]["Enums"]["EventRegistrationStatus"]
+          stripe_session_id: string | null
           submitted_at: string
           updated_at: string
           user_id: string | null
@@ -194,10 +197,13 @@ export type Database = {
           event_id: number
           id: string
           invitation_snapshot: Database["public"]["Enums"]["Invitation"]
+          payment_completed_at?: string | null
           payment_required?: boolean
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price: number
           siblings_snapshot: Database["public"]["Enums"]["Siblings"]
           status?: Database["public"]["Enums"]["EventRegistrationStatus"]
+          stripe_session_id?: string | null
           submitted_at?: string
           updated_at: string
           user_id?: string | null
@@ -206,10 +212,13 @@ export type Database = {
           event_id?: number
           id?: string
           invitation_snapshot?: Database["public"]["Enums"]["Invitation"]
+          payment_completed_at?: string | null
           payment_required?: boolean
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price?: number
           siblings_snapshot?: Database["public"]["Enums"]["Siblings"]
           status?: Database["public"]["Enums"]["EventRegistrationStatus"]
+          stripe_session_id?: string | null
           submitted_at?: string
           updated_at?: string
           user_id?: string | null
@@ -281,6 +290,50 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          payment_status: Database["public"]["Enums"]["PaymentStatus"]
+          plan: Database["public"]["Enums"]["MembershipPlan"]
+          stripe_session_id: string | null
+          term: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
+          plan: Database["public"]["Enums"]["MembershipPlan"]
+          stripe_session_id?: string | null
+          term: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
+          plan?: Database["public"]["Enums"]["MembershipPlan"]
+          stripe_session_id?: string | null
+          term?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string
@@ -338,6 +391,8 @@ export type Database = {
         | "alumni"
         | "all_students"
         | "non_students"
+      MembershipPlan: "single_term" | "two_term"
+      PaymentStatus: "unpaid" | "paid" | "refunded" | "failed"
       Role: "user" | "admin"
       Siblings: "brothers" | "sisters" | "all"
     }
@@ -482,6 +537,8 @@ export const Constants = {
         "all_students",
         "non_students",
       ],
+      MembershipPlan: ["single_term", "two_term"],
+      PaymentStatus: ["unpaid", "paid", "refunded", "failed"],
       Role: ["user", "admin"],
       Siblings: ["brothers", "sisters", "all"],
     },

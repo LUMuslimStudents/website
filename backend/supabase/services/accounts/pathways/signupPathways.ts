@@ -11,6 +11,7 @@ export type SignupInput = {
   study_program: string;
   phone_number: string;
   term?: string;
+  plan?: 'single_term' | 'two_term';
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -115,11 +116,13 @@ export const signup = async (input: SignupInput) => {
   }
 
   const term = input.term?.trim() || (await resolveCurrentTerm());
+  const plan = input.plan === 'two_term' ? 'two_term' : 'single_term';
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password: input.password,
     options: {
+      emailRedirectTo: `${window.location.origin}/membership/checkout`,
       data: {
         first_name: input.first_name.trim(),
         last_name: input.last_name.trim(),
@@ -127,6 +130,7 @@ export const signup = async (input: SignupInput) => {
         gender: input.gender,
         study_program: input.study_program.trim(),
         term,
+        plan,
       },
     },
   });
