@@ -61,6 +61,18 @@ const REGISTRATION_STATUSES: RegistrationStatus[] = [
 
 const formatDateTime = (value: string | null) => value ?? null;
 
+/**
+ * A registration counts as "real" (occupies a seat) only when it's paid, or
+ * when no payment is required. Unpaid paid-event rows are drafts and are
+ * excluded from counts. Cancelled rows never count either. The status field
+ * itself is only ever changed by admins (seat tracker).
+ */
+const isRealRegistration = (r: {
+  status?: string | null;
+  payment_required?: boolean | null;
+  payment_status?: string | null;
+}) => r.status !== 'cancelled' && (!r.payment_required || r.payment_status === 'paid');
+
 const ensureAdmin = async () => {
   const {
     data: { user },
@@ -127,7 +139,7 @@ export const getAdminEvents = async () => {
 
   const { data: events, error } = await supabase
     .from('events_info')
-    .select('*, registrations:event_registrations(id)')
+    .select('*, registrations:event_registrations(id, status, payment_required, payment_status)')
     .order('deadline', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -135,7 +147,7 @@ export const getAdminEvents = async () => {
   return (events ?? []).map((event) => ({
     ...fixEventDateTimeFormat(event as unknown as EventRow),
     registration_count: Array.isArray(event.registrations)
-      ? event.registrations.length
+      ? event.registrations.filter(isRealRegistration).length
       : 0,
   }));
 };
@@ -183,7 +195,7 @@ export const getAdminEventById = async (eventId: number) => {
 
   return {
     ...fixEventDateTimeFormat(event as EventRow),
-    registration_count: (registrations ?? []).length,
+    registration_count: (registrations ?? []).filter(isRealRegistration).length,
     form_fields: (formFields ?? []).map(toEventFormFieldResponse),
     registrations: (registrations ?? []).map((r) =>
       buildRegistrationResponse(r as any, linkedUserMap),

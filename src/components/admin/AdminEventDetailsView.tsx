@@ -46,6 +46,7 @@ import {
   AdminEventDetail as AdminEventDetailType,
   AdminEventFormField,
   AdminEventRegistration,
+  getPaymentLabel,
 } from "./types";
 import { AdminRegistrationSnapshotDialog } from "./AdminRegistrationSnapshotDialog";
 import { AdminDataTable } from "./AdminDataTable";
@@ -139,6 +140,39 @@ const normalizeText = (value?: string | null) => (value ?? "").toLowerCase().tri
 const formatStatusLabel = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 const escapeCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
+// ── Payment badge (separate from the admin seat-tracker `status`) ───────────
+// Color coding: Paid = green, Awaiting payment = amber, Failed = red,
+// Refunded = purple, Free (no payment required) = slate.
+const getPaymentInfo = (
+  registration: AdminEventRegistration,
+): { label: string; badgeClassName: string; rank: number } => {
+  const label = getPaymentLabel(registration);
+  const badgeClassName =
+    label === "Paid"
+      ? "border-green-600/30 bg-green-100 text-green-800 dark:border-green-500/30 dark:bg-green-950/50 dark:text-green-300"
+      : label === "Refunded"
+        ? "border-purple-500/30 bg-purple-100 text-purple-800 dark:border-purple-500/30 dark:bg-purple-950/50 dark:text-purple-300"
+        : label === "Failed"
+          ? "border-red-500/30 bg-red-100 text-red-800 dark:border-red-500/30 dark:bg-red-950/50 dark:text-red-300"
+          : label === "Free"
+            ? "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            : "border-amber-500/30 bg-amber-100 text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/50 dark:text-amber-300";
+  const rank =
+    label === "Free" ? 0 : label === "Paid" ? 1 : label === "Refunded" ? 2 : label === "Failed" ? 3 : 4;
+  return { label, badgeClassName, rank };
+};
+
+const PaymentBadge = ({ registration }: { registration: AdminEventRegistration }) => {
+  const { label, badgeClassName } = getPaymentInfo(registration);
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${badgeClassName}`}
+    >
+      {label}
+    </span>
+  );
+};
+
 const getAnswerValue = (registration: AdminEventRegistration, fieldId: string) => {
   const answer = registration.answers.find((item) => item.field_id === fieldId);
   if (!answer) {
@@ -192,6 +226,15 @@ const buildBaseColumns = (): TableColumn[] => [
     getSortValue: (row) => row.currentStatus,
     getDisplayValue: (row) => row.currentStatus,
     placeholder: "confirmed/pending",
+  },
+  {
+    id: "payment",
+    label: "Payment",
+    getSearchValue: (row) => getPaymentInfo(row.registration).label,
+    getSortValue: (row) => String(getPaymentInfo(row.registration).rank),
+    getDisplayValue: (row) => getPaymentInfo(row.registration).label,
+    renderCell: (row) => <PaymentBadge registration={row.registration} />,
+    placeholder: "paid/unpaid/failed/free",
   },
   {
     id: "participant",
@@ -264,14 +307,6 @@ const buildBaseColumns = (): TableColumn[] => [
     getSortValue: (row) => row.registration.submitted_at || "",
     getDisplayValue: (row) => formatDateTime(row.registration.submitted_at),
     placeholder: "Search date",
-  },
-  {
-    id: "payment_required",
-    label: "Payment",
-    getSearchValue: (row) => (row.registration.payment_required ? "required" : "not required"),
-    getSortValue: (row) => (row.registration.payment_required ? "1" : "0"),
-    getDisplayValue: (row) => (row.registration.payment_required ? "Required" : "Not required"),
-    placeholder: "required/not",
   },
   {
     id: "linked_user",
@@ -361,9 +396,7 @@ const AdminGroupedParticipantCard = ({
             <span className="rounded-full border px-2 py-1 uppercase tracking-wide text-muted-foreground">
               {status}
             </span>
-            <span className="rounded-full border px-2 py-1 text-muted-foreground">
-              {registration.payment_required ? "Payment required" : "No payment due"}
-            </span>
+            <PaymentBadge registration={registration} />
             <Button
               type="button"
               variant="destructive"
@@ -409,7 +442,10 @@ const AdminGroupedParticipantCard = ({
               <p>Submitted: {formatDateTime(registration.submitted_at)}</p>
               <p>Updated: {formatDateTime(registration.updated_at)}</p>
               <p>Quoted price: {registration.quoted_price} SEK</p>
-              <p>Payment required: {registration.payment_required ? "Yes" : "No"}</p>
+              <p>Payment: {getPaymentInfo(registration).label}</p>
+              {registration.payment_completed_at && (
+                <p>Paid at: {formatDateTime(registration.payment_completed_at)}</p>
+              )}
             </div>
             <div className="space-y-1 text-sm">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Linked account</p>
@@ -476,6 +512,8 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<string | null>(null);
   const [updatingPublishState, setUpdatingPublishState] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
+  const [closingRegistration, setClosingRegistration] = useState(false);
+  const [closeRegistrationConfirmOpen, setCloseRegistrationConfirmOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -671,6 +709,28 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
     }
   };
 
+  // Sets the registration deadline to right now — no new registrations can be
+  // submitted after that. Existing registrations and pending payments are
+  // unaffected.
+  const closeRegistration = async () => {
+    if (!event) {
+      return;
+    }
+
+    setClosingRegistration(true);
+    try {
+      const now = new Date().toISOString();
+      await apiRequest(`/admin/events/${event.id}`, "PATCH", { deadline: now });
+      setEvent((previous) => (previous ? { ...previous, deadline: now } : previous));
+      setCloseRegistrationConfirmOpen(false);
+      toast.success("Registration closed.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to close registration");
+    } finally {
+      setClosingRegistration(false);
+    }
+  };
+
   const confirmDeleteRegistration = async () => {
     if (!event || !deleteTargetRegistration) {
       return;
@@ -731,6 +791,7 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
 
   const fields = event.form_fields ?? [];
   const participantCount = event.registrations.length;
+  const registrationAlreadyClosed = new Date(event.deadline).getTime() <= Date.now();
 
   return (
     <div className="space-y-6">
@@ -866,6 +927,24 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                       Edit draft
                     </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={closingRegistration || registrationAlreadyClosed}
+                    onClick={() => setCloseRegistrationConfirmOpen(true)}
+                    className={
+                      registrationAlreadyClosed
+                        ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                        : "border-red-600/50 text-red-600 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-accent-foreground"
+                    }
+                  >
+                    {closingRegistration
+                      ? "Closing..."
+                      : registrationAlreadyClosed
+                        ? "Registration closed"
+                        : "Close registration"}
+                  </Button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -950,6 +1029,39 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
               disabled={updatingPublishState}
             >
               {updatingPublishState ? "Unpublishing..." : "Unpublish"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={closeRegistrationConfirmOpen}
+        onOpenChange={(open) => {
+          if (!closingRegistration) {
+            setCloseRegistrationConfirmOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close registration?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The registration deadline will be set to right now, so no new
+              registrations can be submitted. Existing registrations and
+              pending payments are not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingRegistration}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void closeRegistration();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={closingRegistration}
+            >
+              {closingRegistration ? "Closing..." : "Close registration"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

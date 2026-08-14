@@ -101,6 +101,33 @@ export const cancelMembership = async (): Promise<{ message: string }> => {
   return data as { message: string };
 };
 
+export const cancelEventRegistration = async (
+  registrationId: string,
+): Promise<{ message: string }> => {
+  const { data, error } = await supabase.functions.invoke(
+    'cancel-event-registration',
+    {
+      body: { registration_id: registrationId },
+    },
+  );
+  if (error) {
+    // FunctionsHttpError hides the function's JSON body behind a generic
+    // message — dig the real error out of the response context.
+    let message = error.message;
+    const context = (error as { context?: Response })?.context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = (await context.json()) as { error?: string };
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message);
+  }
+  return data as { message: string };
+};
+
 export const createEventCheckout = async (
   registrationId: string,
 ): Promise<{ url: string }> => {

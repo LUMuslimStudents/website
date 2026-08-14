@@ -28,6 +28,4 @@ backend/supabase/website-dev_db_pass
 *.sln
 *.sw?
 
-
-.agents/*
 supabase/.temp/*

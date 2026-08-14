@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
-import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
@@ -240,6 +240,8 @@ type EventFormField = {
 type ExpandedEvent = events_info & {
   form_fields?: EventFormField[];
   is_registered?: boolean;
+  is_pending_payment?: boolean;
+  pending_registration_id?: string | null;
 };
 
 const Events = () => {
@@ -286,6 +288,27 @@ const Events = () => {
   const { user } = useAuth();
   const isSignedIn = Boolean(user);
   const [isPaidMember, setIsPaidMember] = useState(false);
+  const [isResumingPayment, setIsResumingPayment] = useState(false);
+
+  // Resume an abandoned payment: re-creates a Stripe Checkout Session for the
+  // existing draft row (create-checkout reuses the row) and redirects.
+  const resumeEventPayment = useCallback(async (event: ExpandedEvent) => {
+    const registrationId = event.pending_registration_id;
+    if (!registrationId) {
+      toast.error("Could not find your pending registration. Please refresh the page and try again.");
+      return;
+    }
+    setIsResumingPayment(true);
+    try {
+      const { url } = await apiRequest(`/events/${event.id}/checkout`, "POST", {
+        registration_id: registrationId,
+      });
+      window.location.assign(url);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not open the payment page. Please try again.");
+      setIsResumingPayment(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -428,6 +451,15 @@ const Events = () => {
   };
 
   const renderRegistrationButtonLabel = (event: ExpandedEvent) => {
+    if (event.is_pending_payment) {
+      return (
+        <span className="inline-flex items-center gap-2">
+          <CreditCard className="h-4 w-4" />
+          {isResumingPayment ? "Opening payment…" : "Complete payment"}
+        </span>
+      );
+    }
+
     if (event.is_registered) {
       return (
         <span className="inline-flex items-center gap-2">
@@ -667,19 +699,27 @@ const Events = () => {
               <CardFooter className="flex justify-between items-center">
                 <div className="font-medium">{priceTag(event)}</div>
                 <div className="flex flex-col items-end gap-2">
-                  {isRegistrationClosed(event) && !event.is_registered && (
+                  {isRegistrationClosed(event) && !event.is_registered && !event.is_pending_payment && (
                     <span className="text-xs text-red-600">
                       Deadline has passed
                     </span>
                   )}
                   <Button
-                    variant={event.is_registered || isRegistrationClosed(event) ? "outline" : "default"}
+                    variant={event.is_pending_payment ? "default" : event.is_registered || isRegistrationClosed(event) ? "outline" : "default"}
                     className={event.is_registered
                       ? "border-green-600 text-green-600 hover:bg-green-50"
-                      : isRegistrationClosed(event)
-                        ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
-                        : ""}
-                    disabled={Boolean(event.is_registered || isRegistrationClosed(event))}
+                      : event.is_pending_payment
+                        ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
+                        : isRegistrationClosed(event)
+                          ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                          : ""}
+                    disabled={Boolean(event.is_registered || (isRegistrationClosed(event) && !event.is_pending_payment) || isResumingPayment)}
+                    onClick={(e) => {
+                      if (event.is_pending_payment) {
+                        e.stopPropagation();
+                        resumeEventPayment(event);
+                      }
+                    }}
                   >
                     {renderRegistrationButtonLabel(event)}
                   </Button>
@@ -710,18 +750,36 @@ const Events = () => {
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => registrationSubmitRef.current?.()}
-                disabled={registrationFooterState.isAlreadyRegistered || registrationFooterState.isSubmittingRegistration || isRegistrationClosed(expandedEvent) || !registrationFooterState.isFormReady}
-                variant={registrationFooterState.isAlreadyRegistered || isRegistrationClosed(expandedEvent) ? "outline" : "default"}
+                disabled={
+                  registrationFooterState.isAlreadyRegistered ||
+                  registrationFooterState.isSubmittingRegistration ||
+                  (registrationFooterState.isPendingPayment && registrationFooterState.isResumingPayment) ||
+                  (isRegistrationClosed(expandedEvent) && !registrationFooterState.isPendingPayment) ||
+                  !registrationFooterState.isFormReady
+                }
+                variant={
+                  registrationFooterState.isAlreadyRegistered ||
+                  (isRegistrationClosed(expandedEvent) && !registrationFooterState.isPendingPayment)
+                    ? "outline"
+                    : "default"
+                }
                 className={registrationFooterState.isAlreadyRegistered
                   ? "border-green-600 text-green-600 hover:bg-green-50"
-                  : isRegistrationClosed(expandedEvent)
-                    ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
-                    : ""}
+                  : registrationFooterState.isPendingPayment
+                    ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
+                    : isRegistrationClosed(expandedEvent)
+                      ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                      : ""}
               >
                 {registrationFooterState.isAlreadyRegistered ? (
                   <span className="inline-flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
                     Registered!
+                  </span>
+                ) : registrationFooterState.isPendingPayment ? (
+                  <span className="inline-flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    {registrationFooterState.isResumingPayment ? "Opening payment…" : "Complete payment"}
                   </span>
                 ) : isRegistrationClosed(expandedEvent) ? (
                   <span className="inline-flex items-center gap-2">
@@ -811,15 +869,42 @@ const Events = () => {
                 isSignedIn={isSignedIn}
                 isPaidMember={isPaidMember}
                 user={user}
-                onFooterStateChange={setRegistrationFooterState}
-                onFooterSubmitChange={handleFooterSubmitChange}
-                onRegistered={(eventId) => {
-                  markPersistedRegistered(eventId);
+                onCancelled={(eventId) => {
+                  const reset = (event: ExpandedEvent): ExpandedEvent => ({
+                    ...event,
+                    is_registered: false,
+                    is_pending_payment: false,
+                    pending_registration_id: null,
+                  });
                   setEvents((prev) => prev.map((event) => (
-                    event.id === eventId ? { ...event, is_registered: true } : event
+                    event.id === eventId ? reset(event) : event
                   )));
                   setExpandedEvent((prev) => (
-                    prev && prev.id === eventId ? { ...prev, is_registered: true } : prev
+                    prev && prev.id === eventId ? reset(prev) : prev
+                  ));
+                  const cached = eventCacheRef.current.get(eventId);
+                  if (cached) {
+                    eventCacheRef.current.set(eventId, reset(cached));
+                  }
+                }}
+                onFooterStateChange={setRegistrationFooterState}
+                onFooterSubmitChange={handleFooterSubmitChange}
+                onRegistered={(eventId, paymentRequired, registrationId) => {
+                  if (paymentRequired) {
+                    setEvents((prev) => prev.map((event) => (
+                      event.id === eventId ? { ...event, is_registered: false, is_pending_payment: true, pending_registration_id: registrationId ?? null } : event
+                    )));
+                    setExpandedEvent((prev) => (
+                      prev && prev.id === eventId ? { ...prev, is_registered: false, is_pending_payment: true, pending_registration_id: registrationId ?? null } : prev
+                    ));
+                    return;
+                  }
+                  markPersistedRegistered(eventId);
+                  setEvents((prev) => prev.map((event) => (
+                    event.id === eventId ? { ...event, is_registered: true, is_pending_payment: false, pending_registration_id: null } : event
+                  )));
+                  setExpandedEvent((prev) => (
+                    prev && prev.id === eventId ? { ...prev, is_registered: true, is_pending_payment: false, pending_registration_id: null } : prev
                   ));
                 }}
               />

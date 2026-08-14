@@ -2,12 +2,24 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { apiRequest } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TouchTooltip } from "../ui/tooltip";
 import { EventRegistrationTermsDialog } from "./EventRegistrationTermsDialog";
-import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, CreditCard, Sparkles } from "lucide-react";
 
 const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,50}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,7 +60,9 @@ type UserProfile = {
 
 export type EventRegistrationFooterState = {
   isAlreadyRegistered: boolean;
+  isPendingPayment: boolean;
   isSubmittingRegistration: boolean;
+  isResumingPayment: boolean;
   isFormReady: boolean;
   displayPrice: number;
   displayPriceTier: "member" | "nonmember" | "alumnus";
@@ -66,12 +80,15 @@ type EventRegistrationFormProps = {
     price_alumnus: number;
     form_fields?: EventFormField[];
     is_registered?: boolean;
+    is_pending_payment?: boolean;
+    pending_registration_id?: string | null;
   };
   isRegistrationClosed: boolean;
   isSignedIn: boolean;
   isPaidMember: boolean;
   user: UserProfile | null;
-  onRegistered: (eventId: number) => void;
+  onRegistered: (eventId: number, paymentRequired?: boolean, registrationId?: string) => void;
+  onCancelled?: (eventId: number) => void;
   onFooterStateChange?: (footerState: EventRegistrationFooterState | null) => void;
   onFooterSubmitChange?: (submit: (() => void) | null) => void;
 };
@@ -241,11 +258,16 @@ export const EventRegistrationForm = ({
   isPaidMember,
   user,
   onRegistered,
+  onCancelled,
   onFooterStateChange,
   onFooterSubmitChange,
 }: EventRegistrationFormProps) => {
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(Boolean(event.is_registered));
+  const [isPendingPayment, setIsPendingPayment] = useState(Boolean(event.is_pending_payment));
+  const [isResumingPayment, setIsResumingPayment] = useState(false);
+  const [isCancellingRegistration, setIsCancellingRegistration] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [registrationProfile, setRegistrationProfile] = useState<RegistrationProfile>({
     first_name: "",
     last_name: "",
@@ -264,6 +286,7 @@ export const EventRegistrationForm = ({
 
   useEffect(() => {
     setIsAlreadyRegistered(Boolean(event.is_registered));
+    setIsPendingPayment(Boolean(event.is_pending_payment));
     setRegistrationProfile({
       first_name: user?.first_name || "",
       last_name: user?.last_name || "",
@@ -279,7 +302,7 @@ export const EventRegistrationForm = ({
     setTermsDialogOpen(false);
     setGdprAccepted(false);
     setRefundAccepted(false);
-  }, [event.id, event.is_registered, user]);
+  }, [event.id, event.is_registered, event.is_pending_payment, user]);
 
   const invitationType = getInvitationType(event.invitation);
   const refundCutoffAt = getRefundCutoffAt(event.date, event.start_time);
@@ -314,11 +337,55 @@ export const EventRegistrationForm = ({
     });
   };
 
-  const isFormReadyForSubmission = () => {
-    if (isSubmittingRegistration || isAlreadyRegistered || isRegistrationClosed) {
-      return false;
+  // Resume an abandoned payment: re-creates a Stripe Checkout Session for the
+  // existing draft row and redirects. Kept in sync with Events.tsx's
+  // resumeEventPayment (same endpoint, same draft row reuse).
+  const resumePayment = async () => {
+    const registrationId = event.pending_registration_id;
+    if (!registrationId || isResumingPayment) {
+      return;
+    }
+    setIsResumingPayment(true);
+    try {
+      const { url } = await apiRequest(`/events/${event.id}/checkout`, "POST", {
+        registration_id: registrationId,
+      });
+      window.location.assign(url);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not open the payment page. Please try again.");
+      setIsResumingPayment(false);
+    }
+  };
+
+  // Cancel a pending (unpaid) registration: expires the Stripe session and
+  // deletes the draft row server-side (profile + answers cascade). Triggered
+  // from the native confirmation dialog.
+  const cancelRegistration = async () => {
+    const registrationId = event.pending_registration_id;
+    if (!registrationId || isCancellingRegistration || isResumingPayment) {
+      return;
     }
 
+    setIsCancellingRegistration(true);
+    try {
+      await apiRequest(`/events/${event.id}/cancel-registration`, "POST", {
+        registration_id: registrationId,
+      });
+      toast.success("Registration cancelled.");
+      setCancelDialogOpen(false);
+      setIsPendingPayment(false);
+      onCancelled?.(event.id);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not cancel the registration. Please try again.");
+    } finally {
+      setIsCancellingRegistration(false);
+    }
+  };
+
+  const isFormReadyForSubmission = () => {
+    if (isSubmittingRegistration || isAlreadyRegistered || isPendingPayment || isRegistrationClosed) {
+      return false;
+    }
     for (const field of formFields) {
       if (!field.is_required) {
         continue;
@@ -349,7 +416,7 @@ export const EventRegistrationForm = ({
   };
 
   const submitRegistration = async () => {
-    if (isAlreadyRegistered || isRegistrationClosed) {
+    if (isAlreadyRegistered || isPendingPayment || isRegistrationClosed) {
       return;
     }
 
@@ -434,9 +501,15 @@ export const EventRegistrationForm = ({
       });
 
       toast.success("Registration submitted successfully");
-      setIsAlreadyRegistered(true);
       setTermsDialogOpen(false);
-      onRegistered(event.id);
+      if (!registration?.payment_required) {
+        setIsAlreadyRegistered(true);
+      }
+      onRegistered(
+        event.id,
+        Boolean(registration?.payment_required),
+        registration?.registration_id ?? undefined,
+      );
 
       // Paid event → redirect to Stripe-hosted Checkout.
       if (registration?.payment_required && registration?.registration_id) {
@@ -472,6 +545,11 @@ export const EventRegistrationForm = ({
       return;
     }
 
+    if (isPendingPayment) {
+      onFooterSubmitChange(() => resumePayment());
+      return;
+    }
+
     if (isAlreadyRegistered || isRegistrationClosed) {
       onFooterSubmitChange(null);
       return;
@@ -479,7 +557,7 @@ export const EventRegistrationForm = ({
 
     onFooterSubmitChange(() => handleSubmitRegistration());
     return () => onFooterSubmitChange(null);
-  }, [onFooterSubmitChange, handleSubmitRegistration, isAlreadyRegistered, isRegistrationClosed]);
+  }, [onFooterSubmitChange, handleSubmitRegistration, resumePayment, isAlreadyRegistered, isPendingPayment, isRegistrationClosed]);
 
   useEffect(() => {
     if (!onFooterStateChange) {
@@ -488,8 +566,10 @@ export const EventRegistrationForm = ({
 
     onFooterStateChange({
       isAlreadyRegistered,
+      isPendingPayment,
       isSubmittingRegistration,
-      isFormReady: isFormReadyForSubmission(),
+      isResumingPayment,
+      isFormReady: isPendingPayment ? true : isFormReadyForSubmission(),
       displayPrice,
       displayPriceTier,
     });
@@ -497,7 +577,9 @@ export const EventRegistrationForm = ({
     return () => onFooterStateChange(null);
   }, [
     isAlreadyRegistered,
+    isPendingPayment,
     isSubmittingRegistration,
+    isResumingPayment,
     displayPrice,
     displayPriceTier,
     onFooterStateChange,
@@ -590,7 +672,70 @@ export const EventRegistrationForm = ({
       <div className="expanded-form-placeholder mt-8 rounded-lg border border-border p-4 md:p-6 space-y-4">
         <h3 className="text-xl font-semibold">Event Registration</h3>
 
-        {isAlreadyRegistered ? (
+        {isPendingPayment ? (
+          <div className="space-y-3 rounded-lg border border-amber-500/20 bg-amber-50/80 p-4 text-sm md:text-base text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/20 dark:text-amber-100">
+            <p className="inline-flex items-center gap-2 font-medium">
+              <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <strong>Your registration is waiting for payment.</strong>
+            </p>
+            <p>
+              Complete your payment to finish your registration — your spot is
+              not reserved until the payment goes through.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={resumePayment}
+                disabled={isResumingPayment || isCancellingRegistration}
+                className="border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
+              >
+                {isResumingPayment ? "Opening payment…" : "Complete payment"}
+              </Button>
+              <AlertDialog
+                open={cancelDialogOpen}
+                onOpenChange={(open) => {
+                  if (!isCancellingRegistration) {
+                    setCancelDialogOpen(open);
+                  }
+                }}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isCancellingRegistration || isResumingPayment}
+                    className="border-red-600/50 text-red-600 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-accent-foreground"
+                  >
+                    Cancel registration
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel registration?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Your pending payment will be cancelled and all your
+                      registration data will be removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isCancellingRegistration}>
+                      Keep registration
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.preventDefault();
+                        void cancelRegistration();
+                      }}
+                      disabled={isCancellingRegistration}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                    >
+                      {isCancellingRegistration ? "Cancelling…" : "Cancel registration"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        ) : isAlreadyRegistered ? (
           <div className="space-y-3 rounded-lg border border-green-500/20 bg-green-50/80 p-4 text-sm md:text-base text-green-950 dark:border-green-500/30 dark:bg-green-950/20 dark:text-green-100">
             <p className="inline-flex items-center gap-2 font-medium">
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />

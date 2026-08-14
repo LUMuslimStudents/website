@@ -8,10 +8,31 @@ type RegistrationStatus = Database['public']['Enums']['EventRegistrationStatus']
 
 type CurrentEventResponse = EventRow & {
     is_registered: boolean;
+    is_pending_payment: boolean;
+    pending_registration_id: string | null;
 };
 
 type EventByIdResponse = CurrentEventResponse & {
     form_fields?: ReturnType<typeof toEventFormFieldResponse>[];
+};
+
+/**
+ * Registration state for one user + one event. A registration only counts as
+ * "real" once it's paid (or when no payment is required). Unpaid paid-event
+ * rows are drafts: invisible everywhere except as a "complete your payment"
+ * prompt. The status field stays admin-driven (seat tracker) — payment state
+ * lives in payment_status.
+ */
+type RegistrationState = {
+    is_registered: boolean;
+    is_pending_payment: boolean;
+    pending_registration_id: string | null;
+};
+
+const NO_REGISTRATION: RegistrationState = {
+    is_registered: false,
+    is_pending_payment: false,
+    pending_registration_id: null,
 };
 
 const getOptionalUser = async () => {
@@ -31,14 +52,18 @@ const getOptionalUser = async () => {
 const isMember = (user: { is_anonymous?: boolean } | null) =>
     user !== null && !user.is_anonymous;
 
-const getRegisteredEventIds = async (userId: string, eventIds: number[]) => {
+const getRegistrationStates = async (
+    userId: string,
+    eventIds: number[],
+): Promise<Map<number, RegistrationState>> => {
+    const states = new Map<number, RegistrationState>();
     if (eventIds.length === 0) {
-        return new Set<number>();
+        return states;
     }
 
     const { data: registrations, error: registrationError } = await supabase
         .from('event_registrations')
-        .select('event_id')
+        .select('event_id, id, payment_required, payment_status')
         .eq('user_id', userId)
         .neq('status', 'cancelled' as RegistrationStatus)
         .in('event_id', eventIds);
@@ -47,7 +72,17 @@ const getRegisteredEventIds = async (userId: string, eventIds: number[]) => {
         throw new Error(registrationError.message);
     }
 
-    return new Set((registrations ?? []).map((registration) => registration.event_id));
+    for (const registration of registrations ?? []) {
+        const isReal =
+            !registration.payment_required || registration.payment_status === 'paid';
+        states.set(registration.event_id, {
+            is_registered: isReal,
+            is_pending_payment: !isReal,
+            pending_registration_id: isReal ? null : registration.id,
+        });
+    }
+
+    return states;
 };
 
 const getSingleEventWithAccess = async (eventId: number) => {
@@ -92,11 +127,13 @@ export const fetchCurrentEvents = async () => {
     }
 
     const events = (data ?? []) as EventRow[];
-    const registeredEventIds = user ? await getRegisteredEventIds(user.id, events.map((event) => event.id)) : new Set<number>();
+    const registrationStates = user
+        ? await getRegistrationStates(user.id, events.map((event) => event.id))
+        : new Map<number, RegistrationState>();
 
     return events.map((event): CurrentEventResponse => ({
         ...fixEventDateTimeFormat(event),
-        is_registered: registeredEventIds.has(event.id),
+        ...(registrationStates.get(event.id) ?? NO_REGISTRATION),
     }));
 };
 
@@ -121,22 +158,24 @@ export const fetchPastEvents = async () => {
     }
 
     const events = (data ?? []) as EventRow[];
-    const registeredEventIds = user ? await getRegisteredEventIds(user.id, events.map((event) => event.id)) : new Set<number>();
+    const registrationStates = user
+        ? await getRegistrationStates(user.id, events.map((event) => event.id))
+        : new Map<number, RegistrationState>();
 
     return events.map((event): CurrentEventResponse => ({
         ...fixEventDateTimeFormat(event),
-        is_registered: registeredEventIds.has(event.id),
+        ...(registrationStates.get(event.id) ?? NO_REGISTRATION),
     }));
 };
 
 export const fetchEventById = async (eventId: number, includeFormFields = true): Promise<EventByIdResponse> => {
     const { user, event } = await getSingleEventWithAccess(eventId);
-    let isRegistered = false;
+    let registrationState: RegistrationState = NO_REGISTRATION;
 
     if (user) {
         const { data: existing, error: registrationError } = await supabase
             .from('event_registrations')
-            .select('id')
+            .select('id, payment_required, payment_status')
             .eq('event_id', event.id)
             .eq('user_id', user.id)
             .neq('status', 'cancelled' as RegistrationStatus)
@@ -147,13 +186,21 @@ export const fetchEventById = async (eventId: number, includeFormFields = true):
             throw new Error(registrationError.message);
         }
 
-        isRegistered = Boolean(existing);
+        if (existing) {
+            const isReal =
+                !existing.payment_required || existing.payment_status === 'paid';
+            registrationState = {
+                is_registered: isReal,
+                is_pending_payment: !isReal,
+                pending_registration_id: isReal ? null : existing.id,
+            };
+        }
     }
 
     if (!includeFormFields) {
         return {
             ...fixEventDateTimeFormat(event),
-            is_registered: isRegistered,
+            ...registrationState,
         };
     }
 
@@ -170,7 +217,7 @@ export const fetchEventById = async (eventId: number, includeFormFields = true):
     return {
         ...fixEventDateTimeFormat(event),
         form_fields: ((fields ?? []) as EventFormFieldRow[]).map(toEventFormFieldResponse),
-        is_registered: isRegistered,
+        ...registrationState,
     };
 };
 

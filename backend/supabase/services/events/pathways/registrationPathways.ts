@@ -383,15 +383,22 @@ export const submitRegistration = async (
       : event.price_nonmember;
 
   // ── Check for duplicate registration ───────────────────────────────────
+  // A non-cancelled row always blocks a new submit (prevents double payment).
+  // Unpaid paid-event rows are drafts — point the user back to the payment.
   const { data: existing } = await supabase
     .from('event_registrations')
-    .select('id')
+    .select('id, payment_required, payment_status')
     .eq('event_id', eventId)
     .eq('user_id', authUserId)
     .neq('status', 'cancelled')
     .maybeSingle();
 
   if (existing) {
+    if (existing.payment_required && existing.payment_status !== 'paid') {
+      throw new Error(
+        'You already have a pending payment for this event. Complete your payment to finish registering.',
+      );
+    }
     throw new Error('You are already registered for this event.');
   }
 

@@ -74,11 +74,34 @@ export type AdminEventRegistration = {
   siblings_snapshot: string;
   quoted_price: number;
   payment_required: boolean;
+  stripe_session_id?: string | null;
+  payment_status?: string;
+  payment_completed_at?: string | null;
   submitted_at: string | null;
   updated_at: string | null;
   profile: AdminRegistrationProfile | null;
   answers: AdminRegistrationAnswer[];
   linked_user: AdminLinkedUser | null;
+};
+
+/**
+ * Human-readable payment state for a registration. Payment status is fully
+ * separate from the admin-driven seat-tracker `status` field.
+ */
+export const getPaymentLabel = (
+  registration: Pick<AdminEventRegistration, "payment_required" | "payment_status">,
+): string => {
+  if (!registration.payment_required) return "Free";
+  switch (registration.payment_status) {
+    case "paid":
+      return "Paid";
+    case "failed":
+      return "Failed";
+    case "refunded":
+      return "Refunded";
+    default:
+      return "Awaiting payment";
+  }
 };
 
 export type AdminEventSummary = {

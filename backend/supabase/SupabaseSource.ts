@@ -35,6 +35,7 @@ import {
   createEventCheckout,
   verifyPayment,
   cancelMembership,
+  cancelEventRegistration,
 } from ']/services/payments/payments';
 
 // ── Event data exports ──────────────────────────────────────────────────────
@@ -140,6 +141,9 @@ export const membershipCancelData = async () => cancelMembership();
 
 export const eventCheckoutData = async (registrationId: string) =>
   createEventCheckout(registrationId);
+
+export const eventCancellationData = async (registrationId: string) =>
+  cancelEventRegistration(registrationId);
 
 export const paymentVerifyData = async (sessionId: string) =>
   verifyPayment(sessionId);

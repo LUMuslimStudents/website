@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { AdminEventRegistration } from "./types";
+import { AdminEventRegistration, getPaymentLabel } from "./types";
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -64,6 +64,10 @@ export const AdminRegistrationSnapshotDialog = ({ registration }: AdminRegistrat
               <p className="text-sm">Submitted: {formatDateTime(registration.submitted_at)}</p>
               <p className="text-sm">Updated: {formatDateTime(registration.updated_at)}</p>
               <p className="text-sm">Quoted price: {registration.quoted_price} SEK</p>
+              <p className="text-sm">Payment: {getPaymentLabel(registration)}</p>
+              {registration.payment_completed_at && (
+                <p className="text-sm">Paid at: {formatDateTime(registration.payment_completed_at)}</p>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Snapshots</p>

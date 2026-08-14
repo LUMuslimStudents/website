@@ -28,6 +28,7 @@ import {
   membershipCheckoutData,
   membershipCancelData,
   eventCheckoutData,
+  eventCancellationData,
   paymentVerifyData,
 } from ']/SupabaseSource';
 import { supabase } from ']/client';
@@ -324,6 +325,14 @@ export const SupabaseRequest = async (
   const eventCheckoutMatch = endpoint.match(/^\/events\/(\d+)\/checkout$/);
   if (eventCheckoutMatch && method === 'POST') {
     return eventCheckoutData(body?.registration_id);
+  }
+
+  // ── Cancel pending event registration ──────────────────────────
+  const cancelRegistrationMatch = endpoint.match(
+    /^\/events\/(\d+)\/cancel-registration$/,
+  );
+  if (cancelRegistrationMatch && method === 'POST') {
+    return eventCancellationData(body?.registration_id);
   }
 
   // ── Verify payment (success page) ──────────────────────────────
