@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/ui/nav-link";
 import { ArrowRight } from "lucide-react";
+import { Reveal } from "@/components/Reveal";
+import { OrnamentDivider } from "@/components/IslamicPattern";
 
 export const NewsSection = () => {
   const news = [
@@ -25,36 +27,39 @@ export const NewsSection = () => {
   ];
 
   return (
-    <section className="py-8 md:py-16 bg-muted/50">
+    <section className="py-16 md:py-24">
       <div className="container">
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-[#004aac] mb-8 md:mb-12">
-          Latest Updates
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <Reveal className="text-center">
+          <span className="text-sm font-medium uppercase tracking-[0.2em] text-gold">
+            Stay in the loop
+          </span>
+          <h2 className="mt-3 text-3xl md:text-4xl font-display tracking-tight">
+            Latest Updates
+          </h2>
+          <OrnamentDivider className="mt-5" />
+        </Reveal>
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {news.map((item, index) => (
-            <div 
-              key={item.title}
-              className="bg-background rounded-lg shadow-sm p-4 md:p-6 hover:shadow-md transition-all hover:translate-y-[-5px] group"
-              style={{
-                animationDelay: `${index * 150}ms`,
-                opacity: 0,
-                animation: 'fadeUp 0.5s ease-out forwards'
-              }}
-            >
-              <span className="text-sm text-muted-foreground">{item.date}</span>
-              <h3 className="text-xl font-semibold mt-2 mb-3 text-[#004aac]">{item.title}</h3>
-              <p className="text-muted-foreground mb-4">{item.description}</p>
-              <Button 
-                asChild 
-                variant="ghost" 
-                className="p-0 h-7 text-[#004aac] hover:text-[#004aac] hover:underline font-medium hover:bg-transparent"
-              >
-                <NavLink to={item.link} className="flex items-center">
-                  Read more 
-                  <ArrowRight className="ml-2 h-4 w-4 transform transition-transform group-hover:translate-x-1" />
-                </NavLink>
-              </Button>
-            </div>
+            <Reveal key={item.title} delay={index * 120}>
+              <div className="group relative h-full overflow-hidden rounded-2xl border border-border/70 bg-card/70 p-6 md:p-7 shadow-soft backdrop-blur-sm transition-all duration-300 ease-organic hover:-translate-y-1.5 hover:shadow-lift">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <span className="inline-flex items-center rounded-full bg-muted/70 px-3 py-1 text-xs font-medium text-muted-foreground">
+                  {item.date}
+                </span>
+                <h3 className="mt-4 text-xl font-display">{item.title}</h3>
+                <p className="mt-2.5 text-muted-foreground leading-relaxed">{item.description}</p>
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="mt-5 p-0 h-auto text-primary hover:text-primary/80 hover:bg-transparent font-medium"
+                >
+                  <NavLink to={item.link} className="flex items-center gap-1.5">
+                    Read more
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-organic group-hover:translate-x-1" />
+                  </NavLink>
+                </Button>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>

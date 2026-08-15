@@ -1,6 +1,6 @@
-import { Mail } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FaFacebook, FaInstagram, FaLinkedin } from "react-icons/fa6";
+import { PatternBackground, OrnamentDivider, StarMark } from "@/components/IslamicPattern";
 // import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
 // import { useState } from "react";
@@ -63,65 +63,75 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="border-t bg-background">
-      <div className="container py-8 md:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+    <footer className="relative overflow-hidden border-t border-border/60 bg-card/50">
+      <div className="hairline-gradient absolute top-0 left-0" />
+      <PatternBackground className="opacity-[0.32] dark:opacity-[0.26]" />
+      <div className="container relative py-12 md:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 md:gap-8">
           <div className="text-center sm:text-left">
-            <h3 className="font-bold text-lg mb-4">About LUMS</h3>
+            <img
+              src="/logos/logo_minimalist_transparent.png"
+              alt="LUMS Logo"
+              className="h-14 w-auto mx-auto sm:mx-0 mb-4"
+            />
             <p className="text-muted-foreground">
               Supporting Muslim students at Lund University since 2023.
             </p>
-            <div className="flex gap-4 mt-4 justify-center sm:justify-start">
+            <div className="flex gap-3 mt-5 justify-center sm:justify-start">
               {socialLinks.map((link) => (
                 <a
                   key={link.name}
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-[#004aac] transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-background/60 text-muted-foreground transition-all duration-300 ease-organic hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary hover:shadow-soft"
                   aria-label={link.name}
                 >
-                  <link.icon className="h-5 w-5" />
+                  <link.icon className="h-4 w-4" />
                 </a>
               ))}
             </div>
           </div>
-          <div>
-            <h3 className="font-bold text-lg mb-4">Quick Links</h3>
-            <ul className="space-y-2">
+          <div className="text-center sm:text-left">
+            <h3 className="font-display text-lg mb-4">Quick Links</h3>
+            <ul className="space-y-2.5">
               <li>
                 <button
                   onClick={() => handleNavigation('/events')}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
+                  <StarMark className="h-2.5 w-2.5 shrink-0 text-gold/70" />
                   Upcoming Events
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => handleNavigation('/membership')}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
+                  <StarMark className="h-2.5 w-2.5 shrink-0 text-gold/70" />
                   Join Us
                 </button>
               </li>
               <li>
                 <button
                   onClick={() => handleNavigation('/suggestions')}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
+                  <StarMark className="h-2.5 w-2.5 shrink-0 text-gold/70" />
                   Give Feedback
                 </button>
               </li>
             </ul>
           </div>
-          <div>
-            <h3 className="font-bold text-lg mb-4">Contact</h3>
-            <ul className="space-y-2 text-muted-foreground">
+          <div className="text-center sm:text-left">
+            <h3 className="font-display text-lg mb-4">Contact</h3>
+            <ul className="space-y-2.5 text-muted-foreground">
               <li>
-                Email: <a
+                Email:{" "}
+                <a
                   href="mailto:muslimskastudenterlu@gmail.com"
-                  className="hover:text-[#004aac] transition-colors"
+                  className="hover:text-primary transition-colors"
                 >
                   muslimskastudenterlu@gmail.com
                 </a>
@@ -129,35 +139,15 @@ export const Footer = () => {
               <li>Location: Lund University</li>
             </ul>
           </div>
-          {/* <div>
-            <h3 className="font-bold text-lg mb-4">Newsletter</h3>
-            <p className="text-muted-foreground mb-4">Stay updated with our latest news</p>
-            <form onSubmit={handleSubscribe} className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="Your email"
-                className="bg-background"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <Button
-                type="submit"
-                className="bg-[#004aac] hover:bg-[#004aac]/90"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Subscribe"
-                )}
-              </Button>
-            </form>
-          </div> */}
         </div>
-        <div className="mt-8 md:mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} LUMS - Lund University Muslim Students.</p>
-          <p className="mt-2">Developed with ❤️ by LUMS Tech Team</p>
+        <div className="mt-12 md:mt-16 flex flex-col items-center gap-3">
+          <OrnamentDivider className="mb-1" />
+          <p className="text-sm text-muted-foreground text-center">
+            © {new Date().getFullYear()} LUMS - Lund University Muslim Students.
+          </p>
+          <p className="text-sm text-muted-foreground/80">
+            Developed with ❤️ by LUMS Tech Team
+          </p>
         </div>
       </div>
     </footer>

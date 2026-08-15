@@ -1,6 +1,7 @@
 
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { AuroraBackground } from "@/components/AuroraBackground";
 import { Users, Calendar, LifeBuoy } from "lucide-react";
 import { FAQ } from "@/components/FAQ";
 import { Testimonials } from "@/components/Testimonials";
@@ -30,8 +31,10 @@ const Membership = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-8">
-        <MembershipHero />
+      <main className="flex-1 relative">
+        <AuroraBackground />
+        <div className="container relative z-10 pt-24 md:pt-28 pb-8">
+          <MembershipHero />
         
         <div className="text-center mb-12 animate-in">
           <h1 className="text-4xl font-bold mb-4">Join LUMS</h1>
@@ -54,7 +57,7 @@ const Membership = () => {
         <div className="max-w-[500px] mx-auto relative z-10">
           <MembershipPlan />
         </div>
-
+        </div>
       </main>
       <FAQ />
       <Testimonials />

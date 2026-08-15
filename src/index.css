@@ -4,55 +4,76 @@
  
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 10% 30%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 10% 30%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 10% 30%;
-    --primary: 212 100% 34%;  /* LUMS Blue #004aac */
+    /* Warm cream base (#fdf6eb) */
+    --background: 37 82% 96%;
+    --foreground: 228 25% 19%;
+    --card: 40 90% 99%;
+    --card-foreground: 228 25% 19%;
+    --popover: 40 90% 99%;
+    --popover-foreground: 228 25% 19%;
+    --primary: 215 88% 36%;  /* Refined LUMS Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 35 85% 55%;  /* Warm Gold */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 212 30% 97%;    /* Light Blue Background */
-    --muted-foreground: 212 20% 40%;
-    --accent: 212 100% 34%;  /* LUMS Blue */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 30 55% 45%;  /* Brownish-orange antique gold */
+    --secondary-foreground: 228 40% 12%;
+    --muted: 37 55% 94%;
+    --muted-foreground: 228 12% 45%;
+    --accent: 215 60% 95%;
+    --accent-foreground: 215 80% 32%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 212 20% 90%;
-    --input: 212 20% 90%;
-    --ring: 212 100% 34%;
-    --radius: 0.75rem;
+    --border: 37 32% 86%;
+    --input: 37 32% 86%;
+    --ring: 215 88% 36%;
+    --jade: 162 50% 33%;  /* Islamic green accent */
+    --jade-foreground: 0 0% 100%;
+    --gold: 30 55% 45%;
+    --gold-foreground: 228 40% 12%;
+    --radius: 1rem;
 
     /* Motion foundation for organic/springy UI animations */
     --motion-fast: 180ms;
-    --motion-medium: 300ms;
-    --motion-slow: 480ms;
+    --motion-medium: 320ms;
+    --motion-slow: 520ms;
     --ease-organic: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1.2);
+    --aurora-duration: 26s;
+    --spin-slow-duration: 120s;
+
+    /* Auroras */
+    --aurora-1: 215 90% 55%;
+    --aurora-2: 162 55% 42%;
+    --aurora-3: 33 62% 52%;
   }
- 
+
   .dark {
-    --background: 222 47% 11%;        /* Dark navy instead of pure black */
-    --foreground: 210 40% 98%;        /* Soft white for better readability */
-    --card: 222 47% 13%;              /* Slightly lighter than background */
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 212 100% 50%;          /* Brighter LUMS Blue for dark mode */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 35 85% 55%;          /* Keep gold color */
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 47% 15%;             /* Subtle background for muted areas */
-    --muted-foreground: 210 40% 80%;  /* Softer text for muted content */
-    --accent: 212 100% 50%;           /* Brighter accent for dark mode */
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 222 47% 18%;            /* Subtle borders */
-    --input: 222 47% 18%;
-    --ring: 212 100% 50%;
+    --background: 228 30% 8%;        /* Deep ink navy, never pure black */
+    --foreground: 44 25% 93%;
+    --card: 228 26% 11%;
+    --card-foreground: 44 25% 93%;
+    --popover: 228 26% 11%;
+    --popover-foreground: 44 25% 93%;
+    --primary: 214 90% 64%;
+    --primary-foreground: 228 40% 10%;
+    --secondary: 32 55% 62%;
+    --secondary-foreground: 228 40% 12%;
+    --muted: 228 20% 15%;
+    --muted-foreground: 44 12% 66%;
+    --accent: 228 22% 18%;
+    --accent-foreground: 44 25% 93%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 228 18% 20%;
+    --input: 228 18% 20%;
+    --ring: 214 90% 64%;
+    --jade: 162 50% 52%;
+    --jade-foreground: 228 40% 10%;
+    --gold: 32 55% 62%;
+    --gold-foreground: 228 40% 12%;
+
+    /* Dimmer aurora in dark mode */
+    --aurora-1: 215 90% 58%;
+    --aurora-2: 162 55% 46%;
+    --aurora-3: 32 55% 50%;
   }
 }
 
@@ -60,45 +81,82 @@
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Serif display headlines for an editorial, human feel */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', Georgia, ui-serif, serif;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+
+  /* Refined scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+    border: 2px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
   }
 }
 
-/* Professional Animations */
+/* ---------------------------------------------------------------- */
+/* Organic motion utilities                                           */
+/* ---------------------------------------------------------------- */
+
+/* Reusable easing helpers (avoids ambiguous arbitrary `ease-[...]` utilities) */
+.ease-organic {
+  transition-timing-function: var(--ease-organic);
+}
+
+.ease-spring {
+  transition-timing-function: var(--ease-spring);
+}
+
+/* Scroll-reveal system (driven by the <Reveal /> component) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.995);
+  transition:
+    opacity var(--motion-slow) var(--ease-organic) var(--reveal-delay, 0ms),
+    transform var(--motion-slow) var(--ease-organic) var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Entrance animations (kept for backward compatibility) */
 .animate-in {
-  animation: animate-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: animate-in 0.7s var(--ease-organic) both;
 }
 
 .slide-in-from-bottom {
-  animation: slide-in-bottom 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover-card {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:bg-muted/50;
-  position: relative;
-  overflow: hidden;
-}
-
-.hover-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, transparent 0%, rgba(0, 74, 172, 0.1) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.hover-card:hover::after {
-  opacity: 1;
-}
-
-.feature-icon {
-  @apply transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3;
+  animation: slide-in-bottom 0.7s var(--ease-organic) both;
 }
 
 @keyframes animate-in {
@@ -123,108 +181,10 @@
   }
 }
 
-/* Gradient Backgrounds */
-.gradient-bg {
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--background)) 100%);
-}
-
-.card-hover-effect {
-  @apply relative overflow-hidden;
-}
-
-.card-hover-effect::after {
-  content: '';
-  @apply absolute inset-0 opacity-0 transition-opacity duration-300 bg-gradient-to-r from-primary/5 to-secondary/5;
-}
-
-.card-hover-effect:hover::after {
-  @apply opacity-100;
-}
-
-/* Add these new animations to your existing CSS */
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes expand {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient 4s ease infinite;
-}
-
-.animate-expand {
-  animation: expand 0.8s ease-out forwards;
-  animation-delay: 0.5s;
-}
-
-/* Add these to your existing animations */
-.bg-size-200 {
-  background-size: 200% auto;
-}
-
-.animate-gradient {
-  animation: gradient 3s linear infinite;
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% center;
-  }
-  50% {
-    background-position: 100% center;
-  }
-  100% {
-    background-position: 0% center;
-  }
-}
-
-/* Update the gradient animations */
-.bg-size-300 {
-  background-size: 300% auto;
-}
-
-.animate-gradient-slow {
-  animation: gradient 12s ease-in-out infinite;
-}
-
-@keyframes gradient {
-  0%, 100% {
-    background-position: 0% 50%;
-    background-size: 300% auto;
-  }
-  50% {
-    background-position: 100% 50%;
-    background-size: 300% auto;
-  }
-}
-
-/* Add smooth scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Add more professional animations */
 .fade-up {
   opacity: 0;
   transform: translateY(20px);
-  animation: fadeUp 0.6s ease forwards;
+  animation: fadeUp 0.7s var(--ease-organic) forwards;
 }
 
 @keyframes fadeUp {
@@ -234,20 +194,12 @@ html {
   }
 }
 
-/* Add hover effects for cards */
-.hover-card {
-  @apply transition-all duration-300;
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px -5px rgba(0, 74, 172, 0.1);
-  }
-}
-
-/* Add page transition styles */
+/* Page transition */
 .page {
   position: relative;
   opacity: 0;
   animation: fadeIn 0.6s ease-in-out forwards;
+  overflow-x: hidden; /* Prevent horizontal scroll during animations */
 }
 
 @keyframes fadeIn {
@@ -264,6 +216,303 @@ html {
 .page-exit {
   opacity: 1;
   animation: fadeOut 0.6s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Navbar: translucent backdrop that fades softly toward the bottom —
+   no hard edge. Layered as a real element under the nav content. */
+.navbar-fade {
+  border-bottom: none;
+  isolation: isolate;
+}
+
+/* Baseline (works everywhere, incl. Firefox): a soft tint fading to
+   transparent — no backdrop blur, no mask. */
+.navbar-fade-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--background) / 0.7) 0%,
+    hsl(var(--background) / 0.35) 45%,
+    hsl(var(--background) / 0) 100%
+  );
+}
+
+/* Chromium + Safari: soft dissolving blur on top, so hero washes glow
+   through it. Firefox is excluded — backdrop-filter renders gray artifacts
+   there, especially combined with masks; the tint above is its fallback. */
+@supports (backdrop-filter: blur(1px)) and (not (-moz-appearance: none)) {
+  .navbar-fade-layer {
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+  }
+}
+
+/* Firefox: no blur, so keep the tint a bit stronger for readability */
+@supports (-moz-appearance: none) {
+  .navbar-fade-layer {
+    background: linear-gradient(
+      to bottom,
+      hsl(var(--background) / 0.85) 0%,
+      hsl(var(--background) / 0.5) 45%,
+      hsl(var(--background) / 0) 100%
+    );
+  }
+}
+
+/* Firefox: disable backdrop blur everywhere — it renders gray/smudged.
+   Elements keep their translucent backgrounds, which read fine without it. */
+@supports (-moz-appearance: none) {
+  * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* Card hover lift — refined shadow, subtle tilt-free lift */
+.hover-card {
+  @apply transition-all duration-300;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (hover: hover) {
+  .hover-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 2px 4px rgba(16, 24, 40, 0.05), 0 20px 48px -20px hsl(var(--primary) / 0.35);
+  }
+}
+
+@media (hover: none) {
+  .hover-card:active {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px -5px hsl(var(--primary) / 0.25);
+  }
+}
+
+.hover-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.07) 0%, hsl(var(--gold) / 0.05) 55%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--motion-medium) var(--ease-organic);
+  pointer-events: none;
+}
+
+.hover-card:hover::after {
+  opacity: 1;
+}
+
+.feature-icon {
+  @apply transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-3;
+}
+
+/* Gradient surfaces */
+.gradient-bg {
+  background: linear-gradient(180deg, hsl(var(--muted) / 0.9) 0%, hsl(var(--background)) 100%);
+}
+
+.card-hover-effect {
+  @apply relative overflow-hidden;
+}
+
+.card-hover-effect::after {
+  content: '';
+  @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--gold) / 0.05) 100%);
+}
+
+.card-hover-effect:hover::after {
+  @apply opacity-100;
+}
+
+/* Slow drifting gradients (legacy utilities, consolidated) */
+.bg-size-200 {
+  background-size: 200% auto;
+}
+
+.bg-size-300 {
+  background-size: 300% auto;
+}
+
+.animate-gradient {
+  background-size: 200% auto;
+  animation: gradient 8s ease-in-out infinite;
+}
+
+.animate-gradient-slow {
+  background-size: 300% auto;
+  animation: gradient 14s ease-in-out infinite;
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-expand {
+  animation: expand 0.8s var(--ease-organic) forwards;
+  animation-delay: 0.5s;
+}
+
+@keyframes expand {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Aurora gradient washes (Luma-inspired)                             */
+/* ---------------------------------------------------------------- */
+
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Fluid wrapper: position only — translate/rotate/scale are driven by
+   Framer Motion springs (see AuroraBackground). Transform-only motion,
+   GPU-composited. */
+.aurora-fluid {
+  position: absolute;
+  will-change: transform;
+}
+
+.aurora-blob {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  filter: blur(70px);
+  will-change: transform, opacity;
+  animation: aurora-drift-a var(--aurora-duration) var(--ease-organic) infinite;
+}
+
+/* Fluid swimming paths — each blob roams across the whole hero on its own
+   loop. Per-segment ease-in-out timing keeps the motion watery, and scale
+   changes stay subtle (0.92–1.08) so nothing "pulses". Defined here (plain
+   CSS) so the keyframes are always emitted. */
+@keyframes aurora-drift-a {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.95; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  25%  { transform: translate3d(48%, 40%, 0) scale(1.07); opacity: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  50%  { transform: translate3d(12%, 85%, 0) scale(0.93); opacity: 0.88; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  75%  { transform: translate3d(-38%, 32%, 0) scale(1.04); opacity: 0.98; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  100% { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.95; }
+}
+
+@keyframes aurora-drift-b {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.95; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  25%  { transform: translate3d(-46%, 50%, 0) scale(0.94); opacity: 0.9; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  50%  { transform: translate3d(-14%, 92%, 0) scale(1.05); opacity: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  75%  { transform: translate3d(36%, 34%, 0) scale(0.96); opacity: 0.92; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  100% { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.95; }
+}
+
+@keyframes aurora-drift-c {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.9; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  25%  { transform: translate3d(52%, -58%, 0) scale(1.06); opacity: 0.98; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  50%  { transform: translate3d(18%, -96%, 0) scale(0.92); opacity: 0.85; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  75%  { transform: translate3d(-34%, -38%, 0) scale(1.03); opacity: 0.96; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  100% { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.9; }
+}
+
+@keyframes aurora-drift-d {
+  0%   { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.92; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  25%  { transform: translate3d(-58%, 62%, 0) scale(1.08); opacity: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  50%  { transform: translate3d(4%, 118%, 0) scale(0.95); opacity: 0.88; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  75%  { transform: translate3d(46%, 44%, 0) scale(1.02); opacity: 0.97; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  100% { transform: translate3d(0%, 0%, 0) scale(1); opacity: 0.92; }
+}
+
+/* Gentle floating for ornamental marks (transform-only, GPU-cheap) */
+.float-slow {
+  animation: float-slow 10s ease-in-out infinite;
+}
+
+.float-slower {
+  animation: float-slow 14s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-16px) rotate(10deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob,
+  .float-slow,
+  .float-slower {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Decorative helpers                                                 */
+/* ---------------------------------------------------------------- */
+
+/* 1px gradient hairline (blue → gold, subtle) */
+.hairline-gradient {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--primary) / 0.35) 30%,
+    hsl(var(--gold) / 0.35) 70%,
+    transparent 100%
+  );
+}
+
+/* Gradient headline text — restrained single-hue fade */
+.text-gradient {
+  background: linear-gradient(100deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Organic film grain — static, GPU-cheap, adds a hand-made feel */
+.grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.dark .grain::before {
+  opacity: 0.07;
 }
 
 /* Organic animation for standard round checkboxes */
@@ -433,17 +682,6 @@ html {
   }
 }
 
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-}
-
 /* Add these responsive utilities */
 @layer utilities {
   .container {
@@ -455,41 +693,20 @@ html {
   }
 }
 
-/* Update page transitions for mobile */
-.page {
-  position: relative;
-  opacity: 0;
-  animation: fadeIn 0.6s ease-in-out forwards;
-  overflow-x: hidden; /* Prevent horizontal scroll during animations */
-}
-
-/* Adjust card layouts for mobile */
-.hover-card {
-  @apply transition-all duration-300;
-  
-  @media (hover: hover) {
-    &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px -5px rgba(0, 74, 172, 0.1);
-    }
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
-  
-  @media (hover: none) {
-    &:active {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px -5px rgba(0, 74, 172, 0.1);
-    }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
-
-/* Improve touch targets on mobile */
-/* button, a {
-  @apply min-h-[44px] md:min-h-[unset];
-  @apply min-w-[44px] md:min-w-[unset];
-  
-  @media (max-width: 768px) {
-    &:not(.inline-link) {
-      @apply px-4 py-2;
-    }
-  }
-} */

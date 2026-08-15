@@ -28,6 +28,7 @@ import {
   TouchTooltip,
 } from "@/components/ui/tooltip";
 import { useNavigate, useParams } from "react-router-dom";
+import { AuroraBackground } from "@/components/AuroraBackground";
 
 const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
 
@@ -637,8 +638,10 @@ const Events = () => {
   return (
     <div className="min-h-screen flex flex-col page">
       <Navbar />
-      <main className="flex-1 container py-8">
-        <h1 className="text-4xl font-bold mb-8 animate-in">Upcoming Events</h1>
+      <main className="flex-1 relative">
+        <AuroraBackground />
+        <div className="container relative z-10 pt-24 md:pt-28 pb-8">
+          <h1 className="text-4xl font-bold mb-8 animate-in">Upcoming Events</h1>
         {/* <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
           {categories.map((category) => (
             <Button
@@ -727,6 +730,7 @@ const Events = () => {
               </CardFooter>
             </Card>
           ))}
+        </div>
         </div>
       </main>
       <Footer />

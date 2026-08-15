@@ -77,7 +77,7 @@ const PaymentSuccess = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container py-16 flex justify-center items-center">
+      <main className="flex-1 container pt-32 md:pt-36 pb-16 flex justify-center items-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl text-center">
