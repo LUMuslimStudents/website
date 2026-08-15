@@ -49,7 +49,11 @@ import {
   getPaymentLabel,
 } from "./types";
 import { AdminRegistrationSnapshotDialog } from "./AdminRegistrationSnapshotDialog";
-import { AdminDataTable } from "./AdminDataTable";
+import {
+  AdminDataTable,
+  type AdminDataColumnFilterMode,
+  type AdminDataColumnFilterOption,
+} from "./AdminDataTable";
 
 type AdminEventDetailProps = {
   eventId: number;
@@ -79,6 +83,8 @@ type TableColumn = {
   getSortValue: (row: ParticipantRow) => string;
   getDisplayValue: (row: ParticipantRow) => string;
   renderCell?: (row: ParticipantRow) => React.ReactNode;
+  filterMode?: AdminDataColumnFilterMode;
+  filterOptions?: AdminDataColumnFilterOption[];
   headerClassName?: string;
   cellClassName?: string;
   placeholder?: string;
@@ -225,7 +231,10 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.currentStatus,
     getSortValue: (row) => row.currentStatus,
     getDisplayValue: (row) => row.currentStatus,
-    placeholder: "confirmed/pending",
+    filterOptions: REGISTRATION_STATUS_OPTIONS.map((status) => ({
+      label: formatStatusLabel(status),
+      value: status,
+    })),
   },
   {
     id: "payment",
@@ -234,7 +243,13 @@ const buildBaseColumns = (): TableColumn[] => [
     getSortValue: (row) => String(getPaymentInfo(row.registration).rank),
     getDisplayValue: (row) => getPaymentInfo(row.registration).label,
     renderCell: (row) => <PaymentBadge registration={row.registration} />,
-    placeholder: "paid/unpaid/failed/free",
+    filterOptions: [
+      { label: "Free", value: "free" },
+      { label: "Paid", value: "paid" },
+      { label: "Awaiting payment", value: "awaiting payment" },
+      { label: "Failed", value: "failed" },
+      { label: "Refunded", value: "refunded" },
+    ],
   },
   {
     id: "participant",
@@ -242,6 +257,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.displayName,
     getSortValue: (row) => row.displayName,
     getDisplayValue: (row) => row.displayName,
+    filterMode: "contains",
     placeholder: "Search name",
   },
   {
@@ -250,6 +266,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.profile?.email || row.registration.linked_user?.email || "",
     getSortValue: (row) => row.registration.profile?.email || row.registration.linked_user?.email || "",
     getDisplayValue: (row) => row.registration.profile?.email || row.registration.linked_user?.email || "—",
+    filterMode: "contains",
     placeholder: "Search email",
   },
   {
@@ -258,6 +275,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.profile?.phone_number || row.registration.linked_user?.phone_number || "",
     getSortValue: (row) => row.registration.profile?.phone_number || row.registration.linked_user?.phone_number || "",
     getDisplayValue: (row) => row.registration.profile?.phone_number || row.registration.linked_user?.phone_number || "—",
+    filterMode: "contains",
     placeholder: "Search phone",
   },
   {
@@ -266,7 +284,10 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => (row.registration.profile ? (row.registration.profile.is_student ? "yes" : "no") : ""),
     getSortValue: (row) => (row.registration.profile ? (row.registration.profile.is_student ? "1" : "0") : ""),
     getDisplayValue: (row) => (row.registration.profile ? (row.registration.profile.is_student ? "Yes" : "No") : "—"),
-    placeholder: "yes/no",
+    filterOptions: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
   },
   {
     id: "alumnus",
@@ -274,7 +295,10 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => (row.registration.profile ? (row.registration.profile.is_alumnus ? "yes" : "no") : ""),
     getSortValue: (row) => (row.registration.profile ? (row.registration.profile.is_alumnus ? "1" : "0") : ""),
     getDisplayValue: (row) => (row.registration.profile ? (row.registration.profile.is_alumnus ? "Yes" : "No") : "—"),
-    placeholder: "yes/no",
+    filterOptions: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
   },
   {
     id: "university",
@@ -282,6 +306,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.profile?.university_name || "",
     getSortValue: (row) => row.registration.profile?.university_name || "",
     getDisplayValue: (row) => row.registration.profile?.university_name || "—",
+    filterMode: "contains",
     placeholder: "Search university",
   },
   {
@@ -290,6 +315,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.profile?.study_program || "",
     getSortValue: (row) => row.registration.profile?.study_program || "",
     getDisplayValue: (row) => row.registration.profile?.study_program || "—",
+    filterMode: "contains",
     placeholder: "Search program",
   },
   {
@@ -298,7 +324,10 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.profile?.gender || row.registration.linked_user?.gender || "",
     getSortValue: (row) => row.registration.profile?.gender || row.registration.linked_user?.gender || "",
     getDisplayValue: (row) => formatGender(row.registration.profile?.gender || row.registration.linked_user?.gender || null),
-    placeholder: "Search gender",
+    filterOptions: [
+      { label: "Male", value: "male" },
+      { label: "Female", value: "female" },
+    ],
   },
   {
     id: "submitted",
@@ -306,6 +335,7 @@ const buildBaseColumns = (): TableColumn[] => [
     getSearchValue: (row) => row.registration.submitted_at || "",
     getSortValue: (row) => row.registration.submitted_at || "",
     getDisplayValue: (row) => formatDateTime(row.registration.submitted_at),
+    filterMode: "contains",
     placeholder: "Search date",
   },
   {
@@ -323,6 +353,7 @@ const buildBaseColumns = (): TableColumn[] => [
       row.registration.linked_user
         ? `${row.registration.linked_user.first_name} ${row.registration.linked_user.last_name}`.trim()
         : "Guest",
+    filterMode: "contains",
     placeholder: "Search linked user",
   },
 ];
@@ -363,6 +394,7 @@ const buildDynamicColumns = (fields: AdminEventFormField[]): TableColumn[] =>
     getSearchValue: (row) => row.answerMap[field.id] || "",
     getSortValue: (row) => row.answerMap[field.id] || "",
     getDisplayValue: (row) => row.answerMap[field.id] || "—",
+    filterMode: "contains",
     placeholder: "Search answer",
   }));
 

@@ -8,6 +8,8 @@ import {
   authVerifySignupData,
   authUpdatePasswordData,
   adminUsersData,
+  adminUserRegistrationsData,
+  adminTreasuryReportData,
   eventData,
   eventPastData,
   eventByIdData,
@@ -195,6 +197,19 @@ export const SupabaseRequest = async (
   // ── Admin: List users ───────────────────────────────────────────
   if (endpoint === '/admin/users' && method === 'GET') {
     return adminUsersData();
+  }
+
+  // ── Admin: Single user's event registrations ──────────────────
+  if (endpoint.startsWith('/admin/user-registrations')) {
+    const userId = getQueryParam(endpoint, 'user_id');
+    if (!userId) throw new Error('User id required');
+    return adminUserRegistrationsData(userId);
+  }
+
+  // ── Admin: Treasurer income report ────────────────────────────
+  if (endpoint.startsWith('/admin/treasury-report')) {
+    const term = getQueryParam(endpoint, 'term');
+    return adminTreasuryReportData(term || null);
   }
 
   // ── Events ──────────────────────────────────────────────────────

@@ -23,6 +23,8 @@ import {
   getCurrentUser,
   signOut,
   getUsers,
+  getUserRegistrations,
+  getTreasuryReport,
 } from ']/services/accounts/accounts';
 import {
   getAdminOptions,
@@ -77,6 +79,12 @@ export const authUpdatePasswordData = async (password: string) =>
 // ── Admin exports ───────────────────────────────────────────────────────────
 
 export const adminUsersData = async () => getUsers();
+
+export const adminUserRegistrationsData = async (userId: string) =>
+  getUserRegistrations(userId);
+
+export const adminTreasuryReportData = async (term?: string | null) =>
+  getTreasuryReport(term);
 
 // ── Event registration exports ─────────────────────────────────────────────
 

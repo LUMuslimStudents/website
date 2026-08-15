@@ -28,6 +28,7 @@ import { AdminEventsTab } from "@/components/admin/AdminEventsTab";
 import { AdminEventDetailRoute } from "@/components/admin/AdminEventDetailRoute";
 import { AdminEventCreateView } from "@/components/admin/AdminEventCreateView";
 import { AdminSettingsTab } from "@/components/admin/AdminSettingsTab";
+import { AdminTreasuryTab } from "@/components/admin/AdminTreasuryTab";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
                     <Route path="events/:eventId/edit" element={<AdminEventCreateView />} />
                     <Route path="events/:eventId" element={<AdminEventDetailRoute />} />
                     <Route path="settings" element={<AdminSettingsTab />} />
+                    <Route path="treasury" element={<AdminTreasuryTab />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -4,8 +4,9 @@
 // one layout and behavior.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { ArrowUpDown, ChevronDown, ChevronUp, Columns3, Download, Filter, GripHorizontal } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, ChevronUp, Columns3, Download, Filter, GripHorizontal, Info } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +25,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+
+/**
+ * How free-text filter input is matched against a column's search value.
+ * - `contains`: every filter term must appear anywhere in the value (classic
+ *   substring search, term order agnostic).
+ * - `words`: every filter term must match a whole word in the value, either
+ *   exactly or as a prefix. This keeps "paid" from matching "unpaid".
+ * - `exact`: every filter term must equal a whole word in the value.
+ */
+export type AdminDataColumnFilterMode = "contains" | "words" | "exact";
+
+/** A single discrete filter choice, e.g. a Prisma enum value. */
+export type AdminDataColumnFilterOption = {
+  label: string;
+  /** Text compared against the column's search value (case-insensitive). */
+  value: string;
+};
 
 export type AdminDataColumn<T> = {
   id: string;
@@ -34,6 +57,14 @@ export type AdminDataColumn<T> = {
   getDisplayValue: (row: T) => string;
   /** Optional fully custom cell (e.g. action buttons, selects). */
   renderCell?: (row: T) => ReactNode;
+  /** How free-text filter input matches. Defaults to "words". */
+  filterMode?: AdminDataColumnFilterMode;
+  /**
+   * Discrete filter choices (e.g. enum values from the Prisma schema). When
+   * provided, the column filter becomes a single-choice list instead of a
+   * free-text input.
+   */
+  filterOptions?: AdminDataColumnFilterOption[];
   placeholder?: string;
   headerClassName?: string;
   cellClassName?: string;
@@ -51,6 +82,8 @@ type AdminDataTableProps<T> = {
   emptyMessage?: string;
   toolbarLeft?: ReactNode;
   toolbarRight?: ReactNode;
+  /** When set, body rows become clickable and invoke this on click. */
+  onRowClick?: (row: T) => void;
 };
 
 const truncateLabel = (value: string, max = 56) => {
@@ -63,6 +96,45 @@ const truncateLabel = (value: string, max = 56) => {
 const normalizeText = (value?: string | null) => (value ?? "").toLowerCase().trim();
 
 const escapeCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+/** Splits a row value into lowercase words, e.g. "two_term" → ["two", "term"]. */
+const splitIntoWords = (value: string): string[] =>
+  normalizeText(value).split(/[^a-z0-9]+/).filter(Boolean);
+
+/** Splits filter input into lowercase terms; every term must match. */
+const splitFilterTerms = (value: string): string[] =>
+  normalizeText(value).split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * Smart filter matching. The filter is tokenized so "ali khan" matches both
+ * "Ali Khan" and "Khan, Ali", and every token must match the row value.
+ */
+const matchesFilterValue = (
+  rowValue: string,
+  filterValue: string,
+  mode: AdminDataColumnFilterMode,
+): boolean => {
+  const terms = splitFilterTerms(filterValue);
+  if (terms.length === 0) {
+    return true;
+  }
+
+  const normalizedValue = normalizeText(rowValue);
+  if (mode === "contains") {
+    return terms.every((term) => normalizedValue.includes(term));
+  }
+
+  const words = splitIntoWords(rowValue);
+  if (words.length === 0) {
+    return false;
+  }
+
+  return terms.every((term) =>
+    words.some((word) =>
+      mode === "exact" ? word === term : word === term || word.startsWith(term),
+    ),
+  );
+};
 
 type DragContext = {
   originCenter: number;
@@ -84,6 +156,7 @@ export const AdminDataTable = <T,>({
   emptyMessage = "No rows matched the current column filters.",
   toolbarLeft,
   toolbarRight,
+  onRowClick,
 }: AdminDataTableProps<T>) => {
   const [sortColumnId, setSortColumnId] = useState<string>(
     defaultSortColumnId ?? columns[0]?.id ?? "",
@@ -175,11 +248,15 @@ export const AdminDataTable = <T,>({
 
     const filteredRows = rows.filter((row) =>
       visibleOrderedColumns.every((column) => {
-        const filterValue = normalizeText(columnFilters[column.id]);
+        const filterValue = columnFilters[column.id];
         if (!filterValue) {
           return true;
         }
-        return normalizeText(column.getSearchValue(row)).includes(filterValue);
+        return matchesFilterValue(
+          column.getSearchValue(row),
+          filterValue,
+          column.filterMode ?? "words",
+        );
       }),
     );
 
@@ -661,23 +738,50 @@ export const AdminDataTable = <T,>({
                                 <GripHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                               </button>
                             </div>
-                          ) : null}
+                          ) : (
+                            // Fixed columns have no drag handle; keep an invisible
+                            // placeholder of the same size so their header content
+                            // lines up with the rest of the headers.
+                            <div className="flex justify-center pb-1" aria-hidden="true">
+                              <span className="block h-3.5 w-3.5 px-1 py-0.5" />
+                            </div>
+                          )}
                           {!column.renderCell || column.label ? (
                             <div className="flex items-center justify-between gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleSort(column.id)}
-                                className="inline-flex items-center gap-1 font-semibold hover:underline"
-                                title={column.fullLabel || column.label}
-                              >
-                                {column.label}
-                                <ArrowUpDown
-                                  className={`h-3.5 w-3.5 ${isSorted ? "text-foreground" : "text-muted-foreground"}`}
-                                />
-                                {isSorted ? (
-                                  <span className="text-[10px] uppercase">{sortDirection}</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSort(column.id)}
+                                  className="inline-flex items-center gap-1 font-semibold hover:underline"
+                                  title={dynamicColumn ? undefined : column.fullLabel || column.label}
+                                >
+                                  {column.label}
+                                  <ArrowUpDown
+                                    className={`h-3.5 w-3.5 ${isSorted ? "text-foreground" : "text-muted-foreground"}`}
+                                  />
+                                  {isSorted ? (
+                                    <span className="text-[10px] uppercase">{sortDirection}</span>
+                                  ) : null}
+                                </button>
+                                {dynamicColumn && column.fullLabel ? (
+                                  <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                      <span
+                                        className="inline-flex cursor-help items-center text-muted-foreground hover:text-foreground"
+                                        aria-label={`Question: ${column.fullLabel}`}
+                                      >
+                                        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                                      </span>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent side="bottom" align="start" className="w-72">
+                                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                        Question
+                                      </p>
+                                      <p className="mt-1 text-sm">{column.fullLabel}</p>
+                                    </HoverCardContent>
+                                  </HoverCard>
                                 ) : null}
-                              </button>
+                              </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -694,32 +798,65 @@ export const AdminDataTable = <T,>({
                                     Filter {column.fullLabel || column.label}
                                   </DropdownMenuLabel>
                                   <DropdownMenuSeparator />
-                                  <Input
-                                    value={columnFilters[column.id] || ""}
-                                    onChange={(event) =>
-                                      setColumnFilters((previous) => ({
-                                        ...previous,
-                                        [column.id]: event.target.value,
-                                      }))
-                                    }
-                                    placeholder={column.placeholder || "Filter"}
-                                    className="h-8 text-xs"
-                                  />
-                                  <div className="mt-2 flex justify-end">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
+                                  {column.filterOptions ? (
+                                    <div className="space-y-0.5">
+                                      {column.filterOptions.map((option) => {
+                                        const isActive = columnFilters[column.id] === option.value;
+                                        return (
+                                          <button
+                                            key={option.value}
+                                            type="button"
+                                            onClick={() =>
+                                              setColumnFilters((previous) => ({
+                                                ...previous,
+                                                [column.id]: isActive ? "" : option.value,
+                                              }))
+                                            }
+                                            className={cn(
+                                              "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs",
+                                              isActive
+                                                ? "bg-primary text-primary-foreground"
+                                                : "hover:bg-muted",
+                                            )}
+                                          >
+                                            <span className="min-w-0 truncate">{option.label}</span>
+                                            {isActive ? (
+                                              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                            ) : null}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <Input
+                                      value={columnFilters[column.id] || ""}
+                                      onChange={(event) =>
                                         setColumnFilters((previous) => ({
                                           ...previous,
-                                          [column.id]: "",
+                                          [column.id]: event.target.value,
                                         }))
                                       }
-                                    >
-                                      Clear
-                                    </Button>
-                                  </div>
+                                      placeholder={column.placeholder || "Filter"}
+                                      className="h-8 text-xs"
+                                    />
+                                  )}
+                                  {columnFilters[column.id] ? (
+                                    <div className="mt-2 flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          setColumnFilters((previous) => ({
+                                            ...previous,
+                                            [column.id]: "",
+                                          }))
+                                        }
+                                      >
+                                        Clear
+                                      </Button>
+                                    </div>
+                                  ) : null}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -731,7 +868,14 @@ export const AdminDataTable = <T,>({
                 </TableHeader>
                 <TableBody>
                   {processedRows.map((row) => (
-                    <TableRow key={rowKey(row)} className={getRowTint ? getRowTint(row) : undefined}>
+                    <TableRow
+                      key={rowKey(row)}
+                      className={cn(
+                        getRowTint ? getRowTint(row) : undefined,
+                        onRowClick ? "cursor-pointer" : undefined,
+                      )}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    >
                       {visibleOrderedColumns.map((column) => {
                         return (
                           <TableCell

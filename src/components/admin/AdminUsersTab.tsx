@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { AdminDataTable, type AdminDataColumn } from "./AdminDataTable";
 import { AdminUser } from "./types";
+import { AdminUserDetailsDialog } from "./AdminUserDetailsDialog";
 
 const formatDateOnly = (value?: string | null) => {
   if (!value) {
@@ -32,6 +33,8 @@ type AdminUsersTabProps = {
 };
 
 export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
   const columns = useMemo<AdminDataColumn<AdminUser>[]>(() => [
     {
       id: "name",
@@ -39,55 +42,8 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
       getSearchValue: (user) => `${user.first_name} ${user.last_name}`,
       getSortValue: (user) => `${user.first_name} ${user.last_name}`,
       getDisplayValue: (user) => `${user.first_name} ${user.last_name}`.trim(),
+      filterMode: "contains",
       placeholder: "Search name",
-    },
-    {
-      id: "email",
-      label: "Email",
-      getSearchValue: (user) => user.email ?? "",
-      getSortValue: (user) => user.email ?? "",
-      getDisplayValue: (user) => user.email ?? "—",
-      placeholder: "Search email",
-    },
-    {
-      id: "phone",
-      label: "Phone",
-      getSearchValue: (user) => user.phone_number ?? "",
-      getSortValue: (user) => user.phone_number ?? "",
-      getDisplayValue: (user) => user.phone_number ?? "—",
-      placeholder: "Search phone",
-    },
-    {
-      id: "gender",
-      label: "Gender",
-      getSearchValue: (user) => user.gender ?? "",
-      getSortValue: (user) => user.gender ?? "",
-      getDisplayValue: (user) => formatGender(user.gender),
-      placeholder: "Search gender",
-    },
-    {
-      id: "study_program",
-      label: "Study Program",
-      getSearchValue: (user) => user.study_program ?? "",
-      getSortValue: (user) => user.study_program ?? "",
-      getDisplayValue: (user) => user.study_program ?? "—",
-      placeholder: "Search program",
-    },
-    {
-      id: "term",
-      label: "Term",
-      getSearchValue: (user) => user.term ?? "",
-      getSortValue: (user) => user.term ?? "",
-      getDisplayValue: (user) => user.term ?? "—",
-      placeholder: "Search term",
-    },
-    {
-      id: "role",
-      label: "Role",
-      getSearchValue: (user) => user.role ?? "",
-      getSortValue: (user) => user.role ?? "",
-      getDisplayValue: (user) => user.role ?? "—",
-      placeholder: "Search role",
     },
     {
       id: "membership_status",
@@ -105,7 +61,68 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
             Unpaid
           </span>
         ),
-      placeholder: "paid/unpaid",
+      filterOptions: [
+        { label: "Paid", value: "paid" },
+        { label: "Unpaid", value: "unpaid" },
+      ],
+    },
+    {
+      id: "email",
+      label: "Email",
+      getSearchValue: (user) => user.email ?? "",
+      getSortValue: (user) => user.email ?? "",
+      getDisplayValue: (user) => user.email ?? "—",
+      filterMode: "contains",
+      placeholder: "Search email",
+    },
+    {
+      id: "phone",
+      label: "Phone",
+      getSearchValue: (user) => user.phone_number ?? "",
+      getSortValue: (user) => user.phone_number ?? "",
+      getDisplayValue: (user) => user.phone_number ?? "—",
+      filterMode: "contains",
+      placeholder: "Search phone",
+    },
+    {
+      id: "gender",
+      label: "Gender",
+      getSearchValue: (user) => user.gender ?? "",
+      getSortValue: (user) => user.gender ?? "",
+      getDisplayValue: (user) => formatGender(user.gender),
+      filterOptions: [
+        { label: "Male", value: "male" },
+        { label: "Female", value: "female" },
+      ],
+    },
+    {
+      id: "study_program",
+      label: "Study Program",
+      getSearchValue: (user) => user.study_program ?? "",
+      getSortValue: (user) => user.study_program ?? "",
+      getDisplayValue: (user) => user.study_program ?? "—",
+      filterMode: "contains",
+      placeholder: "Search program",
+    },
+    {
+      id: "term",
+      label: "Term",
+      getSearchValue: (user) => user.term ?? "",
+      getSortValue: (user) => user.term ?? "",
+      getDisplayValue: (user) => user.term ?? "—",
+      filterMode: "contains",
+      placeholder: "Search term",
+    },
+    {
+      id: "role",
+      label: "Role",
+      getSearchValue: (user) => user.role ?? "",
+      getSortValue: (user) => user.role ?? "",
+      getDisplayValue: (user) => user.role ?? "—",
+      filterOptions: [
+        { label: "Admin", value: "admin" },
+        { label: "User", value: "user" },
+      ],
     },
     {
       id: "membership_plan",
@@ -118,7 +135,10 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
           : user.membership_plan === "single_term"
             ? "Single term"
             : "—",
-      placeholder: "Search plan",
+      filterOptions: [
+        { label: "Single term", value: "single_term" },
+        { label: "Two terms", value: "two_term" },
+      ],
     },
     {
       id: "membership_paid_at",
@@ -126,6 +146,7 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
       getSearchValue: (user) => user.membership_paid_at ?? "",
       getSortValue: (user) => user.membership_paid_at ?? "",
       getDisplayValue: (user) => formatDateOnly(user.membership_paid_at),
+      filterMode: "contains",
       placeholder: "Search date",
     },
     {
@@ -134,6 +155,7 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
       getSearchValue: (user) => user.created_at ?? "",
       getSortValue: (user) => user.created_at ?? "",
       getDisplayValue: (user) => formatDateOnly(user.created_at),
+      filterMode: "contains",
       placeholder: "Search date",
     },
   ], []);
@@ -147,13 +169,20 @@ export const AdminUsersTab = ({ users, loading }: AdminUsersTabProps) => {
   }
 
   return (
-    <AdminDataTable
-      columns={columns}
-      rows={users}
-      rowKey={(user) => user.id}
-      csvFileName="lums-users.csv"
-      defaultSortColumnId="name"
-      emptyMessage="No users matched the current column filters."
-    />
+    <>
+      <AdminDataTable
+        columns={columns}
+        rows={users}
+        rowKey={(user) => user.id}
+        csvFileName="lums-users.csv"
+        defaultSortColumnId="name"
+        emptyMessage="No users matched the current column filters."
+        onRowClick={(user) => setSelectedUser(user)}
+      />
+      <AdminUserDetailsDialog
+        user={selectedUser}
+        onClose={() => setSelectedUser(null)}
+      />
+    </>
   );
 };

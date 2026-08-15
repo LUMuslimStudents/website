@@ -1,3 +1,13 @@
+export type AdminMembershipPayment = {
+  id: string;
+  term: string;
+  plan: string;
+  amount: number;
+  payment_status: string;
+  paid_at: string | null;
+  created_at?: string | null;
+};
+
 export interface AdminUser {
   id: string;
   first_name: string;
@@ -12,7 +22,92 @@ export interface AdminUser {
   membership_status: 'paid' | 'unpaid';
   membership_plan?: string | null;
   membership_paid_at?: string | null;
+  membership_payments?: AdminMembershipPayment[];
 }
+
+export type AdminUserEventRegistration = {
+  id: string;
+  event_id: number;
+  status: string;
+  quoted_price: number;
+  payment_required: boolean;
+  payment_status: string;
+  payment_completed_at: string | null;
+  submitted_at: string | null;
+  updated_at: string | null;
+  event: {
+    id: number;
+    title: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    address: string;
+  };
+};
+
+export type AdminUserRegistrations = {
+  registrations: AdminUserEventRegistration[];
+};
+
+export type AdminTreasuryMembershipPayment = {
+  id: string;
+  user_id: string;
+  term: string;
+  plan: string;
+  amount: number;
+  payment_status: string;
+  paid_at: string | null;
+  created_at: string | null;
+  email: string | null;
+  user: { first_name: string; last_name: string; phone_number: string } | null;
+};
+
+export type AdminTreasuryEventRegistration = {
+  id: string;
+  event_id: number;
+  user_id: string | null;
+  status: string;
+  quoted_price: number;
+  payment_required: boolean;
+  payment_status: string;
+  payment_completed_at: string | null;
+  submitted_at: string | null;
+  updated_at: string | null;
+  email: string | null;
+  user: { first_name: string; last_name: string; phone_number: string } | null;
+  profile: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+  } | null;
+  event: { id: number; term: string; title: string; date: string } | null;
+};
+
+/** One row per actual payment across memberships and event registrations. */
+export type AdminTreasuryIncomeRow = {
+  id: string;
+  kind: "membership" | "event";
+  term: string;
+  amount: number;
+  payment_status: string;
+  paid_at: string | null;
+  payer_name: string;
+  payer_email: string | null;
+  payer_phone: string | null;
+  member: boolean;
+  plan: string | null;
+  event_title: string | null;
+  event_date: string | null;
+};
+
+export type AdminTreasuryReport = {
+  terms: string[];
+  current_term: string | null;
+  memberships: AdminTreasuryMembershipPayment[];
+  registrations: AdminTreasuryEventRegistration[];
+  income: AdminTreasuryIncomeRow[];
+};
 
 export type AdminLinkedUser = {
   id: number;

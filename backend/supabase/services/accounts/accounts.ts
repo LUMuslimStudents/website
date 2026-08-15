@@ -17,4 +17,6 @@ export {
     getCurrentUser,
     signOut,
     getUsers,
+    getUserRegistrations,
+    getTreasuryReport,
 } from './pathways/authPathways';

@@ -221,3 +221,79 @@ export const getUsers = async () => {
 
   return (data as { users?: unknown[] })?.users ?? [];
 };
+
+/**
+ * Fetch a single user's event registrations (joined with their events) for
+ * the admin dashboard's user detail dialog. Identity and membership data
+ * come from the users list payload instead. The caller's admin role is
+ * verified server-side by the edge function.
+ */
+export const getUserRegistrations = async (userId: string) => {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error('Access denied. Not authenticated.');
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    'admin-get-user-registrations',
+    { body: { user_id: userId } },
+  );
+
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response })?.context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = (await context.json()) as { error?: string };
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message || 'Access denied. Admin role required.');
+  }
+
+  return data;
+};
+
+/**
+ * Fetch the treasurer's income report: membership payments and event
+ * registrations for a term (or all terms), plus the distinct term list and
+ * the current term. The caller's admin role is verified server-side by the
+ * edge function.
+ */
+export const getTreasuryReport = async (term?: string | null) => {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error('Access denied. Not authenticated.');
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    'admin-treasury-report',
+    { body: { term: term ?? null } },
+  );
+
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response })?.context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = (await context.json()) as { error?: string };
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message || 'Access denied. Admin role required.');
+  }
+
+  return data;
+};
