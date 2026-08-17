@@ -108,3 +108,43 @@
   margin: 1.1rem 0;
   height: 0;
 }
+
+/* Tables — token-driven so both light and dark mode work. The library's
+   default table styles are light-only; these override them in both modes. */
+.event-markdown-shell .wmde-markdown table {
+  margin: 1rem 0;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  display: table;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.event-markdown-shell .wmde-markdown th,
+.event-markdown-shell .wmde-markdown td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  background-color: transparent;
+}
+
+.event-markdown-shell .wmde-markdown thead th {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-weight: 650;
+}
+
+.event-markdown-shell .wmde-markdown tbody tr:nth-child(2n) td {
+  background-color: hsl(var(--muted) / 0.55);
+}
+
+.event-markdown-shell .wmde-markdown img {
+  max-width: 100%;
+  border-radius: 0.75rem;
+}
+
+.event-markdown-shell .wmde-markdown strong {
+  font-weight: 650;
+  color: hsl(var(--foreground));
+}

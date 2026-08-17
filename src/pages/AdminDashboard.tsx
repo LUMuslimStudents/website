@@ -52,7 +52,7 @@ const AdminDashboard = () => {
 
   if (checkingAccess) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background admin-shell">
         <Navbar />
         <div className="container py-10">
           <p className="text-sm text-muted-foreground">Loading admin dashboard...</p>
@@ -62,7 +62,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background admin-shell">
       <Navbar />
       <div className="container py-10">
         <Card>

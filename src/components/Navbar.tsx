@@ -8,11 +8,11 @@ import { StarMark } from "@/components/IslamicPattern";
 import { cn } from "@/lib/utils";
 
 interface NavbarProps {
-  /** Kept for API compatibility — the navbar now always overlays content */
+  /** Let page content (e.g. the hero) extend up underneath the navbar */
   overlay?: boolean;
 }
 
-export const Navbar = (_props: NavbarProps) => {
+export const Navbar = ({ overlay = false }: NavbarProps) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -38,7 +38,7 @@ export const Navbar = (_props: NavbarProps) => {
     );
 
   return (
-    <header className="sticky top-0 z-40 w-full navbar-fade -mb-16 md:-mb-20">
+    <header className={cn("sticky top-0 z-40 w-full navbar-fade", overlay && "-mb-16 md:-mb-20")}>
       <div aria-hidden="true" className="navbar-fade-layer" />
       <div className="container relative z-10 flex h-16 md:h-20 items-center justify-between">
         {/* Left-aligned LUMS logo */}

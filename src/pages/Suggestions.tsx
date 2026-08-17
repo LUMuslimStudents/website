@@ -49,8 +49,8 @@ const Suggestions = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col page">
-      <Navbar />
+    <div className="min-h-dvh flex flex-col page">
+      <Navbar overlay />
       <main className="flex-1">
         <div className="container max-w-2xl pt-28 md:pt-32 pb-12">
           <h1 className="text-4xl font-bold text-center text-[#004aac] mb-8">

@@ -34,7 +34,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={100}>
           <Toaster />

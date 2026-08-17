@@ -57,7 +57,7 @@ export const MembershipGate = ({ children }: { children: ReactNode }) => {
   // Admins bypass the payment check entirely (paid stays null for them).
   if (loading || (user && user.role !== 'admin' && paid === null)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );

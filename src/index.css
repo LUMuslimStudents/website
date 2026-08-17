@@ -84,6 +84,10 @@
 
   html {
     scroll-behavior: smooth;
+    /* Reserve the scrollbar gutter so locking body scroll (modal open)
+       doesn't shift the page layout and trigger a full-page reflow
+       mid-animation. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -195,11 +199,12 @@
 }
 
 /* Page transition */
+/* NOTE: no overflow-x here — any overflow (even hidden) on an ancestor
+   creates a scroll container and breaks position: sticky for the navbar. */
 .page {
   position: relative;
   opacity: 0;
   animation: fadeIn 0.6s ease-in-out forwards;
-  overflow-x: hidden; /* Prevent horizontal scroll during animations */
 }
 
 @keyframes fadeIn {
@@ -471,6 +476,24 @@
   .float-slow,
   .float-slower {
     animation: none;
+  }
+}
+
+/* Admin: reclaim horizontal room on phones — the data tables were
+   crushed by stacked padding layers. Desktop is untouched. */
+@media (max-width: 639px) {
+  .admin-shell .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .admin-shell .py-10 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .admin-shell .p-6 {
+    padding: 0.75rem;
   }
 }
 

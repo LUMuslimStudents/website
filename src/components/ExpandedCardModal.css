@@ -40,16 +40,21 @@
 /* Expanded Card Container */
 .expanded-card {
   position: fixed;
-  inset: 0; /* top/right/bottom/left: 0 */
+  inset: 0;
   width: 100vw;
   height: 100vh; /* Fallback for older browsers */
-  height: 100dvh; /* Use dynamic viewport height on mobile */
-  background: hsl(var(--background));
+  height: 100dvh; /* Dynamic viewport height on mobile */
+  background: hsl(var(--card));
   border-radius: 0;
   box-shadow: none;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 51;
+  /* Invisible performance hints: promote the resizing box to its own
+     compositor layer so Firefox rasterizes it independently instead of
+     invalidating page regions every frame. */
+  transform: translateZ(0);
+  will-change: top, left, width, height;
   animation: expandCard 0.6s cubic-bezier(0.2, 0.5, 0.2, 1) forwards;
   color: hsl(var(--foreground));
 }
@@ -129,7 +134,7 @@
   flex: 0 0 auto;
   padding: 16px 24px 8px;
   border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 .expanded-card-layout {
@@ -149,7 +154,7 @@
 .expanded-card-footer {
   flex: 0 0 auto;
   padding: 8px 0 16px;
-  background: hsl(var(--background));
+  background: hsl(var(--card));
 }
 
 /* Action Buttons */
@@ -397,6 +402,51 @@
 .expanded-card::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+}
+
+/* Instagram-style loading skeletons for the modal content */
+.skeleton-line {
+  position: relative;
+  overflow: hidden;
+  height: 14px;
+  border-radius: 8px;
+  background: hsl(var(--muted));
+}
+
+.skeleton-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--foreground) / 0.07) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Soft fade-in when the loaded content replaces the skeleton */
+.modal-content-fade-in {
+  animation: modalContentFadeIn 0.5s var(--ease-organic) both;
+}
+
+@keyframes modalContentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .expanded-card::-webkit-scrollbar-thumb:hover {

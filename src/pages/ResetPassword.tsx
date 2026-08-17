@@ -54,12 +54,12 @@ const ResetPassword = () => {
   };
 
   if (authLoading) {
-    return (<div className="min-h-screen bg-background"><Navbar /><div className="flex items-center justify-center py-12"><p className="text-muted-foreground">Loading...</p></div></div>);
+    return (<div className="min-h-dvh bg-background"><Navbar /><div className="flex items-center justify-center py-12"><p className="text-muted-foreground">Loading...</p></div></div>);
   }
 
   if (tokenError) {
     return (
-      <div className="min-h-screen bg-background"><Navbar />
+      <div className="min-h-dvh bg-background"><Navbar />
         <div className="flex items-center justify-center py-12 px-4">
           <Card className="w-full max-w-md">
             <CardHeader><CardTitle className="text-2xl text-center">Reset link expired</CardTitle></CardHeader>
@@ -74,7 +74,7 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background"><Navbar />
+    <div className="min-h-dvh bg-background"><Navbar />
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <Card className="w-full max-w-md">
           <CardHeader><CardTitle className="text-2xl text-center">Set a new password</CardTitle></CardHeader>

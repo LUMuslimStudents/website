@@ -29,8 +29,8 @@ const Membership = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
+    <div className="min-h-dvh flex flex-col">
+      <Navbar overlay />
       <main className="flex-1 relative">
         <AuroraBackground />
         <div className="container relative z-10 pt-24 md:pt-28 pb-8">

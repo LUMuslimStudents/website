@@ -102,7 +102,7 @@ const VerifyEmail = () => {
     if (!email) return null;
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-dvh bg-background">
             <Navbar />
             <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <Card className="w-full max-w-md">

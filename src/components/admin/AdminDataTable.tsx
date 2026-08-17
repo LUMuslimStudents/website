@@ -3,8 +3,8 @@
 // renderers. Lifted from the event-details view so all admin tables share
 // one layout and behavior.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { flushSync } from "react-dom";
-import { ArrowUpDown, Check, ChevronDown, ChevronUp, Columns3, Download, Filter, GripHorizontal, Info } from "lucide-react";
+import { createPortal, flushSync } from "react-dom";
+import { ArrowUpDown, Check, ChevronDown, ChevronUp, Columns3, Download, Filter, GripHorizontal, Info, Maximize2, Minimize2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -587,7 +587,27 @@ export const AdminDataTable = <T,>({
     }
   };
 
-  return (
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Fullscreen mode: lock body scroll and close on Escape.
+  useEffect(() => {
+    if (!isExpanded) {
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsExpanded(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isExpanded]);
+
+  const content = (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">{toolbarLeft}</div>
@@ -697,6 +717,16 @@ export const AdminDataTable = <T,>({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExpanded((value) => !value)}
+            title={isExpanded ? "Collapse table" : "Expand table to full screen"}
+          >
+            {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <span className="sr-only">{isExpanded ? "Collapse table" : "Expand table"}</span>
+          </Button>
         </div>
       </div>
 
@@ -906,5 +936,18 @@ export const AdminDataTable = <T,>({
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : null}
     </div>
+  );
+
+  if (!isExpanded) {
+    return content;
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex flex-col bg-background">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-0 py-3 sm:py-6">
+        {content}
+      </div>
+    </div>,
+    document.body
   );
 };

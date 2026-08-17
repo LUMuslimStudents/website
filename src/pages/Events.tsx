@@ -245,6 +245,90 @@ type ExpandedEvent = events_info & {
   pending_registration_id?: string | null;
 };
 
+/**
+ * Instagram-style loading placeholder shown while the event details are
+ * being fetched. Pure decoration — replaced by the real content.
+ */
+const ContentSkeleton = () => (
+  <div className="space-y-4 pt-1" aria-hidden="true">
+    <div className="skeleton-line w-1/2" />
+    <div className="skeleton-line w-3/4" />
+    <div className="skeleton-line w-full" />
+    <div className="skeleton-line w-5/6" />
+    <div className="skeleton-line w-2/3" />
+    <div className="skeleton-line mt-7 h-44 w-full rounded-2xl" />
+  </div>
+);
+
+/**
+ * Card-shaped loading skeleton mirroring the real event-card layout
+ * (header rows, poster block, footer with price + button).
+ */
+const EventCardSkeleton = () => (
+  <Card className="overflow-hidden">
+    <CardHeader className="space-y-2.5">
+      <div className="flex justify-between gap-3">
+        <div className="skeleton-line h-5 w-3/4" />
+        <div className="skeleton-line h-3.5 w-20 shrink-0" />
+      </div>
+      <div className="skeleton-line h-3.5 w-1/2" />
+      <div className="skeleton-line h-3.5 w-2/3" />
+      <div className="skeleton-line h-3.5 w-1/3" />
+    </CardHeader>
+    <CardContent>
+      <div className="skeleton-line h-64 w-full rounded-md" />
+    </CardContent>
+    <CardFooter className="flex items-center justify-between">
+      <div className="skeleton-line h-4 w-16" />
+      <div className="skeleton-line h-9 w-28 rounded-full" />
+    </CardFooter>
+  </Card>
+);
+
+/**
+ * Designed gradient placeholder used wherever an event has no poster
+ * (event cards and the expanded modal share the same treatment).
+ */
+const EventPosterPlaceholder = ({ title }: { title: string }) => (
+  <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-[hsl(215,82%,32%)] via-[hsl(222,64%,36%)] to-[hsl(30,60%,46%)]">
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.16),transparent_55%)]" />
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,rgba(0,0,0,0.18),transparent_55%)]" />
+    <span className="relative z-10 px-8 text-center font-display italic text-2xl leading-snug text-white/95 text-balance drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]">
+      {title}
+    </span>
+  </div>
+);
+
+/**
+ * Poster for an event card. Falls back to the gradient placeholder when
+ * the image is missing or fails to load.
+ */
+const EventPoster = ({ event }: { event: ExpandedEvent }) => {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [event.id]);
+
+  if (failed) {
+    return (
+      <div className="aspect-square w-96 max-w-full">
+        <EventPosterPlaceholder title={event.title} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={`${event.poster}/0.png`}
+      alt={`${event.title} poster`}
+      className="aspect-square w-96 rounded-md object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const Events = () => {
   const navigate = useNavigate();
   const { eventSlug } = useParams<{ eventSlug?: string }>();
@@ -261,6 +345,8 @@ const Events = () => {
   const registrationSubmitRef = useRef<(() => void) | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [expandedEventPosters, setExpandedEventPosters] = useState<string[]>([]);
+  const [failedPosterCount, setFailedPosterCount] = useState(0);
+  const [isContentReady, setIsContentReady] = useState(false);
   const [persistedRegisteredEventIds, setPersistedRegisteredEventIds] = useState<number[]>(() => {
     try {
       const raw = localStorage.getItem(REGISTERED_EVENTS_PERSIST_KEY);
@@ -285,6 +371,7 @@ const Events = () => {
   const invalidRouteEventRef = useRef<string | null>(null);
   const activeExpandedEventIdRef = useRef<number | null>(null);
   const detailFetchTimerRef = useRef<number | null>(null);
+  const pendingNavigateTimerRef = useRef<number | null>(null);
 
   const { user } = useAuth();
   const isSignedIn = Boolean(user);
@@ -384,6 +471,7 @@ const Events = () => {
     } : buildFallbackCardPosition());
     setExpandedEventId(eventIdToOpen);
     setIsClosing(false);
+    setIsContentReady(false);
     document.body.style.overflow = "hidden";
   }, [buildFallbackCardPosition]);
 
@@ -393,23 +481,33 @@ const Events = () => {
       detailFetchTimerRef.current = null;
     }
 
-    detailFetchTimerRef.current = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const event = await apiRequest(`/events/event-by-id?id=${eventIdToFetch}`);
-          const normalizedEvent = {
-            ...event,
-            is_registered: resolveIsRegistered(event),
-          };
+    // Fetch immediately on open (details are as fresh as possible), but
+    // only APPLY the result once the expand animation has settled (~650ms).
+    // Swapping heavy content (forms, markdown) in mid-animation caused
+    // dropped frames — the animation now owns the main thread first.
+    const startedAt = Date.now();
+    void (async () => {
+      try {
+        const event = await apiRequest(`/events/event-by-id?id=${eventIdToFetch}`);
+        const normalizedEvent = {
+          ...event,
+          is_registered: resolveIsRegistered(event),
+        };
+        const remaining = Math.max(0, 650 - (Date.now() - startedAt));
+        detailFetchTimerRef.current = window.setTimeout(() => {
           if (activeExpandedEventIdRef.current === eventIdToFetch) {
             setExpandedEvent(normalizedEvent);
             eventCacheRef.current.set(normalizedEvent.id, normalizedEvent);
           }
-        } catch (error: any) {
-          toast.error(error.message || "Failed to fetch event");
-        }
-      })();
-    }, 600);
+          setIsContentReady(true);
+        }, remaining);
+      } catch (error: any) {
+        // Even on failure, reveal what we already have instead of leaving
+        // the skeleton up forever.
+        setIsContentReady(true);
+        toast.error(error.message || "Failed to fetch event");
+      }
+    })();
   }, []);
 
 
@@ -539,7 +637,18 @@ const Events = () => {
     }
     openExpandedEvent(event.id, cardElement);
     scheduleExpandedEventDetails(event.id);
-    navigate(`/events/${toEventSlug(event.title)}`);
+
+    // Defer the URL update until the expand animation has settled. The
+    // router state change re-renders the whole Events page; doing it in
+    // the same commit as the modal mount starved the animation's first
+    // frames (the choppy start, worst on Firefox).
+    if (pendingNavigateTimerRef.current) {
+      window.clearTimeout(pendingNavigateTimerRef.current);
+    }
+    pendingNavigateTimerRef.current = window.setTimeout(() => {
+      pendingNavigateTimerRef.current = null;
+      navigate(`/events/${toEventSlug(event.title)}`);
+    }, 650);
   };
 
   const handleIcsDownload = useCallback(async (event: events_info) => {
@@ -564,6 +673,10 @@ const Events = () => {
   }, []);
 
   const handleCloseExpanded = () => {
+    if (pendingNavigateTimerRef.current) {
+      window.clearTimeout(pendingNavigateTimerRef.current);
+      pendingNavigateTimerRef.current = null;
+    }
     setIsClosing(true);
     setTimeout(() => {
       setExpandedEventId(null);
@@ -579,6 +692,9 @@ const Events = () => {
       if (detailFetchTimerRef.current) {
         window.clearTimeout(detailFetchTimerRef.current);
       }
+      if (pendingNavigateTimerRef.current) {
+        window.clearTimeout(pendingNavigateTimerRef.current);
+      }
     };
   }, []);
 
@@ -586,6 +702,8 @@ const Events = () => {
     if (!expandedEventId) {
       setExpandedEvent(null);
       setExpandedEventPosters([]);
+      setFailedPosterCount(0);
+      setIsContentReady(false);
       setRegistrationFooterState(null);
       registrationSubmitRef.current = null;
       activeExpandedEventIdRef.current = null;
@@ -628,16 +746,22 @@ const Events = () => {
       }
     };
 
-    fetchPosters();
+    // Probe additional poster files only after the expand animation has
+    // settled — firing ~50 image probes the moment the modal opened caused
+    // a network/decode burst mid-animation (jitter). The main poster is
+    // already cached from the grid card, so the visible content is
+    // unaffected.
+    const probeTimer = window.setTimeout(fetchPosters, 650);
 
     return () => {
       isCancelled = true;
+      window.clearTimeout(probeTimer);
     };
   }, [expandedEvent?.poster]);
 
   return (
-    <div className="min-h-screen flex flex-col page">
-      <Navbar />
+    <div className="min-h-dvh flex flex-col page">
+      <Navbar overlay />
       <main className="flex-1 relative">
         <AuroraBackground />
         <div className="container relative z-10 pt-24 md:pt-28 pb-8">
@@ -655,10 +779,14 @@ const Events = () => {
           ))}
         </div> */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
+          {!hasFetchedEvents
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <EventCardSkeleton key={`skeleton-${index}`} />
+              ))
+            : events.map((event) => (
             <Card
               key={event.id}
-              className="hover-card cursor-pointer transition-transform hover:scale-105"
+              className="hover-card cursor-pointer active:scale-[0.99]"
               ref={(el) => {
                 if (el) cardRefs.current[event.id] = el;
               }}
@@ -692,12 +820,7 @@ const Events = () => {
                 {invitation(event)}
               </CardHeader>
               <CardContent>
-                <img
-                  src={`${event.poster}/0.png`}
-                  alt="No poster available"
-                  className="aspect-square w-96 rounded-md object-cover"
-                  loading="lazy"
-                />
+                <EventPoster event={event} />
               </CardContent>
               <CardFooter className="flex justify-between items-center">
                 <div className="font-medium">{priceTag(event)}</div>
@@ -729,7 +852,7 @@ const Events = () => {
                 </div>
               </CardFooter>
             </Card>
-          ))}
+            ))}
         </div>
         </div>
       </main>
@@ -848,26 +971,34 @@ const Events = () => {
               </div>
             </div>
             <div className="expanded-card-body">
-              {expandedEventPosters.length > 0 && (
-                <Carousel className="mb-6 w-[520px] max-w-full mx-auto">
-                  <CarouselContent>
-                    {expandedEventPosters.map((poster, index) => (
-                      <CarouselItem key={`${poster}-${index}`}>
-                        <img
-                          src={poster}
-                          alt={`${expandedEvent.title} poster ${index + 1}`}
-                          className="aspect-square w-full rounded-md object-contain bg-muted"
-                          loading="lazy"
-                        />
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious className="left-2 bg-background/80 shadow-md" />
-                  <CarouselNext className="right-2 bg-background/80 shadow-md" />
-                </Carousel>
-              )}
-              {renderMarkdown(expandedEvent.description)}
-              <EventRegistrationForm
+              <div className="mx-auto w-full max-w-4xl">
+                {expandedEventPosters.length > 0 && failedPosterCount < expandedEventPosters.length ? (
+                  <Carousel className="mb-6 w-[520px] max-w-full mx-auto">
+                    <CarouselContent>
+                      {expandedEventPosters.map((poster, index) => (
+                        <CarouselItem key={`${poster}-${index}`}>
+                          <img
+                            src={poster}
+                            alt={`${expandedEvent.title} poster ${index + 1}`}
+                            className="aspect-square w-full rounded-md object-contain bg-muted"
+                            loading="lazy"
+                            onError={() => setFailedPosterCount((count) => count + 1)}
+                          />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="left-2 bg-background/80 shadow-md" />
+                    <CarouselNext className="right-2 bg-background/80 shadow-md" />
+                  </Carousel>
+                ) : (
+                  <div className="mb-6 w-[520px] max-w-full mx-auto">
+                    <EventPosterPlaceholder title={expandedEvent.title} />
+                  </div>
+                )}
+                {isContentReady ? (
+                  <div className="modal-content-fade-in">
+                    {renderMarkdown(expandedEvent.description)}
+                    <EventRegistrationForm
                 event={expandedEvent}
                 isRegistrationClosed={isRegistrationClosed(expandedEvent)}
                 isSignedIn={isSignedIn}
@@ -912,6 +1043,11 @@ const Events = () => {
                   ));
                 }}
               />
+                  </div>
+                ) : (
+                  <ContentSkeleton />
+                )}
+              </div>
             </div>
           </div>
         )}

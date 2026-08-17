@@ -910,17 +910,6 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                 pinnedColumnIds={[ACTIONS_COLUMN_ID, STATUS_COLUMN_ID]}
                 defaultSortColumnId="participant"
                 getRowTint={(row) => getRowStatusTint(row.currentStatus)}
-                toolbarRight={
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    disabled={pendingStatusUpdateCount === 0 || savingStatuses}
-                    onClick={saveStatusChanges}
-                  >
-                    {savingStatuses ? "Saving..." : "Save changes"}
-                  </Button>
-                }
               />
 
               {pendingStatusUpdateCount > 0 ? (
@@ -979,12 +968,21 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                   </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   {pendingStatusUpdateCount > 0 ? (
                     <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
                       {pendingStatusUpdateCount} unsaved change{pendingStatusUpdateCount === 1 ? "" : "s"}
                     </span>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={pendingStatusUpdateCount === 0 || savingStatuses}
+                    onClick={saveStatusChanges}
+                  >
+                    {savingStatuses ? "Saving..." : "Save changes"}
+                  </Button>
                 </div>
               </div>
             </div>

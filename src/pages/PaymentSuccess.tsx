@@ -75,8 +75,8 @@ const PaymentSuccess = () => {
   const isEvent = kind === "event";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
+    <div className="min-h-dvh flex flex-col">
+      <Navbar overlay />
       <main className="flex-1 container pt-32 md:pt-36 pb-16 flex justify-center items-center">
         <Card className="w-full max-w-md">
           <CardHeader>

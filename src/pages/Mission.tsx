@@ -25,8 +25,8 @@ const Mission = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col page">
-      <Navbar />
+    <div className="min-h-dvh flex flex-col page">
+      <Navbar overlay />
       <main className="flex-1 relative">
         <AuroraBackground />
         <div className="container relative z-10 pt-28 md:pt-36 pb-14 md:pb-20">
