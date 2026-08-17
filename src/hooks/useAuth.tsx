@@ -1,9 +1,20 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { supabase } from ']/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { apiRequest } from '@/lib/api';
 
 const BACKEND = import.meta.env.VITE_BACKEND;
+
+// A password-recovery redirect carries a short-lived credential in the URL.
+// The auth backend consumes and strips it during its async initialization, so
+// we capture the "this is a recovery flow" signal synchronously at module load
+// — before that stripping can happen — and reconcile it with backend auth
+// events below. Kept here (not in a page) so pages stay backend-agnostic.
+const initialRecoveryFromUrl =
+  typeof window !== 'undefined' &&
+  /(?:^|[#&?])type=recovery(?:&|$)/.test(
+    `${window.location.hash}${window.location.search}`,
+  );
 
 // ── Public interface (backend-agnostic) ──────────────────────────────────────
 
@@ -23,6 +34,13 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
+  /**
+   * True when the visitor arrived via a password-recovery link. In this state
+   * `user` is intentionally null — a recovery session may ONLY be used to set a
+   * new password, never to browse the app as an authenticated user. Backend-
+   * agnostic: each backend implementation is responsible for setting this.
+   */
+  recoveryMode: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -30,6 +48,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
+  recoveryMode: false,
   signOut: async () => {},
   refresh: async () => {},
 });
@@ -109,6 +128,10 @@ const fetchRestUser = async (): Promise<AuthUser | null> => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  // Mutable mirror of recovery state so async auth callbacks always read the
+  // latest value without being re-created.
+  const recoveryRef = useRef(initialRecoveryFromUrl);
 
   // ── Supabase path ─────────────────────────────────────────────────────────
 
@@ -149,27 +172,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let cancelled = false;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Reconcile every session read/event through one place so a recovery
+    // session is never surfaced as a logged-in user.
+    const applySession = (event: string | null, session: Session | null) => {
       if (cancelled) return;
+
+      // A recovery link establishes a real session. Flag it so it can't be
+      // used as a normal login (otherwise abandoning the reset = a free login).
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryRef.current = true;
+      }
+
+      // Signing out ends any recovery session and clears the flag.
+      if (event === 'SIGNED_OUT') {
+        recoveryRef.current = false;
+        setRecoveryMode(false);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (recoveryRef.current) {
+        setRecoveryMode(true);
+        setUser(null); // recovery session is NOT an authenticated user
+        setLoading(false);
+        return;
+      }
+
       if (session?.user && !session.user.is_anonymous) {
         fetchProfileAndSet(session.user);
       } else {
         setUser(null);
         setLoading(false);
       }
-    });
+    };
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => applySession(null, session));
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (cancelled) return;
-      if (session?.user && !session.user.is_anonymous) {
-        fetchProfileAndSet(session.user);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
+    } = supabase.auth.onAuthStateChange((event, session) =>
+      applySession(event, session),
+    );
 
     return () => {
       cancelled = true;
@@ -179,6 +225,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const supabaseSignOut = useCallback(async () => {
     await supabase.auth.signOut();
+    recoveryRef.current = false;
+    setRecoveryMode(false);
     setUser(null);
   }, []);
 
@@ -234,7 +282,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refresh = BACKEND === 'supabase' ? supabaseRefresh : restRefresh;
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refresh }}>
+    <AuthContext.Provider value={{ user, loading, recoveryMode, signOut, refresh }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,24 +17,38 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { recoveryMode, loading: authLoading, signOut } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updating, setUpdating] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
+  const completedRef = useRef(false);
 
+  // The form is only valid inside an active recovery flow. A normal visitor or
+  // an already-authenticated user (no valid reset link) must not be able to set
+  // a password here.
   useEffect(() => {
     if (authLoading) return;
-    const params = new URLSearchParams(window.location.search);
-    if (!params.get('token_hash') && !user) {
-      setTokenError('Invalid or missing reset token. Please request a new password reset.');
-    } else if (!user && !authLoading) {
-      setTokenError('Reset link was opened on a different browser or has expired. Please request a new reset link from the same browser.');
+    if (!recoveryMode) {
+      setTokenError(
+        'This password reset link is invalid or has expired. Please request a new one.',
+      );
     }
-    if (window.location.search) {
+    // Strip any credential the reset redirect left in the URL.
+    if (window.location.search || window.location.hash) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [user, authLoading]);
+  }, [recoveryMode, authLoading]);
+
+  // If the user navigates away without completing the reset, tear down the
+  // recovery session so the link can never double as a passwordless login.
+  useEffect(() => {
+    return () => {
+      if (recoveryMode && !completedRef.current) {
+        void signOut();
+      }
+    };
+  }, [recoveryMode, signOut]);
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +58,10 @@ const ResetPassword = () => {
     setUpdating(true);
     try {
       await apiRequest('/auth/update-password', 'POST', { password });
+      completedRef.current = true;
+      // End the recovery session so the user must re-authenticate with the new
+      // password — the reset session itself never becomes a usable login.
+      await signOut();
       toast.success('Password updated! You can now log in with your new password.');
       navigate('/login');
     } catch (error: unknown) {

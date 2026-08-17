@@ -105,7 +105,7 @@ export const Navbar = ({ overlay = false }: NavbarProps) => {
                 className={menuItemClass("/login")}
                 onClick={() => setIsMenuOpen(false)}
               >
-                Login
+                Log in
               </NavLink>
             )}
             {!user && (
@@ -131,12 +131,16 @@ export const Navbar = ({ overlay = false }: NavbarProps) => {
             )}
             {user && (
               <>
-                <button
+                <NavLink
+                  to="/"
                   onClick={handleLogout}
-                  className="block w-full mx-1.5 text-left rounded-xl px-4 py-2.5 hover:bg-destructive/10 transition-colors text-destructive/90 hover:text-destructive font-medium"
+                  className={cn(
+                    menuItemClass("/signup"),
+                    "text-primary hover:bg-destructive/10 transition-colors text-destructive/90 hover:text-destructive"
+                  )}
                 >
-                  Logout
-                </button>
+                  Log out
+                </NavLink>
               </>
             )}
           </nav>
