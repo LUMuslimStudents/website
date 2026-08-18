@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { FaFacebook, FaInstagram, FaLinkedin } from "react-icons/fa6";
 import { PatternBackground, OrnamentDivider, StarMark } from "@/components/IslamicPattern";
+import { ThemeTogglePill } from "@/components/ThemeToggle";
 // import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
 // import { useState } from "react";
@@ -90,6 +91,9 @@ export const Footer = () => {
                   <link.icon className="h-4 w-4" />
                 </a>
               ))}
+            </div>
+            <div className="mt-5 flex justify-center sm:justify-start">
+              <ThemeTogglePill />
             </div>
           </div>
           <div className="text-center sm:text-left">

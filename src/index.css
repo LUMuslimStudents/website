@@ -250,8 +250,8 @@
   pointer-events: none;
   background: linear-gradient(
     to bottom,
-    hsl(var(--background) / 0.7) 0%,
-    hsl(var(--background) / 0.35) 45%,
+    hsl(var(--background) / 0.85) 0%,
+    hsl(var(--background) / 0.5) 45%,
     hsl(var(--background) / 0) 100%
   );
 }
@@ -261,10 +261,10 @@
    there, especially combined with masks; the tint above is its fallback. */
 @supports (backdrop-filter: blur(1px)) and (not (-moz-appearance: none)) {
   .navbar-fade-layer {
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
   }
 }
 
@@ -286,6 +286,32 @@
   * {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+}
+
+/* Frosted-glass surface for navbar dropdowns, the mobile sheet and the account
+   menu. Translucent enough that the blur is actually visible (a near-opaque
+   background hides the frost). The !important override re-enables the effect for
+   these specific surfaces on Firefox, which the rule above disables globally —
+   modern Firefox (103+) renders backdrop-filter cleanly. */
+.menu-frost {
+  background-color: hsl(var(--popover) / 0.7);
+  -webkit-backdrop-filter: blur(30px) saturate(1.7);
+  backdrop-filter: blur(30px) saturate(1.7);
+}
+
+@supports (-moz-appearance: none) {
+  .menu-frost {
+    -webkit-backdrop-filter: blur(30px) saturate(1.7) !important;
+    backdrop-filter: blur(30px) saturate(1.7) !important;
+  }
+}
+
+/* No backdrop-filter support at all → fall back to a near-opaque surface so
+   content behind stays readable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .menu-frost {
+    background-color: hsl(var(--popover) / 0.96);
   }
 }
 
