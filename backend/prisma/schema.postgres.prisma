@@ -28,6 +28,7 @@ model users {
 
   registrations event_registrations[]
   membership_payments membership_payments[]
+  transactions transactions[]
 }
 
 model events_info {
@@ -60,14 +61,13 @@ model event_registrations {
   siblings_snapshot   Siblings
   quoted_price        Int
   payment_required    Boolean                   @default(false)
-  stripe_session_id   String?                   @unique @db.VarChar(255)
-  payment_status      PaymentStatus             @default(unpaid)
-  payment_completed_at DateTime?                @db.Timestamptz(6)
+  transaction_id      String?                   @unique @db.Uuid
   submitted_at        DateTime                  @default(now())
   updated_at          DateTime                  @updatedAt
 
   user                users?                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   event               events_info               @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  transaction         transactions?             @relation(fields: [transaction_id], references: [id], onDelete: SetNull)
   profile             event_registration_profiles?
   answers             event_registration_field_answers[]
 
@@ -138,19 +138,37 @@ model admin_options {
 }
 
 model membership_payments {
-  id                String        @id @default(cuid())
-  user_id           String        @db.Uuid
-  term              String        @db.VarChar(4)
-  plan              MembershipPlan
-  amount            Int
-  stripe_session_id String?       @unique @db.VarChar(255)
-  payment_status    PaymentStatus @default(unpaid)
-  paid_at           DateTime?     @db.Timestamptz(6)
-  created_at        DateTime      @default(now())
+  id             String         @id @default(cuid())
+  user_id        String         @db.Uuid
+  term           String         @db.VarChar(4)
+  plan           MembershipPlan
+  transaction_id String?        @unique @db.Uuid
+  created_at     DateTime       @default(now())
 
-  user              users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user           users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transaction    transactions?  @relation(fields: [transaction_id], references: [id], onDelete: SetNull)
 
   @@index([user_id, term])
+}
+
+model transactions {
+  id                String            @id @db.Uuid
+  user_id           String?           @db.Uuid
+  source            TransactionSource
+  term              String            @db.VarChar(4)
+  amount            Int
+  currency          String            @default("sek") @db.VarChar(3)
+  stripe_session_id String?           @unique @db.VarChar(255)
+  payment_status    PaymentStatus     @default(unpaid)
+  paid_at           DateTime?         @db.Timestamptz(6)
+  created_at        DateTime          @default(now())
+
+  user              users?            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  event_registration event_registrations?
+  membership_payment membership_payments?
+
+  @@index([user_id])
+  @@index([source, term])
 }
 
 enum Role {
@@ -195,6 +213,12 @@ enum PaymentStatus {
   paid
   refunded
   failed
+}
+
+enum TransactionSource {
+  event
+  membership
+  donation
 }
 
 enum MembershipPlan {

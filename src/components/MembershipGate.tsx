@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 const ALLOWED_PREFIXES = [
   '/membership/checkout',
   '/payment-success',
+  '/donate',
   '/login',
   '/signup',
   '/forgot-password',

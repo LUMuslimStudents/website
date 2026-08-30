@@ -35,6 +35,7 @@ import {
   getMembershipStatus,
   createMembershipCheckout,
   createEventCheckout,
+  createDonationCheckout,
   verifyPayment,
   cancelMembership,
   cancelEventRegistration,
@@ -149,6 +150,9 @@ export const membershipCancelData = async () => cancelMembership();
 
 export const eventCheckoutData = async (registrationId: string) =>
   createEventCheckout(registrationId);
+
+export const donationCheckoutData = async (amount: number) =>
+  createDonationCheckout(amount);
 
 export const eventCancellationData = async (registrationId: string) =>
   cancelEventRegistration(registrationId);

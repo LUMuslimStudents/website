@@ -45,17 +45,18 @@ export const getMembershipStatus = async (): Promise<MembershipStatus> => {
 
   const { data: payments } = await supabase
     .from('membership_payments')
-    .select('*')
+    .select('plan, transaction:transactions(amount, payment_status, paid_at)')
     .eq('user_id', user.id)
-    .eq('term', options.term as string)
-    .eq('payment_status', 'paid');
+    .eq('term', options.term as string);
 
-  const paidRow = payments?.[0];
+  const paidRow = (payments ?? []).find(
+    (p) => p.transaction?.payment_status === 'paid',
+  );
   if (paidRow) {
     status.paid = true;
     status.paidPlan = paidRow.plan as MembershipPlan;
-    status.paidAmount = paidRow.amount as number;
-    status.paidAt = (paidRow.paid_at as string | null) ?? null;
+    status.paidAmount = (paidRow.transaction?.amount as number) ?? 0;
+    status.paidAt = (paidRow.transaction?.paid_at as string | null) ?? null;
   }
 
   return status;
@@ -133,6 +134,18 @@ export const createEventCheckout = async (
 ): Promise<{ url: string }> => {
   const { data, error } = await supabase.functions.invoke('create-checkout', {
     body: { kind: 'event', registration_id: registrationId },
+  });
+  if (error) throw new Error(error.message);
+  return data as { url: string };
+};
+
+// ── Donation checkout (custom amount, anonymous allowed) ─────────────────────
+
+export const createDonationCheckout = async (
+  amountSek: number,
+): Promise<{ url: string }> => {
+  const { data, error } = await supabase.functions.invoke('create-checkout', {
+    body: { kind: 'donation', amount: amountSek },
   });
   if (error) throw new Error(error.message);
   return data as { url: string };

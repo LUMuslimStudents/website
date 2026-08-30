@@ -116,17 +116,20 @@ const incomeColumns: AdminDataColumn<AdminTreasuryIncomeRow>[] = [
   {
     id: "source",
     label: "Source",
-    getSearchValue: (row) => row.kind,
-    getSortValue: (row) => row.kind,
+    getSearchValue: (row) => row.source,
+    getSortValue: (row) => row.source,
     getDisplayValue: (row) =>
-      row.kind === "membership"
+      row.source === "membership"
         ? row.plan
           ? `Membership · ${formatPlan(row.plan)}`
           : "Membership"
-        : "Event",
+        : row.source === "event"
+          ? "Event"
+          : "Donation",
     filterOptions: [
       { label: "Membership", value: "membership" },
       { label: "Event", value: "event" },
+      { label: "Donation", value: "donation" },
     ],
   },
   {
@@ -150,9 +153,9 @@ const incomeColumns: AdminDataColumn<AdminTreasuryIncomeRow>[] = [
   {
     id: "member",
     label: "Member",
-    getSearchValue: (row) => (row.kind === "membership" ? "" : row.member ? "yes" : "no"),
-    getSortValue: (row) => (row.kind === "membership" ? "1" : row.member ? "1" : "0"),
-    getDisplayValue: (row) => (row.kind === "membership" ? "—" : row.member ? "Yes" : "No"),
+    getSearchValue: (row) => (row.source === "membership" ? "" : row.member ? "yes" : "no"),
+    getSortValue: (row) => (row.source === "membership" ? "1" : row.member ? "1" : "0"),
+    getDisplayValue: (row) => (row.source === "membership" ? "—" : row.member ? "Yes" : "No"),
     filterOptions: [
       { label: "Yes", value: "yes" },
       { label: "No", value: "no" },

@@ -45,6 +45,11 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+    CREATE TYPE "public"."TransactionSource" AS ENUM ('event', 'membership', 'donation');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ── Tables ──────────────────────────────────────────────────────────────────
 
 -- users table (profile data, mirrors auth.users.id)
@@ -83,6 +88,25 @@ CREATE TABLE IF NOT EXISTS public.events_info (
     is_published     BOOLEAN        NOT NULL DEFAULT true
 );
 
+-- transactions (single ledger for all payments)
+CREATE TABLE IF NOT EXISTS public.transactions (
+    id                UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID                  REFERENCES public.users(id) ON DELETE CASCADE,
+    source            "TransactionSource"   NOT NULL,
+    term              VARCHAR(4)            NOT NULL,
+    amount            INT                   NOT NULL,
+    currency          VARCHAR(3)            NOT NULL DEFAULT 'sek',
+    stripe_session_id VARCHAR(255)          UNIQUE,
+    payment_status    "PaymentStatus"       NOT NULL DEFAULT 'unpaid',
+    paid_at           TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ           NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user
+    ON public.transactions (user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_source_term
+    ON public.transactions (source, term);
+
 -- event_registrations
 CREATE TABLE IF NOT EXISTS public.event_registrations (
     id                  UUID                      PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,17 +117,15 @@ CREATE TABLE IF NOT EXISTS public.event_registrations (
     siblings_snapshot   "Siblings"                NOT NULL,
     quoted_price         INT                       NOT NULL,
     payment_required     BOOLEAN                   NOT NULL DEFAULT false,
-    stripe_session_id    VARCHAR(255),
-    payment_status       "PaymentStatus"           NOT NULL DEFAULT 'unpaid',
-    payment_completed_at TIMESTAMPTZ,
+    transaction_id       UUID                      REFERENCES public.transactions(id) ON DELETE SET NULL,
     submitted_at         TIMESTAMPTZ               NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ               NOT NULL DEFAULT now(),
 
     CONSTRAINT uniq_member_registration_per_event UNIQUE (event_id, user_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_event_registrations_stripe_session
-    ON public.event_registrations (stripe_session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_event_registrations_transaction
+    ON public.event_registrations (transaction_id);
 
 CREATE INDEX IF NOT EXISTS idx_event_registrations_event_status
     ON public.event_registrations (event_id, status, submitted_at);
@@ -173,16 +195,16 @@ CREATE TABLE IF NOT EXISTS public.admin_options (
 
 -- membership_payments
 CREATE TABLE IF NOT EXISTS public.membership_payments (
-    id                UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID             NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    term              VARCHAR(4)       NOT NULL,
-    plan              "MembershipPlan" NOT NULL,
-    amount            INT              NOT NULL,
-    stripe_session_id VARCHAR(255)     UNIQUE,
-    payment_status    "PaymentStatus"  NOT NULL DEFAULT 'unpaid',
-    paid_at           TIMESTAMPTZ,
-    created_at        TIMESTAMPTZ      NOT NULL DEFAULT now()
+    id             UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID             NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    term           VARCHAR(4)       NOT NULL,
+    plan           "MembershipPlan" NOT NULL,
+    transaction_id UUID             REFERENCES public.transactions(id) ON DELETE SET NULL,
+    created_at     TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_membership_payments_transaction
+    ON public.membership_payments (transaction_id);
 
 CREATE INDEX IF NOT EXISTS idx_membership_payments_user_term
     ON public.membership_payments (user_id, term);
@@ -197,6 +219,7 @@ ALTER TABLE public.event_form_fields ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registration_field_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ────────────────────────────────────────────────────────────
 -- See also: supabase/sql/rls_policies.sql for the canonical policy definitions.

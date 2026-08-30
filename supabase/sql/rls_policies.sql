@@ -190,11 +190,28 @@ CREATE POLICY "membership_payments_admin_write" ON public.membership_payments
     FOR ALL
     USING (public.is_admin());
 
+-- ── public.transactions ──────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "transactions_own_read" ON public.transactions;
+CREATE POLICY "transactions_own_read" ON public.transactions
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "transactions_admin_read" ON public.transactions;
+CREATE POLICY "transactions_admin_read" ON public.transactions
+    FOR SELECT
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "transactions_admin_write" ON public.transactions;
+CREATE POLICY "transactions_admin_write" ON public.transactions
+    FOR ALL
+    USING (public.is_admin());
+
 -- ── Trigger: payment fields on event_registrations are webhook/admin only ───
 -- Users may update their own registration row (RLS "registrations_own"), but
--- they must never flip payment_status, stripe_session_id, quoted_price, or
--- payment_required. Service-role (webhook) bypasses RLS but triggers still
--- fire, so service_role and admins (manual cash payments) are allowed here.
+-- they must never flip transaction_id, quoted_price, or payment_required.
+-- Service-role (webhook) bypasses RLS but triggers still fire, so service_role
+-- and admins (manual cash payments) are allowed here.
 
 DROP TRIGGER IF EXISTS prevent_payment_field_edits ON public.event_registrations;
 DROP TRIGGER IF EXISTS prevent_payment_field_inserts ON public.event_registrations;
@@ -218,12 +235,13 @@ BEGIN
     IF NEW.quoted_price > 0 AND NEW.payment_required = false THEN
       RAISE EXCEPTION 'Paid registrations must be marked payment_required';
     END IF;
+    IF NEW.transaction_id IS NOT NULL THEN
+      RAISE EXCEPTION 'transaction_id can only be set by the payment system';
+    END IF;
     RETURN NEW;
   END IF;
 
-  IF NEW.payment_status IS DISTINCT FROM OLD.payment_status
-     OR NEW.stripe_session_id IS DISTINCT FROM OLD.stripe_session_id
-     OR NEW.payment_completed_at IS DISTINCT FROM OLD.payment_completed_at
+  IF NEW.transaction_id IS DISTINCT FROM OLD.transaction_id
      OR NEW.quoted_price IS DISTINCT FROM OLD.quoted_price
      OR NEW.payment_required IS DISTINCT FROM OLD.payment_required THEN
     RAISE EXCEPTION 'Payment fields can only be updated by the payment system';

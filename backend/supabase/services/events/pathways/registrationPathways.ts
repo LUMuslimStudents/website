@@ -39,9 +39,7 @@ const FORBIDDEN_REGISTRATION_BODY_KEYS = new Set([
   'status',
   'quoted_price',
   'payment_required',
-  'stripe_session_id',
-  'payment_status',
-  'payment_completed_at',
+  'transaction_id',
   'invitation_snapshot',
   'siblings_snapshot',
 ]);
@@ -164,15 +162,16 @@ export const submitRegistration = async (
       .maybeSingle();
 
     if (currentOptions) {
-      const { data: paidRow } = await supabase
-        .from('membership_payments')
+      const { data: paidTx } = await supabase
+        .from('transactions')
         .select('id')
         .eq('user_id', userRecord.id)
         .eq('term', currentOptions.term as string)
+        .eq('source', 'membership')
         .eq('payment_status', 'paid')
         .maybeSingle();
 
-      hasPaidMembership = Boolean(paidRow);
+      hasPaidMembership = Boolean(paidTx);
     }
   }
 
@@ -387,14 +386,14 @@ export const submitRegistration = async (
   // Unpaid paid-event rows are drafts — point the user back to the payment.
   const { data: existing } = await supabase
     .from('event_registrations')
-    .select('id, payment_required, payment_status')
+    .select('id, payment_required, transaction:transactions(payment_status)')
     .eq('event_id', eventId)
     .eq('user_id', authUserId)
     .neq('status', 'cancelled')
     .maybeSingle();
 
   if (existing) {
-    if (existing.payment_required && existing.payment_status !== 'paid') {
+    if (existing.payment_required && existing.transaction?.payment_status !== 'paid') {
       throw new Error(
         'You already have a pending payment for this event. Complete your payment to finish registering.',
       );

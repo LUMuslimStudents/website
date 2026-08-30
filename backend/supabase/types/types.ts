@@ -182,14 +182,12 @@ export type Database = {
           event_id: number
           id: string
           invitation_snapshot: Database["public"]["Enums"]["Invitation"]
-          payment_completed_at: string | null
           payment_required: boolean
-          payment_status: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price: number
           siblings_snapshot: Database["public"]["Enums"]["Siblings"]
           status: Database["public"]["Enums"]["EventRegistrationStatus"]
-          stripe_session_id: string | null
           submitted_at: string
+          transaction_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -197,14 +195,12 @@ export type Database = {
           event_id: number
           id: string
           invitation_snapshot: Database["public"]["Enums"]["Invitation"]
-          payment_completed_at?: string | null
           payment_required?: boolean
-          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price: number
           siblings_snapshot: Database["public"]["Enums"]["Siblings"]
           status?: Database["public"]["Enums"]["EventRegistrationStatus"]
-          stripe_session_id?: string | null
           submitted_at?: string
+          transaction_id?: string | null
           updated_at: string
           user_id?: string | null
         }
@@ -212,14 +208,12 @@ export type Database = {
           event_id?: number
           id?: string
           invitation_snapshot?: Database["public"]["Enums"]["Invitation"]
-          payment_completed_at?: string | null
           payment_required?: boolean
-          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           quoted_price?: number
           siblings_snapshot?: Database["public"]["Enums"]["Siblings"]
           status?: Database["public"]["Enums"]["EventRegistrationStatus"]
-          stripe_session_id?: string | null
           submitted_at?: string
+          transaction_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -229,6 +223,20 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -292,41 +300,86 @@ export type Database = {
       }
       membership_payments: {
         Row: {
-          amount: number
           created_at: string
           id: string
-          paid_at: string | null
-          payment_status: Database["public"]["Enums"]["PaymentStatus"]
           plan: Database["public"]["Enums"]["MembershipPlan"]
-          stripe_session_id: string | null
           term: string
+          transaction_id: string | null
           user_id: string
         }
         Insert: {
-          amount: number
           created_at?: string
           id?: string
-          paid_at?: string | null
-          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           plan: Database["public"]["Enums"]["MembershipPlan"]
-          stripe_session_id?: string | null
           term: string
+          transaction_id?: string | null
           user_id: string
         }
         Update: {
-          amount?: number
           created_at?: string
           id?: string
-          paid_at?: string | null
-          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
           plan?: Database["public"]["Enums"]["MembershipPlan"]
-          stripe_session_id?: string | null
           term?: string
+          transaction_id?: string | null
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "membership_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "membership_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          payment_status: Database["public"]["Enums"]["PaymentStatus"]
+          source: Database["public"]["Enums"]["TransactionSource"]
+          stripe_session_id: string | null
+          term: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
+          source: Database["public"]["Enums"]["TransactionSource"]
+          stripe_session_id?: string | null
+          term: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          payment_status?: Database["public"]["Enums"]["PaymentStatus"]
+          source?: Database["public"]["Enums"]["TransactionSource"]
+          stripe_session_id?: string | null
+          term?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -395,6 +448,7 @@ export type Database = {
       PaymentStatus: "unpaid" | "paid" | "refunded" | "failed"
       Role: "user" | "admin"
       Siblings: "brothers" | "sisters" | "all"
+      TransactionSource: "event" | "membership" | "donation"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -541,6 +595,7 @@ export const Constants = {
       PaymentStatus: ["unpaid", "paid", "refunded", "failed"],
       Role: ["user", "admin"],
       Siblings: ["brothers", "sisters", "all"],
+      TransactionSource: ["event", "membership", "donation"],
     },
   },
 } as const

@@ -2,6 +2,10 @@
 -- Stripe Payments — Add payment fields to event_registrations and the new
 -- membership_payments table. Safe to re-run.
 --
+-- ⚠️ SUPERSEDED by add_transactions.sql (single transactions ledger).
+--    Do NOT re-run this on a database that already has add_transactions.sql
+--    applied — it would re-add the now-dropped payment columns.
+--
 -- Apply against the live DB:
 --   npx supabase db query --linked -f supabase/sql/add_stripe_payments.sql
 --

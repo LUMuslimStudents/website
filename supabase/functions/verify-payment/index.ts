@@ -32,13 +32,12 @@ serve(async (req) => {
       return jsonResponse({ error: 'session_id is required' }, 400);
     }
 
+    // Donations may be anonymous, so auth is optional here. Ownership is
+    // enforced below for membership/event payments only.
     const {
       data: { user },
       error: authError,
     } = await userClient(req).auth.getUser();
-    if (authError || !user) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
 
     const session = await stripe().checkout.sessions.retrieve(sessionId);
     const kind = session.metadata?.kind;
@@ -51,52 +50,33 @@ serve(async (req) => {
       });
     }
 
-    if (kind === 'membership') {
-      const isOwner = session.metadata?.user_id === user.id;
-      if (!isOwner) {
-        return jsonResponse({ error: 'Forbidden' }, 403);
-      }
-      // Reconcile webhook lag: Stripe says paid → mark the row paid now.
-      await reconcilePaymentRow('membership_payments', session, 'paid');
-      const { data: row } = await adminClient
-        .from('membership_payments')
-        .select('payment_status')
-        .eq('stripe_session_id', sessionId)
-        .maybeSingle();
-      return jsonResponse({
-        paid: row?.payment_status === 'paid',
-        kind: 'membership',
-        payment_status: row?.payment_status ?? 'unpaid',
-      });
+    // Reconcile webhook lag: Stripe says paid → mark the transaction paid now.
+    await reconcilePaymentRow(session, 'paid');
+
+    const { data: tx } = await adminClient
+      .from('transactions')
+      .select('user_id, source, payment_status')
+      .eq('stripe_session_id', sessionId)
+      .maybeSingle();
+
+    if (!tx) {
+      return jsonResponse({ paid: false, kind: null, payment_status: 'unpaid' });
     }
 
-    if (kind === 'event') {
-      const registrationId = session.metadata?.registration_id;
-      const { data: registration } = await adminClient
-        .from('event_registrations')
-        .select('user_id, payment_status')
-        .eq('id', registrationId ?? '')
-        .maybeSingle();
-
-      const isOwner = registration?.user_id === user.id;
-      if (!isOwner) {
+    if (tx.source !== 'donation') {
+      if (authError || !user) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+      }
+      if (tx.user_id !== user.id) {
         return jsonResponse({ error: 'Forbidden' }, 403);
       }
-      // Reconcile webhook lag: Stripe says paid → mark the row paid now.
-      await reconcilePaymentRow('event_registrations', session, 'paid');
-      const { data: row } = await adminClient
-        .from('event_registrations')
-        .select('payment_status')
-        .eq('stripe_session_id', sessionId)
-        .maybeSingle();
-      return jsonResponse({
-        paid: row?.payment_status === 'paid',
-        kind: 'event',
-        payment_status: row?.payment_status ?? 'unpaid',
-      });
     }
 
-    return jsonResponse({ error: 'Unknown session kind' }, 400);
+    return jsonResponse({
+      paid: tx.payment_status === 'paid',
+      kind: tx.source,
+      payment_status: tx.payment_status,
+    });
   } catch (error) {
     console.error('verify-payment error:', error);
     return jsonResponse(

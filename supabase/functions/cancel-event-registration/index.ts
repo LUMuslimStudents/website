@@ -41,7 +41,7 @@ serve(async (req) => {
 
     const { data: registration, error: regError } = await adminClient
       .from('event_registrations')
-      .select('id, user_id, payment_status, stripe_session_id')
+      .select('id, user_id, transaction:transactions(id, payment_status, stripe_session_id)')
       .eq('id', registrationId)
       .maybeSingle();
     if (regError) throw regError;
@@ -55,7 +55,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Forbidden' }, 403);
     }
 
-    if (registration.payment_status === 'paid') {
+    if (registration.transaction?.payment_status === 'paid') {
       return jsonResponse(
         {
           error:
@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     // ── Expire any open Checkout Session (closes the pay-vs-cancel race) ────
-    const sessionId = registration.stripe_session_id;
+    const sessionId = registration.transaction?.stripe_session_id ?? null;
     if (sessionId) {
       try {
         await stripe().checkout.sessions.expire(sessionId);
@@ -76,7 +76,7 @@ serve(async (req) => {
         try {
           const session = await stripe().checkout.sessions.retrieve(sessionId);
           if (session.payment_status === 'paid') {
-            await reconcilePaymentRow('event_registrations', session, 'paid');
+            await reconcilePaymentRow(session, 'paid');
             return jsonResponse(
               {
                 error:
@@ -94,12 +94,17 @@ serve(async (req) => {
       }
     }
 
-    // ── Delete the row (profile + answers cascade) ──────────────────────────
+    // ── Delete the row + its transaction (profile + answers cascade) ────────
+    const txnId = registration.transaction?.id ?? null;
     const { error: deleteError } = await adminClient
       .from('event_registrations')
       .delete()
       .eq('id', registrationId);
     if (deleteError) throw deleteError;
+
+    if (txnId) {
+      await adminClient.from('transactions').delete().eq('id', txnId);
+    }
 
     return jsonResponse({ message: 'Registration cancelled.' });
   } catch (error) {

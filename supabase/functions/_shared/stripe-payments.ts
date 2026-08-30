@@ -60,9 +60,9 @@ export const randomSuffix = () =>
     .join('');
 
 // ── Payment reconciliation ───────────────────────────────────────────────────
-// Shared by payment-webhook and verify-payment. Marks a row paid/failed based
-// on the Stripe session. Idempotent: already-paid rows are never downgraded.
-// Amount + currency are validated before marking anything as paid.
+// Shared by payment-webhook and verify-payment. Marks a transaction paid/failed
+// based on the Stripe session. Idempotent: already-paid rows are never
+// downgraded. Amount + currency are validated before marking anything paid.
 
 export type StripeSession = {
   id: string;
@@ -73,16 +73,12 @@ export type StripeSession = {
 };
 
 export const reconcilePaymentRow = async (
-  table: 'membership_payments' | 'event_registrations',
   session: StripeSession,
   desired: 'paid' | 'failed',
 ): Promise<'paid' | 'failed' | 'missing' | 'already_paid'> => {
-  const amountCol = table === 'membership_payments' ? 'amount' : 'quoted_price';
-  const paidAtCol = table === 'membership_payments' ? 'paid_at' : 'payment_completed_at';
-
   const { data: row } = await adminClient
-    .from(table)
-    .select(`id, ${amountCol}, payment_status`)
+    .from('transactions')
+    .select('id, amount, payment_status')
     .eq('stripe_session_id', session.id)
     .maybeSingle();
 
@@ -92,15 +88,15 @@ export const reconcilePaymentRow = async (
   let finalStatus: 'paid' | 'failed' = desired;
   if (desired === 'paid') {
     const amountMatches =
-      session.amount_total === row[amountCol] * 100 && session.currency === 'sek';
+      session.amount_total === row.amount * 100 && session.currency === 'sek';
     if (!amountMatches) finalStatus = 'failed';
   }
 
   const { error } = await adminClient
-    .from(table)
+    .from('transactions')
     .update({
       payment_status: finalStatus,
-      [paidAtCol]: finalStatus === 'paid' ? new Date().toISOString() : null,
+      paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
     })
     .eq('id', row.id);
   if (error) throw error;

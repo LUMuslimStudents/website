@@ -63,7 +63,7 @@ const getRegistrationStates = async (
 
     const { data: registrations, error: registrationError } = await supabase
         .from('event_registrations')
-        .select('event_id, id, payment_required, payment_status')
+        .select('event_id, id, payment_required, transaction:transactions(payment_status)')
         .eq('user_id', userId)
         .neq('status', 'cancelled' as RegistrationStatus)
         .in('event_id', eventIds);
@@ -74,7 +74,7 @@ const getRegistrationStates = async (
 
     for (const registration of registrations ?? []) {
         const isReal =
-            !registration.payment_required || registration.payment_status === 'paid';
+            !registration.payment_required || registration.transaction?.payment_status === 'paid';
         states.set(registration.event_id, {
             is_registered: isReal,
             is_pending_payment: !isReal,
@@ -175,7 +175,7 @@ export const fetchEventById = async (eventId: number, includeFormFields = true):
     if (user) {
         const { data: existing, error: registrationError } = await supabase
             .from('event_registrations')
-            .select('id, payment_required, payment_status')
+            .select('id, payment_required, transaction:transactions(payment_status)')
             .eq('event_id', event.id)
             .eq('user_id', user.id)
             .neq('status', 'cancelled' as RegistrationStatus)
@@ -188,7 +188,7 @@ export const fetchEventById = async (eventId: number, includeFormFields = true):
 
         if (existing) {
             const isReal =
-                !existing.payment_required || existing.payment_status === 'paid';
+                !existing.payment_required || existing.transaction?.payment_status === 'paid';
             registrationState = {
                 is_registered: isReal,
                 is_pending_payment: !isReal,

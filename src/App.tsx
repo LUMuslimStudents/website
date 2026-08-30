@@ -13,6 +13,8 @@ import MembershipCheckout from "./pages/MembershipCheckout";
 import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
 import Mission from "./pages/Mission";
+import Donate from "./pages/Donate";
+import DonateThankYou from "./pages/DonateThankYou";
 import { ThemeProvider } from "next-themes";
 import Suggestions from "./pages/Suggestions";
 import Signup from "./pages/Signup";
@@ -51,6 +53,8 @@ const App = () => (
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/mission" element={<Mission />} />
+                  <Route path="/donate" element={<Donate />} />
+                  <Route path="/donate/thank-you" element={<DonateThankYou />} />
                   <Route path="/suggestions" element={<Suggestions />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />

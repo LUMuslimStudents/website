@@ -65,19 +65,31 @@ serve(async (req) => {
     const { data: users, error } = await adminClient
       .from('users')
       .select(
-        '*, membership_payments(id, term, plan, amount, payment_status, paid_at)',
+        '*, membership_payments(id, term, plan, transaction:transactions(amount, payment_status, paid_at))',
       );
     if (error) {
       return jsonResponse({ error: error.message }, 500);
     }
 
     const merged = (users ?? []).map((row: Record<string, unknown>) => {
-      const payments = (row.membership_payments ?? []) as Array<{
+      const rawPayments = (row.membership_payments ?? []) as Array<{
+        id: string;
         term: string;
         plan: string;
-        payment_status: string;
-        paid_at: string | null;
+        transaction: {
+          amount: number;
+          payment_status: string;
+          paid_at: string | null;
+        } | null;
       }>;
+      const payments = rawPayments.map((payment) => ({
+        id: payment.id,
+        term: payment.term,
+        plan: payment.plan,
+        amount: payment.transaction?.amount ?? 0,
+        payment_status: payment.transaction?.payment_status ?? 'unpaid',
+        paid_at: payment.transaction?.paid_at ?? null,
+      }));
       const currentPaid = payments.find(
         (payment) =>
           payment.term === currentTerm && payment.payment_status === 'paid',

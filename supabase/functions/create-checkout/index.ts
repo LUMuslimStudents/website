@@ -14,7 +14,8 @@ import {
 
 type CheckoutRequest =
   | { kind: 'membership'; plan?: 'single_term' | 'two_term' }
-  | { kind: 'event'; registration_id?: string };
+  | { kind: 'event'; registration_id?: string }
+  | { kind: 'donation'; amount?: number };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -28,23 +29,24 @@ serve(async (req) => {
     const body = (await req.json()) as CheckoutRequest;
 
     // ── Auth ────────────────────────────────────────────────────────────────
+    // Membership + event require a signed-in user; donations allow anonymous.
     const {
       data: { user },
       error: authError,
     } = await userClient(req).auth.getUser();
-    if (authError || !user) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
 
     const successUrl = `${siteUrl()}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
     const sessionBase = {
       mode: 'payment' as const,
-      customer_email: user.email ?? undefined,
+      customer_email: user?.email ?? undefined,
       success_url: successUrl,
     };
 
     // ── Membership payment ──────────────────────────────────────────────────
     if (body.kind === 'membership') {
+      if (authError || !user) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+      }
       const plan = body.plan === 'two_term' ? 'two_term' : 'single_term';
 
       const { data: options, error: optsError } = await adminClient
@@ -66,14 +68,15 @@ serve(async (req) => {
           : options.price_single_term;
 
       // Already paid for the current term?
-      const { data: paidRow } = await adminClient
-        .from('membership_payments')
+      const { data: paidTx } = await adminClient
+        .from('transactions')
         .select('id')
         .eq('user_id', user.id)
         .eq('term', options.term)
+        .eq('source', 'membership')
         .eq('payment_status', 'paid')
         .maybeSingle();
-      if (paidRow) {
+      if (paidTx) {
         return jsonResponse({ error: 'Membership already paid for this term' }, 409);
       }
 
@@ -104,33 +107,61 @@ serve(async (req) => {
         integration_identifier: `lums-membership-${randomSuffix()}`,
       });
 
-      // Reuse an existing unpaid row for the same term/plan, else insert.
-      const { data: existingRow } = await adminClient
+      // Reuse an existing membership record for the same term/plan, else
+      // insert. Its payment lives on a transactions row (1:1 via
+      // transaction_id), which is also reused when still unpaid.
+      const { data: existingMp } = await adminClient
         .from('membership_payments')
-        .select('id')
+        .select('id, transaction_id')
         .eq('user_id', user.id)
         .eq('term', options.term)
         .eq('plan', plan)
-        .eq('payment_status', 'unpaid')
         .maybeSingle();
 
-      if (existingRow) {
-        const { error: updErr } = await adminClient
-          .from('membership_payments')
-          .update({ stripe_session_id: session.id, amount: amountSek })
-          .eq('id', existingRow.id);
-        if (updErr) throw updErr;
+      let txnId: string | null = existingMp?.transaction_id ?? null;
+      if (txnId) {
+        const { error: txnErr } = await adminClient
+          .from('transactions')
+          .update({
+            amount: amountSek,
+            stripe_session_id: session.id,
+            payment_status: 'unpaid',
+            paid_at: null,
+          })
+          .eq('id', txnId);
+        if (txnErr) throw txnErr;
       } else {
-        const { error: insErr } = await adminClient
+        txnId = crypto.randomUUID();
+        const { error: txnErr } = await adminClient
+          .from('transactions')
+          .insert({
+            id: txnId,
+            user_id: user.id,
+            source: 'membership',
+            term: options.term,
+            amount: amountSek,
+            currency: 'sek',
+            stripe_session_id: session.id,
+          });
+        if (txnErr) throw txnErr;
+      }
+
+      if (existingMp) {
+        const { error: mpErr } = await adminClient
+          .from('membership_payments')
+          .update({ transaction_id: txnId })
+          .eq('id', existingMp.id);
+        if (mpErr) throw mpErr;
+      } else {
+        const { error: mpErr } = await adminClient
           .from('membership_payments')
           .insert({
             user_id: user.id,
             term: options.term,
             plan,
-            amount: amountSek,
-            stripe_session_id: session.id,
+            transaction_id: txnId,
           });
-        if (insErr) throw insErr;
+        if (mpErr) throw mpErr;
       }
 
       return jsonResponse({ url: session.url });
@@ -138,6 +169,9 @@ serve(async (req) => {
 
     // ── Event registration payment ──────────────────────────────────────────
     if (body.kind === 'event') {
+      if (authError || !user) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+      }
       const registrationId = body.registration_id;
       if (!registrationId) {
         return jsonResponse({ error: 'registration_id is required' }, 400);
@@ -145,7 +179,7 @@ serve(async (req) => {
 
       const { data: registration, error: regError } = await adminClient
         .from('event_registrations')
-        .select('id, event_id, user_id, quoted_price, payment_required, payment_status')
+        .select('id, event_id, user_id, quoted_price, payment_required, transaction:transactions(payment_status)')
         .eq('id', registrationId)
         .maybeSingle();
       if (regError) throw regError;
@@ -158,13 +192,13 @@ serve(async (req) => {
       if (!registration.payment_required) {
         return jsonResponse({ error: 'No payment required for this registration' }, 400);
       }
-      if (registration.payment_status === 'paid') {
+      if (registration.transaction?.payment_status === 'paid') {
         return jsonResponse({ error: 'Registration is already paid' }, 409);
       }
 
       const { data: event, error: eventError } = await adminClient
         .from('events_info')
-        .select('title')
+        .select('term, title')
         .eq('id', registration.event_id)
         .maybeSingle();
       if (eventError) throw eventError;
@@ -193,16 +227,93 @@ serve(async (req) => {
         integration_identifier: `lums-event-${randomSuffix()}`,
       });
 
+      const txnId = crypto.randomUUID();
+      const { error: txnErr } = await adminClient
+        .from('transactions')
+        .insert({
+          id: txnId,
+          user_id: user.id,
+          source: 'event',
+          term: event?.term ?? '',
+          amount: registration.quoted_price,
+          currency: 'sek',
+          stripe_session_id: session.id,
+        });
+      if (txnErr) throw txnErr;
+
       const { error: updErr } = await adminClient
         .from('event_registrations')
-        .update({ stripe_session_id: session.id })
+        .update({ transaction_id: txnId })
         .eq('id', registrationId);
       if (updErr) throw updErr;
 
       return jsonResponse({ url: session.url });
     }
 
-    return jsonResponse({ error: "kind must be 'membership' or 'event'" }, 400);
+    // ── Donation payment ────────────────────────────────────────────────────
+    if (body.kind === 'donation') {
+      const amountSek = body.amount;
+      if (
+        typeof amountSek !== 'number' ||
+        !Number.isInteger(amountSek) ||
+        amountSek <= 0
+      ) {
+        return jsonResponse({ error: 'Invalid donation amount' }, 400);
+      }
+      // Stripe's minimum chargeable amount in SEK is 3.00.
+      if (amountSek < 3) {
+        return jsonResponse({ error: 'Donation must be at least 3 SEK' }, 400);
+      }
+
+      const { data: options } = await adminClient
+        .from('admin_options')
+        .select('term')
+        .eq('is_current', true)
+        .maybeSingle();
+      const term = (options?.term as string | undefined) ?? '';
+
+      const session = await stripe().checkout.sessions.create({
+        ...sessionBase,
+        success_url: `${siteUrl()}/donate/thank-you?session_id={CHECKOUT_SESSION_ID}`,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'sek',
+              unit_amount: amountSek * 100, // Stripe amounts are in öre
+              product_data: {
+                name: 'Donation to LUMS',
+              },
+            },
+          },
+        ],
+        metadata: {
+          kind: 'donation',
+          user_id: user?.id ?? '',
+          term,
+        },
+        cancel_url: `${siteUrl()}/donate`,
+        integration_identifier: `lums-donation-${randomSuffix()}`,
+      });
+
+      const txnId = crypto.randomUUID();
+      const { error: txnErr } = await adminClient
+        .from('transactions')
+        .insert({
+          id: txnId,
+          user_id: user?.id ?? null,
+          source: 'donation',
+          term,
+          amount: amountSek,
+          currency: 'sek',
+          stripe_session_id: session.id,
+        });
+      if (txnErr) throw txnErr;
+
+      return jsonResponse({ url: session.url });
+    }
+
+    return jsonResponse({ error: "kind must be 'membership', 'event' or 'donation'" }, 400);
   } catch (error) {
     console.error('create-checkout error:', error);
     return jsonResponse(

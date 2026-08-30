@@ -84,14 +84,16 @@ export type AdminTreasuryEventRegistration = {
   event: { id: number; term: string; title: string; date: string } | null;
 };
 
-/** One row per actual payment across memberships and event registrations. */
+/** One row per actual payment, sourced directly from the transactions ledger. */
 export type AdminTreasuryIncomeRow = {
   id: string;
-  kind: "membership" | "event";
+  source: "membership" | "event" | "donation";
   term: string;
   amount: number;
+  currency?: string;
   payment_status: string;
   paid_at: string | null;
+  created_at?: string | null;
   payer_name: string;
   payer_email: string | null;
   payer_phone: string | null;

@@ -31,6 +31,7 @@ import {
   membershipCancelData,
   eventCheckoutData,
   eventCancellationData,
+  donationCheckoutData,
   paymentVerifyData,
 } from ']/SupabaseSource';
 import { supabase } from ']/client';
@@ -340,6 +341,11 @@ export const SupabaseRequest = async (
   const eventCheckoutMatch = endpoint.match(/^\/events\/(\d+)\/checkout$/);
   if (eventCheckoutMatch && method === 'POST') {
     return eventCheckoutData(body?.registration_id);
+  }
+
+  // ── Donation checkout → Stripe hosted page ─────────────────────
+  if (endpoint === '/donations/checkout' && method === 'POST') {
+    return donationCheckoutData(body?.amount);
   }
 
   // ── Cancel pending event registration ──────────────────────────

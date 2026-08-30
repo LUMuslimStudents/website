@@ -49,7 +49,7 @@ serve(async (req) => {
     const { data: registrations, error } = await adminClient
       .from('event_registrations')
       .select(
-        'id, event_id, status, quoted_price, payment_required, payment_status, payment_completed_at, submitted_at, updated_at, event:events_info(id, title, date, start_time, end_time, address)',
+        'id, event_id, status, quoted_price, payment_required, transaction:transactions(payment_status, paid_at), submitted_at, updated_at, event:events_info(id, title, date, start_time, end_time, address)',
       )
       .eq('user_id', userId)
       .order('submitted_at', { ascending: false });
@@ -58,7 +58,13 @@ serve(async (req) => {
       return jsonResponse({ error: error.message }, 500);
     }
 
-    return jsonResponse({ registrations: registrations ?? [] });
+    const flattened = (registrations ?? []).map((row) => ({
+      ...row,
+      payment_status: row.transaction?.payment_status ?? 'unpaid',
+      payment_completed_at: row.transaction?.paid_at ?? null,
+    }));
+
+    return jsonResponse({ registrations: flattened });
   } catch (error) {
     console.error('admin-get-user-registrations error:', error);
     return jsonResponse(

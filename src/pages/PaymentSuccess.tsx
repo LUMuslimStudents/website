@@ -73,6 +73,7 @@ const PaymentSuccess = () => {
   }, [location.search, authLoading]);
 
   const isEvent = kind === "event";
+  const isDonation = kind === "donation";
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -102,7 +103,9 @@ const PaymentSuccess = () => {
                 <p className="text-center">
                   {isEvent
                     ? "Your event registration payment was successful. See you there!"
-                    : "Thank you! Your LUMS membership payment has been successfully processed."}
+                    : isDonation
+                      ? "Thank you for your generous donation to LUMS!"
+                      : "Thank you! Your LUMS membership payment has been successfully processed."}
                 </p>
                 <Button
                   className="mt-4 w-full"
@@ -122,7 +125,9 @@ const PaymentSuccess = () => {
                 </p>
                 <Button
                   className="mt-4 w-full"
-                  onClick={() => navigate(isEvent ? "/events" : "/membership")}
+                  onClick={() =>
+                    navigate(isEvent ? "/events" : isDonation ? "/donate" : "/membership")
+                  }
                 >
                   Try Again
                 </Button>

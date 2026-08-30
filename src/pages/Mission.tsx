@@ -9,17 +9,21 @@ const Mission = () => {
   const missionVision = [
     {
       title: "Our Mission",
-      description: "To create a supportive and inclusive environment for Muslim students at Lund University, fostering spiritual growth, academic excellence, and community engagement.",
+      description: "To build a bridge of solidarity and reinforcing the religious thread that binds \
+                    Muslim students at Lund University, as well as elevate their identity to new \
+                    heights and foster a harmonious community.",
       icon: Target,
     },
     {
       title: "Our Vision",
-      description: "To be a leading Muslim student organization that empowers members to thrive in their academic journey while maintaining their Islamic identity and contributing positively to society.",
+      description: "To promote, unite, and represent Muslim students at Lund University by creating \
+                    an alternative halal environment for social interactions, organizing enriching \
+                    activities to empower and educate our students, while actively combating Islamophobia.",
       icon: Eye,
     },
     {
       title: "Our Values",
-      description: "Unity in diversity, academic excellence, spiritual development, community service, and mutual respect.",
+      description: "faith in Allah SWT, unity in diversity, academic excellence, and mutual respect.",
       icon: HeartHandshake,
     },
   ];

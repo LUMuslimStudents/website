@@ -43,21 +43,11 @@ serve(async (req) => {
   try {
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.expired') {
       const session = event.data.object as StripeSession;
-      const kind = session.metadata?.kind;
       const desired = event.type === 'checkout.session.completed' ? 'paid' : 'failed';
 
-      if (kind === 'membership') {
-        const result = await reconcilePaymentRow('membership_payments', session, desired);
-        if (result === 'missing') {
-          console.warn(`membership_payments row not found for session ${session.id}`);
-        }
-      } else if (kind === 'event') {
-        const result = await reconcilePaymentRow('event_registrations', session, desired);
-        if (result === 'missing') {
-          console.warn(`event_registrations row not found for session ${session.id}`);
-        }
-      } else {
-        console.warn(`Unknown checkout metadata.kind: ${kind}`);
+      const result = await reconcilePaymentRow(session, desired);
+      if (result === 'missing') {
+        console.warn(`transaction row not found for session ${session.id}`);
       }
     }
 

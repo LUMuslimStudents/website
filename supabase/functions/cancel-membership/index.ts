@@ -31,12 +31,12 @@ serve(async (req) => {
     const uid = user.id;
 
     // ── Safety: refuse if any payment already completed ────────────────────
-    const { data: payments } = await adminClient
-      .from('membership_payments')
+    const { data: transactions } = await adminClient
+      .from('transactions')
       .select('stripe_session_id, payment_status')
       .eq('user_id', uid);
 
-    for (const row of payments ?? []) {
+    for (const row of transactions ?? []) {
       if (!row.stripe_session_id) continue;
       try {
         const session = await stripe().checkout.sessions.retrieve(
@@ -44,7 +44,7 @@ serve(async (req) => {
         );
         if (session.payment_status === 'paid') {
           // Reconcile (webhook may not have landed) and refuse deletion.
-          await reconcilePaymentRow('membership_payments', session, 'paid');
+          await reconcilePaymentRow(session, 'paid');
           return jsonResponse(
             { error: 'Payment already completed — your membership is active.' },
             409,
@@ -58,7 +58,8 @@ serve(async (req) => {
     }
 
     // ── Clean up rows referencing public.users (FKs) ───────────────────────
-    // Registrations first (profiles + answers cascade with them).
+    // Transactions + registrations first (profiles + answers cascade with them).
+    await adminClient.from('transactions').delete().eq('user_id', uid);
     await adminClient.from('event_registrations').delete().eq('user_id', uid);
     await adminClient.from('membership_payments').delete().eq('user_id', uid);
 

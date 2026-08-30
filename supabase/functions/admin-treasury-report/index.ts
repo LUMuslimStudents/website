@@ -91,7 +91,7 @@ serve(async (req) => {
     let membershipQuery = adminClient
       .from('membership_payments')
       .select(
-        'id, user_id, term, plan, amount, payment_status, paid_at, created_at, user:users(first_name, last_name, phone_number)',
+        'id, user_id, term, plan, created_at, transaction:transactions(amount, payment_status, paid_at), user:users(first_name, last_name, phone_number)',
       );
     if (term) {
       membershipQuery = membershipQuery.eq('term', term);
@@ -108,7 +108,7 @@ serve(async (req) => {
     let registrationQuery = adminClient
       .from('event_registrations')
       .select(
-        'id, event_id, user_id, status, quoted_price, payment_required, payment_status, payment_completed_at, submitted_at, updated_at, event:events_info(id, term, title, date), user:users(first_name, last_name, phone_number), profile:event_registration_profiles(first_name, last_name, email, phone_number)',
+        'id, event_id, user_id, status, quoted_price, payment_required, transaction:transactions(amount, payment_status, paid_at), submitted_at, updated_at, event:events_info(id, term, title, date), user:users(first_name, last_name, phone_number), profile:event_registration_profiles(first_name, last_name, email, phone_number)',
       );
 
     if (term) {
@@ -126,66 +126,121 @@ serve(async (req) => {
     // ── Merge emails (auth.users) into both row sets ────────────────────────
     const memberships = (membershipResult.data ?? []).map((row) => ({
       ...row,
+      amount: row.transaction?.amount ?? 0,
+      payment_status: row.transaction?.payment_status ?? 'unpaid',
+      paid_at: row.transaction?.paid_at ?? null,
       email: emailById.get(row.user_id) ?? null,
     }));
 
     const registrations = (registrationResult.data ?? []).map((row) => ({
       ...row,
+      payment_status: row.transaction?.payment_status ?? 'unpaid',
+      payment_completed_at: row.transaction?.paid_at ?? null,
       email: row.profile?.email ?? emailById.get(row.user_id) ?? null,
     }));
 
-    // ── Unified income list: one row per actual payment ─────────────────────
-    // Unpaid rows are excluded (no payment exists yet); failed attempts are
-    // kept so the treasurer sees them.
-    const income = [
-      ...memberships
-        .filter((payment) => payment.payment_status !== 'unpaid')
-        .map((payment) => ({
-          id: `membership:${payment.id}`,
-          kind: 'membership',
-          term: payment.term,
-          amount: payment.amount,
-          payment_status: payment.payment_status,
-          paid_at: payment.paid_at ?? payment.created_at,
-          payer_name: payment.user
-            ? `${payment.user.first_name} ${payment.user.last_name}`.trim()
-            : 'Unknown member',
-          payer_email: payment.email,
-          payer_phone: payment.user?.phone_number ?? null,
-          member: true,
-          plan: payment.plan,
-          event_title: null,
-          event_date: null,
-        })),
-      ...registrations
-        .filter(
-          (registration) =>
-            registration.payment_required &&
-            registration.payment_status !== 'unpaid',
+    // ── Unified income list: source the ledger directly from transactions ────
+    // One row per payment. Unpaid (pending/abandoned) transactions are
+    // excluded; failed attempts are kept so the treasurer sees them.
+    let txQuery = adminClient
+      .from('transactions')
+      .select('*, user:users(first_name, last_name, phone_number)');
+    if (term) {
+      txQuery = txQuery.eq('term', term);
+    }
+    const txResult = await txQuery.order('created_at', { ascending: false });
+    if (txResult.error) {
+      return jsonResponse({ error: txResult.error.message }, 500);
+    }
+    const transactions = txResult.data ?? [];
+
+    // Source-row context: event title/date + guest profile (events) and plan
+    // (memberships), keyed by transaction_id so each transaction is enriched.
+    const eventCtx = new Map<string, any>();
+    const membershipCtx = new Map<string, any>();
+    const txIds = transactions.map((t) => t.id);
+    if (txIds.length > 0) {
+      const { data: eventRows } = await adminClient
+        .from('event_registrations')
+        .select(
+          'transaction_id, event:events_info(id, term, title, date), profile:event_registration_profiles(first_name, last_name, email, phone_number)',
         )
-        .map((registration) => ({
-          id: `registration:${registration.id}`,
-          kind: 'event',
-          term: registration.event?.term ?? null,
-          amount: registration.quoted_price,
-          payment_status: registration.payment_status,
-          paid_at: registration.payment_completed_at ?? registration.submitted_at,
-          payer_name: registration.user
-            ? `${registration.user.first_name} ${registration.user.last_name}`.trim()
-            : registration.profile
-              ? `${registration.profile.first_name} ${registration.profile.last_name}`.trim()
-              : 'Guest',
-          payer_email: registration.email,
-          payer_phone:
-            registration.user?.phone_number ??
-            registration.profile?.phone_number ??
-            null,
-          member: Boolean(registration.user_id),
-          plan: null,
-          event_title: registration.event?.title ?? null,
-          event_date: registration.event?.date ?? null,
-        })),
-    ];
+        .in('transaction_id', txIds);
+      for (const row of eventRows ?? []) {
+        if (row.transaction_id) eventCtx.set(row.transaction_id, row);
+      }
+
+      const { data: membershipRows } = await adminClient
+        .from('membership_payments')
+        .select('transaction_id, plan')
+        .in('transaction_id', txIds);
+      for (const row of membershipRows ?? []) {
+        if (row.transaction_id) membershipCtx.set(row.transaction_id, row);
+      }
+    }
+
+    const income = transactions
+      .filter((t) => t.payment_status !== 'unpaid')
+      .map((t) => {
+        const source = t.source;
+        const ev = eventCtx.get(t.id);
+        const mp = membershipCtx.get(t.id);
+
+        let payer_name = 'Unknown';
+        let payer_email: string | null = null;
+        let payer_phone: string | null = null;
+        let plan: string | null = null;
+        let event_title: string | null = null;
+        let event_date: string | null = null;
+
+        if (source === 'membership') {
+          payer_name = t.user
+            ? `${t.user.first_name} ${t.user.last_name}`.trim()
+            : 'Unknown member';
+          payer_email = emailById.get(t.user_id) ?? null;
+          payer_phone = t.user?.phone_number ?? null;
+          plan = mp?.plan ?? null;
+        } else if (source === 'event') {
+          const profileName = ev?.profile
+            ? `${ev.profile.first_name} ${ev.profile.last_name}`.trim()
+            : '';
+          payer_name =
+            profileName ||
+            (t.user
+              ? `${t.user.first_name} ${t.user.last_name}`.trim()
+              : 'Guest');
+          payer_email = ev?.profile?.email ?? emailById.get(t.user_id) ?? null;
+          payer_phone =
+            t.user?.phone_number ?? ev?.profile?.phone_number ?? null;
+          event_title = ev?.event?.title ?? null;
+          event_date = ev?.event?.date ?? null;
+        } else {
+          // donation (no source table yet)
+          payer_name = t.user
+            ? `${t.user.first_name} ${t.user.last_name}`.trim()
+            : 'Donor';
+          payer_email = emailById.get(t.user_id) ?? null;
+          payer_phone = t.user?.phone_number ?? null;
+        }
+
+        return {
+          id: t.id,
+          source,
+          term: t.term,
+          amount: t.amount,
+          currency: t.currency,
+          payment_status: t.payment_status,
+          paid_at: t.paid_at ?? t.created_at,
+          created_at: t.created_at,
+          payer_name,
+          payer_email,
+          payer_phone,
+          member: Boolean(t.user_id),
+          plan,
+          event_title,
+          event_date,
+        };
+      });
 
     return jsonResponse({
       terms,

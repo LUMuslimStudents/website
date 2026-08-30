@@ -111,6 +111,7 @@ const getLinkedUsers = async (userIds: string[]) => {
 
 const buildRegistrationResponse = (
   registration: EventRegistrationRow & {
+    transaction?: { payment_status: string; paid_at: string | null } | null;
     profile?: RegistrationProfileRow | null;
     answers?: (FieldAnswerRow & {
       field?: Pick<EventFormFieldRow, 'id' | 'question' | 'field_type' | 'help_text' | 'is_required'> | null;
@@ -121,6 +122,8 @@ const buildRegistrationResponse = (
   ...registration,
   submitted_at: formatDateTime(registration.submitted_at),
   updated_at: formatDateTime(registration.updated_at),
+  payment_status: registration.transaction?.payment_status ?? 'unpaid',
+  payment_completed_at: registration.transaction?.paid_at ?? null,
   linked_user:
     registration.user_id && linkedUserMap.has(registration.user_id)
       ? linkedUserMap.get(registration.user_id) ?? null
@@ -139,7 +142,7 @@ export const getAdminEvents = async () => {
 
   const { data: events, error } = await supabase
     .from('events_info')
-    .select('*, registrations:event_registrations(id, status, payment_required, payment_status)')
+    .select('*, registrations:event_registrations(id, status, payment_required, transaction:transactions(payment_status))')
     .order('deadline', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -147,7 +150,9 @@ export const getAdminEvents = async () => {
   return (events ?? []).map((event) => ({
     ...fixEventDateTimeFormat(event as unknown as EventRow),
     registration_count: Array.isArray(event.registrations)
-      ? event.registrations.filter(isRealRegistration).length
+      ? event.registrations
+          .map((r: any) => ({ ...r, payment_status: r.transaction?.payment_status ?? 'unpaid' }))
+          .filter(isRealRegistration).length
       : 0,
   }));
 };
@@ -176,7 +181,7 @@ export const getAdminEventById = async (eventId: number) => {
   const { data: registrations, error: regError } = await supabase
     .from('event_registrations')
     .select(
-      '*, profile:event_registration_profiles(*), answers:event_registration_field_answers(*, field:event_form_fields(id, question, field_type, help_text, is_required))',
+      '*, transaction:transactions(payment_status, paid_at), profile:event_registration_profiles(*), answers:event_registration_field_answers(*, field:event_form_fields(id, question, field_type, help_text, is_required))',
     )
     .eq('event_id', eventId)
     .order('submitted_at', { ascending: false })
@@ -195,7 +200,9 @@ export const getAdminEventById = async (eventId: number) => {
 
   return {
     ...fixEventDateTimeFormat(event as EventRow),
-    registration_count: (registrations ?? []).filter(isRealRegistration).length,
+    registration_count: (registrations ?? [])
+      .map((r: any) => ({ ...r, payment_status: r.transaction?.payment_status ?? 'unpaid' }))
+      .filter(isRealRegistration).length,
     form_fields: (formFields ?? []).map(toEventFormFieldResponse),
     registrations: (registrations ?? []).map((r) =>
       buildRegistrationResponse(r as any, linkedUserMap),
@@ -211,7 +218,7 @@ export const getAdminEventsWithRegistrations = async () => {
   const { data: events, error } = await supabase
     .from('events_info')
     .select(
-      '*, registrations:event_registrations(*, profile:event_registration_profiles(*), answers:event_registration_field_answers(*, field:event_form_fields(id, question, field_type, help_text, is_required)))',
+      '*, registrations:event_registrations(*, transaction:transactions(payment_status, paid_at), profile:event_registration_profiles(*), answers:event_registration_field_answers(*, field:event_form_fields(id, question, field_type, help_text, is_required)))',
     )
     .order('deadline', { ascending: false })
     .order('submitted_at', { referencedTable: 'event_registrations', ascending: false })
