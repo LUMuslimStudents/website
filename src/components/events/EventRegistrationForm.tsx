@@ -742,7 +742,9 @@ export const EventRegistrationForm = ({
               <strong>You are already registered, see you soon at the event!</strong>
             </p>
             <p>
-              If you want to cancel your registration, please contact our treasurer at [email], or via Whatsapp to [number].
+              If you want to cancel your registration, please contact our treasurer at
+              <a href="mailto:ma3452am-s@student.lu.se" className="text-muted-foreground hover:underline">ma3452am-s@student.lu.se</a>,
+              or via Whatsapp to <a href="https://wa.me/46735306506" className="text-muted-foreground hover:underline">+46735306506</a>.
             </p>
             <p>
               <strong>Remember:</strong> No refunds if cancelled within <strong>48 hours</strong> of event start!
