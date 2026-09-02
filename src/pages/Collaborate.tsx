@@ -289,15 +289,6 @@ const Collaborate = () => {
                         {COLLABORATION_EMAIL}
                       </a>
                     </Button>
-                    <span className="text-sm opacity-80">
-                      Prefer email? Reach us directly at{" "}
-                      <a
-                        href={mailto()}
-                        className="underline underline-offset-4 hover:opacity-100"
-                      >
-                        {COLLABORATION_EMAIL}
-                      </a>
-                    </span>
                   </div>
                 </div>
               </div>
