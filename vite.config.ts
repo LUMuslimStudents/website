@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 3000,
     allowedHosts: [
-      "lums.abdulrahimss.com"
+      "muslimstudentslu.se",
     ]
   },
   plugins: [
