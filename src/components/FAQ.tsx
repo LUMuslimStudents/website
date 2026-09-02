@@ -1,33 +1,62 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { OrnamentDivider } from "@/components/IslamicPattern";
+import { Reveal } from "@/components/Reveal";
+
+const FAQ_ITEMS = [
+  {
+    question: "Who can join LUMS?",
+    answer:
+      "Membership is only open to students currently studying at Lund University with a valid @student.lu.se email address.",
+  },
+  {
+    question: "How long is my membership valid?",
+    answer:
+      "A single-term membership is valid for one semester. A two-term membership covers both semesters of the academic year at a discounted price.\
+      Membership follows the term, not the calendar — if you have a single-term membership you renew by paying for the new term when it starts. There is no need to re-register.",
+  },
+  {
+    question: "Are membership fees refundable?",
+    answer:
+      "No — membership fees are non-refundable. The fee directly funds the association's events and activities, so please only pay once you are sure you want to join for the term.",
+  },
+];
 
 export const FAQ = () => (
-  <div className="max-w-3xl mx-auto py-16">
-    <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="item-1">
-        <AccordionTrigger>How do I join LUMS?</AccordionTrigger>
-        <AccordionContent>
-          Simply fill out the membership form and complete the payment. You'll receive a confirmation email with further details.
-        </AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="item-2">
-        <AccordionTrigger>What are the membership benefits?</AccordionTrigger>
-        <AccordionContent>
-          Members get access to all LUMS events, join our WhatsApp community, receive weekly newsletters, and enjoy event discounts.
-        </AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="item-3">
-        <AccordionTrigger>How long is the membership valid?</AccordionTrigger>
-        <AccordionContent>
-          Membership is valid for one semester. You must renew your membership at the start of each semester by signing up again.
-        </AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="item-4">
-        <AccordionTrigger>Can non-students join LUMS?</AccordionTrigger>
-        <AccordionContent>
-          LUMS membership is currently only open to Lund University students with a valid @student.lu.se email address.
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
-  </div>
-); 
+  <section className="relative overflow-hidden bg-muted/40 py-16 md:py-24">
+    <div
+      className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full bg-gold/10 blur-3xl"
+      aria-hidden="true"
+    />
+    <div className="container relative z-10">
+      <Reveal className="text-center">
+        <span className="text-sm font-medium uppercase tracking-[0.2em] text-gold">
+          Questions
+        </span>
+        <h2 className="mt-3 text-3xl md:text-4xl font-display tracking-tight">
+          Frequently asked questions
+        </h2>
+        <OrnamentDivider className="mt-5" />
+      </Reveal>
+
+      <Reveal delay={120}>
+        <Accordion type="single" collapsible className="mx-auto mt-12 w-full max-w-3xl">
+          {FAQ_ITEMS.map((item, index) => (
+            <AccordionItem key={item.question} value={`item-${index}`}>
+              <AccordionTrigger className="text-left font-medium">
+                {item.question}
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Reveal>
+    </div>
+  </section>
+);

@@ -140,7 +140,7 @@ export const Footer = () => {
                   muslimskastudenterlu@gmail.com
                 </a>
               </li>
-              <li>Location: Lund University</li>
+              <li>Location: Lund University, Lund, Sweden</li>
             </ul>
           </div>
         </div>

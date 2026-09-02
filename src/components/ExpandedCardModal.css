@@ -47,8 +47,12 @@
   background: hsl(var(--card));
   border-radius: 0;
   box-shadow: none;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* The card itself never scrolls — `.expanded-card-content` is the single
+     scroll region so the footer can stay pinned while the header + stats
+     scroll away with the description/form. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   z-index: 51;
   /* Invisible performance hints: promote the resizing box to its own
      compositor layer so Firefox rasterizes it independently instead of
@@ -107,53 +111,35 @@
   }
 }
 
-/* Expanded Card Content */
+/* Expanded Card Content — single unified scroll region.
+   Title, quick stats, posters, description and registration form all
+   scroll together; only the footer (below) stays pinned. */
 .expanded-card-content {
-  padding: 32px 24px;
-  padding-top: 76px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.expanded-card.has-footer {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.expanded-card.has-footer .expanded-card-content {
-  height: auto;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Top keeps the content clear of the floating share/close buttons.
+     Bottom is just a small breathing room above the footer divider —
+     the old 32px content + 24px body padding here was dead scroll space. */
+  padding: 76px 24px 16px;
 }
+
+/* Header + quick stats: plain block that scrolls away with the content. */
+
+/* Body (posters, description, form): plain block inside the unified
+   scroll region — previously this was a nested scroller. */
 
 .expanded-card-modal-footer {
   flex: 0 0 auto;
-  padding: 16px 24px 8px;
+  padding: 12px 24px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid hsl(var(--border));
   background: hsl(var(--card));
 }
 
-.expanded-card-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-height: 100%;
-}
-
-.expanded-card-body {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 24px;
-}
-
 .expanded-card-footer {
-  flex: 0 0 auto;
-  padding: 8px 0 16px;
+  padding: 0;
   background: hsl(var(--card));
 }
 
@@ -390,16 +376,16 @@
   }
 }
 
-/* Scrollbar styling for expanded card */
-.expanded-card::-webkit-scrollbar {
+/* Scrollbar styling for the expanded card scroll region */
+.expanded-card-content::-webkit-scrollbar {
   width: 8px;
 }
 
-.expanded-card::-webkit-scrollbar-track {
+.expanded-card-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.expanded-card::-webkit-scrollbar-thumb {
+.expanded-card-content::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
 }
@@ -449,14 +435,14 @@
   }
 }
 
-.expanded-card::-webkit-scrollbar-thumb:hover {
+.expanded-card-content::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
 
-:is(.dark) .expanded-card::-webkit-scrollbar-thumb {
+:is(.dark) .expanded-card-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
 
-:is(.dark) .expanded-card::-webkit-scrollbar-thumb:hover {
+:is(.dark) .expanded-card-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }

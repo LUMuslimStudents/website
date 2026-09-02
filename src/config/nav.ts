@@ -12,6 +12,7 @@ import {
   MapPin,
   Megaphone,
   Target,
+  Mosque
 } from "lucide-react";
 import { FaLinkedin, FaWhatsapp } from "react-icons/fa6";
 
@@ -26,11 +27,20 @@ export type NavIcon = ComponentType<{ className?: string }>;
  */
 export interface NavItem {
   label: string;
-  to: string;
+  /**
+   * Route path or external URL. Required for actual links — omit only on
+   * expandable parents that define `children` instead (e.g. "WhatsApp groups").
+   */
+  to?: string;
   icon: NavIcon;
   description?: string;
   /** External links open in a new tab and skip the in-app page transition. */
   external?: boolean;
+  /**
+   * Nested links revealed when this item is expanded. An item with `children`
+   * renders as an expander row and never navigates itself.
+   */
+  children?: NavItem[];
 }
 
 /**
@@ -65,7 +75,7 @@ export const navCategories: NavCategory[] = [
       {
         items: [
           {
-            label: "About / who we are",
+            label: "About LUMS",
             to: "/about",
             icon: Info,
             description:
@@ -101,13 +111,13 @@ export const navCategories: NavCategory[] = [
             description:
               "Browse everything we have planned and reserve your spot in a few taps.",
           },
-          {
-            label: "Past events",
-            to: "/events/past",
-            icon: History,
-            description:
-              "Look back at the gatherings, talks, and socials we've hosted.",
-          },
+          // {
+          //   label: "Past events",
+          //   to: "/events/past",
+          //   icon: History,
+          //   description:
+          //     "Look back at the gatherings, talks, and socials we've hosted.",
+          // },
         ],
       },
     ],
@@ -117,12 +127,18 @@ export const navCategories: NavCategory[] = [
     groups: [
       {
         items: [
+          // {
+          //   label: "Living in Lund",
+          //   to: "/resources/living-in-lund",
+          //   icon: MapPin,
+          //   description:
+          //     "Practical guides to help you settle into student life in Lund as a Mus                                                       lim.",
+          // },
           {
-            label: "Living in Lund",
-            to: "/resources/living-in-lund",
-            icon: MapPin,
-            description:
-              "Practical guides to help you settle into student life in Lund.",
+            label: "Prayer times in Lund",
+            to: "/resources/prayer-times",
+            icon: Mosque,
+            description: "See prayer times in Lund. Same times for all 3 mosques in Lund."
           },
           {
             label: "Halal map",
@@ -138,13 +154,13 @@ export const navCategories: NavCategory[] = [
             description:
               "Locate quiet spaces to pray on and around campus between lectures.",
           },
-          {
-            label: "Academic & Support",
-            to: "/resources/academic-support",
-            icon: GraduationCap,
-            description:
-              "Study resources, guidance, and support to help you succeed.",
-          },
+          // {
+          //   label: "Academics & Support",
+          //   to: "/resources/academic-support",
+          //   icon: GraduationCap,                                                                 
+          //   description:
+          //     "Study resources, guidance, and support to help you succeed.",
+          // },
         ],
       },
       {
@@ -152,15 +168,38 @@ export const navCategories: NavCategory[] = [
         items: [
           {
             label: "WhatsApp groups",
-            to: "https://whatsapp.com",
             icon: FaWhatsapp,
             description:
-              "Join our community chats to stay in the loop day to day.",
-            external: true,
+              "Pick the chat for you — main, sisters, or brothers.",
+            children: [
+              {
+                label: "Main chat",
+                to: "https://chat.whatsapp.com/BARqqItmRq1HmT53jeJfno",
+                icon: FaWhatsapp,
+                description: "The main LUMS community chat.",
+                external: true,
+              },
+              {
+                label: "Sisters chat",
+                to: "https://chat.whatsapp.com/G49FxR8Mm3i4J3E6vfH4dO",
+                icon: FaWhatsapp,
+                description: "A chat just for sisters to connect. \
+                Please be respectful, this is exclusively for sisters.",
+                external: true,
+              },
+              {
+                label: "Brothers chat",
+                to: "https://chat.whatsapp.com/E7uvf7CqozDFoINdIUb0uk",
+                icon: FaWhatsapp,
+                description: "A chat just for brothers to connect. \
+                Please be respectful, this is exclusively for brothers.",
+                external: true,
+              },
+            ],
           },
           {
             label: "LinkedIn community",
-            to: "https://linkedin.com",
+            to: "https://www.linkedin.com/groups/12774879/",
             icon: FaLinkedin,
             description:
               "Connect with fellow members, alumni, and professionals.",
@@ -189,24 +228,29 @@ export const navCategories: NavCategory[] = [
             description:
               "Support our work directly and help keep LUMS running.",
           },
-          {
-            label: "Campaigns we support",
-            to: "/campaigns",
-            icon: Megaphone,
-            description:
-              "Discover the causes and campaigns our community stands behind.",
-          },
+          // {
+          //   label: "Campaigns we support",
+          //   to: "/campaigns",
+          //   icon: Megaphone,
+          //   description:
+          //     "Discover the causes and campaigns our community stands behind.",
+          // },
         ],
       },
     ],
   },
 ];
 
-/** Flatten every internal item so we can compute the active category from the URL. */
+/** Flatten every internal item (including nested children) so we can compute the active category from the URL. */
 export const flattenNavItems = (category: NavCategory): NavItem[] =>
-  category.groups.flatMap((g) => g.items);
+  category.groups.flatMap((g) =>
+    g.items.flatMap((item) =>
+      item.children?.length ? [item, ...item.children] : [item]
+    )
+  );
 
 /** Is this internal item the current route (exact or nested)? */
 export const isItemActive = (item: NavItem, pathname: string): boolean =>
+  !!item.to &&
   !item.external &&
   (pathname === item.to || pathname.startsWith(`${item.to}/`));

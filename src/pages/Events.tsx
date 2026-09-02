@@ -6,7 +6,7 @@ import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
 import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +23,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import {
   TouchTooltip,
@@ -31,6 +32,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AuroraBackground } from "@/components/AuroraBackground";
 
 const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
+
+// Posters always render inside a uniform square frame (1:1). Non-square
+// posters (e.g. Instagram's new 4:5) are shown fully — not cropped — over a
+// soft blurred copy of the same image, so the empty area stays visually
+// pleasing and the cards keep an identical, clean shape.
 
 const toEventSlug = (title: string) => title
   .normalize("NFKD")
@@ -276,7 +282,7 @@ const EventCardSkeleton = () => (
       <div className="skeleton-line h-3.5 w-1/3" />
     </CardHeader>
     <CardContent>
-      <div className="skeleton-line h-64 w-full rounded-md" />
+      <div className="skeleton-line aspect-square w-full rounded-md" />
     </CardContent>
     <CardFooter className="flex items-center justify-between">
       <div className="skeleton-line h-4 w-16" />
@@ -287,47 +293,84 @@ const EventCardSkeleton = () => (
 
 /**
  * Designed gradient placeholder used wherever an event has no poster
- * (event cards and the expanded modal share the same treatment).
+ * (event cards and the expanded modal share the same treatment). Fills
+ * whatever poster frame it is rendered inside.
  */
 const EventPosterPlaceholder = ({ title }: { title: string }) => (
-  <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-[hsl(215,82%,32%)] via-[hsl(222,64%,36%)] to-[hsl(30,60%,46%)]">
+  <div className="relative flex h-full w-full items-center justify-center bg-gradient-to-br from-[hsl(215,82%,32%)] via-[hsl(222,64%,36%)] to-[hsl(30,60%,46%)]">
     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.16),transparent_55%)]" />
     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,rgba(0,0,0,0.18),transparent_55%)]" />
-    <span className="relative z-10 px-8 text-center font-display italic text-2xl leading-snug text-white/95 text-balance drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]">
+    <span className="relative z-10 px-6 text-center font-display italic text-xl md:text-2xl leading-snug text-white/95 text-balance drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]">
       {title}
     </span>
   </div>
 );
 
 /**
- * Poster for an event card. Falls back to the gradient placeholder when
- * the image is missing or fails to load.
+ * Poster media that always renders inside a uniform square frame.
+ * Square posters fill the frame edge-to-edge; non-square posters (e.g.
+ * Instagram's 4:5) are shown in full (not cropped) over a subtle muted
+ * surface with a faint ambient highlight, so the leftover area looks
+ * intentional without competing with the poster. The frame shape never
+ * changes between cards.
  */
-const EventPoster = ({ event }: { event: ExpandedEvent }) => {
+const EventPosterFrame = ({
+  src,
+  alt,
+  className = "",
+  fallback,
+  loading = "lazy",
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  /** Rendered in place of the image when it cannot be loaded. */
+  fallback?: ReactNode;
+  loading?: "lazy" | "eager";
+  onError?: () => void;
+}) => {
+  const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    setLoaded(false);
     setFailed(false);
-  }, [event.id]);
-
-  if (failed) {
-    return (
-      <div className="aspect-square w-96 max-w-full">
-        <EventPosterPlaceholder title={event.title} />
-      </div>
-    );
-  }
+  }, [src]);
 
   return (
-    <img
-      src={`${event.poster}/0.png`}
-      alt={`${event.title} poster`}
-      className="aspect-square w-96 rounded-md object-cover"
-      loading="lazy"
-      onError={() => setFailed(true)}
-    />
+    <div className={`relative aspect-square w-full overflow-hidden bg-muted/60 ${className}`}>
+      {/* Subtle ambient light so the area around a fitted poster isn't flat. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,hsl(var(--muted-foreground)/0.10),transparent_65%)]" />
+      {failed ? fallback : (
+        <img
+          src={src}
+          alt={alt}
+          loading={loading}
+          className={`relative z-10 h-full w-full object-contain drop-shadow-[0_16px_38px_rgba(0,0,0,0.30)] dark:drop-shadow-[0_0_42px_rgba(255,255,255,0.09)] transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            setFailed(true);
+            onError?.();
+          }}
+        />
+      )}
+    </div>
   );
 };
+
+/**
+ * Poster for an event card. Falls back to the gradient placeholder when
+ * the image is missing or fails to load.
+ */
+const EventPoster = ({ event }: { event: ExpandedEvent }) => (
+  <EventPosterFrame
+    src={`${event.poster}/0.png`}
+    alt={`${event.title} poster`}
+    className="rounded-md"
+    fallback={<EventPosterPlaceholder title={event.title} />}
+  />
+);
 
 const Events = () => {
   const navigate = useNavigate();
@@ -346,6 +389,9 @@ const Events = () => {
   const [isClosing, setIsClosing] = useState(false);
   const [expandedEventPosters, setExpandedEventPosters] = useState<string[]>([]);
   const [failedPosterCount, setFailedPosterCount] = useState(0);
+  // Carousel slide tracking for the poster indicators below the gallery.
+  const [activePoster, setActivePoster] = useState(0);
+  const posterApiRef = useRef<CarouselApi | null>(null);
   const [isContentReady, setIsContentReady] = useState(false);
   const [persistedRegisteredEventIds, setPersistedRegisteredEventIds] = useState<number[]>(() => {
     try {
@@ -703,6 +749,7 @@ const Events = () => {
       setExpandedEvent(null);
       setExpandedEventPosters([]);
       setFailedPosterCount(0);
+      setActivePoster(0);
       setIsContentReady(false);
       setRegistrationFooterState(null);
       registrationSubmitRef.current = null;
@@ -758,6 +805,25 @@ const Events = () => {
       window.clearTimeout(probeTimer);
     };
   }, [expandedEvent?.poster]);
+
+  // Keep the carousel indicator in sync: reset to the first poster whenever
+  // the poster set changes, then follow embla's selected snap on scroll/click.
+  useEffect(() => {
+    setActivePoster(0);
+    const api = posterApiRef.current;
+    if (!api) {
+      return;
+    }
+
+    const sync = () => setActivePoster(api.selectedScrollSnap());
+    sync();
+    api.on("select", sync);
+    api.on("reInit", sync);
+    return () => {
+      api.off("select", sync);
+      api.off("reInit", sync);
+    };
+  }, [expandedEventPosters]);
 
   return (
     <div className="min-h-dvh flex flex-col page">
@@ -924,7 +990,8 @@ const Events = () => {
         ) : null}
       >
         {expandedEvent && (
-          <div className="expanded-card-layout">
+          <>
+          <div className="expanded-card-header">
             <h2 className="text-3xl font-bold mb-4">{expandedEvent.title}</h2>
             <div className="grid gap-y-2 mb-5">
               <div className="flex flex-wrap items-center text-lg text-muted-foreground">
@@ -970,28 +1037,63 @@ const Events = () => {
                 <p>Deadline: {formatRegistrationDeadline(expandedEvent.deadline)}</p>
               </div>
             </div>
+            </div>
             <div className="expanded-card-body">
               <div className="mx-auto w-full max-w-4xl">
                 {expandedEventPosters.length > 0 && failedPosterCount < expandedEventPosters.length ? (
-                  <Carousel className="mb-6 w-[520px] max-w-full mx-auto">
-                    <CarouselContent>
-                      {expandedEventPosters.map((poster, index) => (
-                        <CarouselItem key={`${poster}-${index}`}>
-                          <img
-                            src={poster}
-                            alt={`${expandedEvent.title} poster ${index + 1}`}
-                            className="aspect-square w-full rounded-md object-contain bg-muted"
-                            loading="lazy"
-                            onError={() => setFailedPosterCount((count) => count + 1)}
-                          />
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                    <CarouselPrevious className="left-2 bg-background/80 shadow-md" />
-                    <CarouselNext className="right-2 bg-background/80 shadow-md" />
-                  </Carousel>
+                  <>
+                    <Carousel
+                      className={`${expandedEventPosters.length > 1 ? "mb-1" : "mb-6"} w-[520px] max-w-full mx-auto`}
+                      setApi={(api) => {
+                        posterApiRef.current = api;
+                      }}
+                    >
+                      <CarouselContent>
+                        {expandedEventPosters.map((poster, index) => (
+                          <CarouselItem key={`${poster}-${index}`}>
+                            <EventPosterFrame
+                              src={poster}
+                              alt={`${expandedEvent.title} poster ${index + 1}`}
+                              className="rounded-md"
+                              fallback={<EventPosterPlaceholder title={expandedEvent.title} />}
+                              onError={() => setFailedPosterCount((count) => count + 1)}
+                            />
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <CarouselPrevious className="left-2 bg-background/80 shadow-md" />
+                      <CarouselNext className="right-2 bg-background/80 shadow-md" />
+                    </Carousel>
+                    {expandedEventPosters.length > 1 && (
+                      <div className="mb-6 mt-3 flex items-center justify-center gap-4">
+                        <div
+                          role="group"
+                          aria-label="Choose poster"
+                          className="flex items-center gap-1.5"
+                        >
+                          {expandedEventPosters.map((poster, index) => (
+                            <button
+                              key={`${poster}-dot-${index}`}
+                              type="button"
+                              aria-label={`Show poster ${index + 1} of ${expandedEventPosters.length}`}
+                              aria-current={index === activePoster ? "true" : undefined}
+                              onClick={() => posterApiRef.current?.scrollTo(index)}
+                              className={`h-1.5 rounded-full transition-all duration-300 ${
+                                index === activePoster
+                                  ? "w-5 bg-foreground/70"
+                                  : "w-1.5 bg-foreground/20 hover:bg-foreground/40"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                          {activePoster + 1} / {expandedEventPosters.length}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="mb-6 w-[520px] max-w-full mx-auto">
+                  <div className="relative mx-auto mb-6 aspect-square w-full max-w-[520px] overflow-hidden rounded-md">
                     <EventPosterPlaceholder title={expandedEvent.title} />
                   </div>
                 )}
@@ -1049,7 +1151,7 @@ const Events = () => {
                 )}
               </div>
             </div>
-          </div>
+          </>
         )}
       </ExpandedCardModal>
     </div>

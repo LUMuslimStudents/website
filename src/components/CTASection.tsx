@@ -6,7 +6,7 @@ import { Reveal } from "@/components/Reveal";
 
 export const CTASection = () => {
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-16 md:py-20">
       <div className="container">
         <Reveal>
           <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-[hsl(222,80%,26%)] px-6 py-16 md:py-20 text-center text-primary-foreground shadow-lift grain">
@@ -28,7 +28,7 @@ export const CTASection = () => {
               <Button
                 asChild
                 size="lg"
-                className="mt-9 h-12 rounded-full bg-white px-8 text-[hsl(215,88%,34%)] hover:bg-white/90 shadow-lift transition-all duration-300 ease-organic hover:-translate-y-0.5 active:scale-[0.98]"
+                className="mx-auto mt-9 h-12 w-56 rounded-full bg-white px-8 text-[hsl(215,88%,34%)] hover:bg-white/90 shadow-lift transition-all duration-300 ease-organic hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 <NavLink to="/membership" className="flex items-center gap-2">
                   Become a Member

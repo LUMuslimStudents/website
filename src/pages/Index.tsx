@@ -1,56 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { ArrowRight, Calendar, Users, Star, Target, Eye, HeartHandshake } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CTASection } from "@/components/CTASection";
-import { NewsSection } from "@/components/NewsSection";
+import { UpcomingEvents } from "@/components/UpcomingEvents";
+import { WhyJoin } from "@/components/WhyJoin";
+import { Pillars } from "@/components/Pillars";
+import { Resources } from "@/components/Resources";
+import { Gallery } from "@/components/Gallery";
+import { Sponsors } from "@/components/Sponsors";
+import { Testimonials } from "@/components/Testimonials";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { Reveal } from "@/components/Reveal";
-import { OrnamentDivider, StarMark } from "@/components/IslamicPattern";
+import { StarMark } from "@/components/IslamicPattern";
 
 const Index = () => {
-  const features = [
-    {
-      title: "Community",
-      description: "Connect with fellow Muslim students in Lund",
-      icon: Users,
-    },
-    {
-      title: "Events",
-      description: "Join our regular gatherings and special occasions",
-      icon: Calendar,
-    },
-    {
-      title: "Support",
-      description: "Access resources and support network",
-      icon: Star,
-    },
-  ];
-
-  const missionVision = [
-    {
-      title: "Our Mission",
-      description: "To build a bridge of solidarity and reinforcing the religious thread that binds \
-                    Muslim students at Lund University, as well as elevate their identity to new \
-                    heights and foster a harmonious community.",
-      icon: Target,
-    },
-    {
-      title: "Our Vision",
-      description: "To promote, unite, and represent Muslim students at Lund University by creating \
-                    an alternative halal environment for social interactions, organizing enriching \
-                    activities to empower and educate our students, while actively combating Islamophobia.",
-      icon: Eye,
-    },
-    {
-      title: "Our Values",
-      description: "faith in Allah SWT, unity in diversity, academic excellence, and mutual respect.",
-      icon: HeartHandshake,
-    },
-  ];
-
   return (
     <div className="min-h-dvh flex flex-col page">
       <Navbar overlay />
@@ -58,7 +23,14 @@ const Index = () => {
         {/* Hero */}
         <section className="relative overflow-hidden grain">
           <AuroraBackground intensity="strong" jade />
-          <div className="container relative z-10 pt-32 md:pt-48 pb-16 md:pb-28 flex flex-col items-center text-center">
+          <div className="container relative z-10 pt-28 md:pt-32 pb-16 md:pb-28 flex flex-col items-center text-center">
+            <Reveal>
+              <img
+                src="/assets/bismillah.png"
+                alt="Bismi Allah"
+                className="h-12 md:h-20 mb-16 w-auto drop-shadow-sm dark:invert dark:opacity-80"
+              />
+              </Reveal>
             <Reveal>
               <img
                 src="/logos/LUMS - Banner Logo_Transparent.png"
@@ -107,79 +79,13 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Mission & Vision */}
-        <section className="py-16 md:py-24 bg-muted/40 relative overflow-hidden">
-          <div className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full bg-gold/10 blur-3xl" aria-hidden="true" />
-          <div className="pointer-events-none absolute -left-24 bottom-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
-          <div className="container relative">
-            <Reveal className="text-center">
-              <span className="text-sm font-medium uppercase tracking-[0.2em] text-gold">
-                Who we are
-              </span>
-              <h2 className="mt-3 text-3xl md:text-4xl font-display tracking-tight">
-                Mission &amp; Vision
-              </h2>
-              <OrnamentDivider className="mt-5" />
-            </Reveal>
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-              {missionVision.map((item, index) => (
-                <Reveal key={item.title} delay={index * 120}>
-                  <div className="group relative h-full overflow-hidden rounded-2xl border border-border/70 bg-card/70 p-8 shadow-soft backdrop-blur-sm transition-all duration-300 ease-organic hover:-translate-y-1.5 hover:shadow-lift">
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-gold/15 ring-1 ring-border/60 transition-transform duration-500 ease-spring group-hover:scale-110 group-hover:-rotate-3">
-                      <item.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-display mb-3">{item.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <NewsSection />
-
-        {/* Why Join */}
-        <section className="py-16 md:py-24 relative overflow-hidden">
-          <div className="pointer-events-none absolute -left-32 top-16 h-96 w-96 rounded-full bg-primary/[0.06] blur-3xl" aria-hidden="true" />
-          <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-gold/[0.07] blur-3xl" aria-hidden="true" />
-          <div className="container relative">
-            <Reveal className="text-center">
-              <span className="text-sm font-medium uppercase tracking-[0.2em] text-gold">
-                Your community awaits
-              </span>
-              <h2 className="mt-3 text-3xl md:text-4xl font-display tracking-tight">
-                Why Join LUMS?
-              </h2>
-              <OrnamentDivider className="mt-5" />
-            </Reveal>
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <Reveal key={feature.title} delay={index * 120}>
-                  <Card className="hover-card card-hover-effect group h-full rounded-2xl border-border/70 bg-card/70 shadow-soft backdrop-blur-sm">
-                    <CardHeader>
-                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-gold/15 ring-1 ring-border/60 transition-transform duration-500 ease-spring group-hover:scale-110 group-hover:-rotate-3">
-                        <feature.icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <CardTitle className="font-display group-hover:translate-x-1 transition-transform duration-300">
-                        {feature.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground group-hover:text-foreground transition-colors duration-300">
-                        {feature.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
+        <UpcomingEvents />
+        <WhyJoin />
+        <Pillars />
+        <Sponsors />
+        <Resources />
+        {/* <Gallery /> */}
+        <Testimonials />
         <CTASection />
       </main>
       <Footer />

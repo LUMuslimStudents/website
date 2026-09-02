@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,6 +45,8 @@ const formSchema = z.object({
 
 const Signup = () => {
     const navigate = useNavigate();
+    const location = useLocation() as { state?: { plan?: 'single_term' | 'two_term' } };
+    const preselectedPlan = location.state?.plan;
     const [loading, setLoading] = useState(false);
     const [conditionsDialog, setConditionsDialog] = useState(false);
     const [refundPolicy, setrefundPolicy] = useState(false);
@@ -79,7 +81,7 @@ const Signup = () => {
             email: '',
             password: '',
             gender: '' as unknown as 'male' | 'female',
-            plan: 'single_term' as const,
+            plan: preselectedPlan ?? 'single_term',
             study_program: '',
             phone_number: '',
         },

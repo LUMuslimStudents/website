@@ -1,6 +1,8 @@
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { NavLink } from "@/components/ui/nav-link";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "@/config/nav";
+import type { NavIcon, NavItem } from "@/config/nav";
 
 interface NavLinkRowProps {
   item: NavItem;
@@ -13,9 +15,37 @@ interface NavLinkRowProps {
   className?: string;
 }
 
+/** Shared row styling for menu items (expander, internal, external). */
+const rowClasses = (active?: boolean) =>
+  cn(
+    "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm",
+    "!transition-colors duration-200 hover:!opacity-100",
+    active
+      ? "bg-muted font-medium text-primary"
+      : "text-foreground/80 hover:bg-muted hover:text-foreground"
+  );
+
+/** The rounded icon tile at the start of every menu row. */
+const IconBadge = ({ Icon, active }: { Icon: NavIcon; active?: boolean }) => (
+  <span
+    className={cn(
+      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-border/60 transition-colors",
+      active
+        ? "bg-primary/10 text-primary"
+        : "bg-gradient-to-br from-primary/10 to-gold/10 text-foreground/70 group-hover:text-foreground"
+    )}
+  >
+    <Icon className="h-4 w-4" />
+  </span>
+);
+
 /**
  * A single navigable row shared by the desktop dropdown and the mobile sheet.
- * Internal links use the app's animated NavLink; external links open in a new tab.
+ * Three kinds of rows:
+ *  - expandable items (have `children`) toggle a nested list in place and never
+ *    navigate themselves;
+ *  - internal links use the app's animated NavLink;
+ *  - external links open in a new tab.
  *
  * NOTE: the base NavLink hard-codes `transition-all` + `hover:opacity-80`, which
  * fights our own colour transition and causes a visible flicker. We override both
@@ -29,42 +59,42 @@ export const NavLinkRow = ({
   onNavigate,
   className,
 }: NavLinkRowProps) => {
+  // Expandable parent: chevron row + nested children (e.g. WhatsApp groups).
+  if (item.children?.length) {
+    return (
+      <ExpandableRow
+        item={item}
+        onActivate={onActivate}
+        onNavigate={onNavigate}
+        className={className}
+      />
+    );
+  }
+
   const Icon = item.icon;
 
   const shared = {
     onMouseEnter: () => onActivate?.(item),
     onFocus: () => onActivate?.(item),
     onPointerDown: () => onActivate?.(item),
-    className: cn(
-      "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm",
-      "!transition-colors duration-200 hover:!opacity-100",
-      active
-        ? "bg-muted font-medium text-primary"
-        : "text-foreground/80 hover:bg-muted hover:text-foreground",
-      className
-    ),
+    className: cn(rowClasses(active), className),
   };
 
   const inner = (
     <>
-      <span
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-border/60 transition-colors",
-          active
-            ? "bg-primary/10 text-primary"
-            : "bg-gradient-to-br from-primary/10 to-gold/10 text-foreground/70 group-hover:text-foreground"
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
+      <IconBadge Icon={Icon} active={active} />
       <span className="truncate">{item.label}</span>
     </>
   );
 
+  // Non-expandable items always carry a destination.
+  const to = item.to;
+  if (!to) return null;
+
   if (item.external) {
     return (
       <a
-        href={item.to}
+        href={to}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => onNavigate?.()}
@@ -76,9 +106,62 @@ export const NavLinkRow = ({
   }
 
   return (
-    <NavLink to={item.to} onClick={() => onNavigate?.()} {...shared}>
+    <NavLink to={to} onClick={() => onNavigate?.()} {...shared}>
       {inner}
     </NavLink>
+  );
+};
+
+/**
+ * Row that toggles its nested `children` in place. Clicking never navigates —
+ * it expands/collapses. Children are rendered recursively through NavLinkRow so
+ * they inherit the same hover-preview and navigate-to-close behaviour on both
+ * desktop and mobile.
+ */
+const ExpandableRow = ({
+  item,
+  onActivate,
+  onNavigate,
+  className,
+}: NavLinkRowProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = item.icon;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        onMouseEnter={() => onActivate?.(item)}
+        onFocus={() => onActivate?.(item)}
+        onPointerDown={() => onActivate?.(item)}
+        className={cn(rowClasses(expanded), className)}
+      >
+        <IconBadge Icon={Icon} active={expanded} />
+        <span className="truncate">{item.label}</span>
+        <ChevronDown
+          className={cn(
+            "ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-0.5 space-y-0.5">
+          {item.children?.map((child) => (
+            <NavLinkRow
+              key={child.label}
+              item={child}
+              onActivate={onActivate}
+              onNavigate={onNavigate}
+              className="pl-8"
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

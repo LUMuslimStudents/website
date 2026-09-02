@@ -5,14 +5,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import About from "./pages/About";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import Membership from "./pages/Membership";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MembershipCheckout from "./pages/MembershipCheckout";
-import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
 import Mission from "./pages/Mission";
+import Governance from "./pages/Governance";
+import HalalMap from "./pages/HalalMap";
+import AdhanSchedule from "./pages/PrayerTimes";
 import Donate from "./pages/Donate";
 import DonateThankYou from "./pages/DonateThankYou";
 import { ThemeProvider } from "next-themes";
@@ -23,14 +26,15 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import VerifyEmail from "./pages/VerifyEmail";
-// import Checkout from "./pages/StripeCheckout";
 import { MembershipGate } from "@/components/MembershipGate";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { AdminUsersRoute } from "@/components/admin/AdminUsersRoute";
 import { AdminEventsTab } from "@/components/admin/AdminEventsTab";
 import { AdminEventDetailRoute } from "@/components/admin/AdminEventDetailRoute";
 import { AdminEventCreateView } from "@/components/admin/AdminEventCreateView";
 import { AdminSettingsTab } from "@/components/admin/AdminSettingsTab";
 import { AdminTreasuryTab } from "@/components/admin/AdminTreasuryTab";
+import PrayerRooms from "./pages/PrayerRooms";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +46,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <AuthProvider>
               <MembershipGate>
                 <Routes>
@@ -51,8 +56,12 @@ const App = () => (
                   <Route path="/membership" element={<Membership />} />
                   <Route path="/membership/checkout" element={<MembershipCheckout />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
-                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/about" element={<About />} />
                   <Route path="/mission" element={<Mission />} />
+                  <Route path="/by-laws" element={<Governance />} />
+                  <Route path="/resources/halal-map" element={<HalalMap />} />
+                  <Route path="/resources/prayer-times" element={<AdhanSchedule />} />
+                  <Route path="/resources/prayer-rooms" element={<PrayerRooms />} />
                   <Route path="/donate" element={<Donate />} />
                   <Route path="/donate/thank-you" element={<DonateThankYou />} />
                   <Route path="/suggestions" element={<Suggestions />} />

@@ -89,13 +89,13 @@ export const UserMenu = () => {
               <span className="text-foreground">{user.first_name}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className={cn(itemClass, "cursor-default")} disabled>
+            {/* <DropdownMenuItem className={cn(itemClass, "cursor-default")} disabled>
               <UserIcon />
               Profile
               <span className="ml-auto text-[0.65rem] uppercase tracking-wide text-muted-foreground">
                 soon
               </span>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             {isAdmin && (
               <DropdownMenuItem
                 className={itemClass}

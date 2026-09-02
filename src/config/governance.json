@@ -1,0 +1,62 @@
+{
+    "year": "2026-2027",
+    "board": {
+        "main_board": [
+            {
+                "fullname": "Abdul Rahim Sayed Suleiman",
+                "role": "Male President",
+                "email": "ab6270sa-s@student.lu.se"
+            },
+            {
+                "fullname": "Duha Al-sallami",
+                "role": "Female President",
+                "email": "dh7748al-s@student.lu.se"
+            },
+            {
+                "fullname": "Malak Amairi",
+                "role": "Treasurer",
+                "email": "ma3452am-s@student.lu.se"
+            }
+        ],
+        "auxiliary_board": [
+            {
+                "fullname": "Rama Khafaja",
+                "role": "Deputy",
+                "email": "ra6550kh-s@student.lu.se"
+            },
+            {
+                "fullname": "Shadi Alchekhouni",
+                "role": "Deputy",
+                "email": "mo0622al-s@student.lu.se"
+            },
+            {
+                "fullname": "Nour Dabbous",
+                "role": "Social Media Manager",
+                "email": "no6170da-s@student.lu.se"
+            },
+            {
+                "fullname": "Tiba Al-sallami",
+                "role": "External Relations Responsible",
+                "email": "ti2883al-s@student.lu.se"
+            }
+        ]
+    },
+    "by_laws": "https://drive.google.com/file/d/1VzRHpdnR8a-hNa7-TyqQ5h-l5Xbh_Fz9/view?usp=drive_link",
+    "reports": [
+        {
+            "name": "Annual general meeting protocol",
+            "desc": "The protocol from the latest annual general meeting.",
+            "link": ""
+        },
+        {
+            "name": "Annual activity report",
+            "desc": "A brief overview of the association's activity during the previous operational year.",
+            "link": "https://drive.google.com/file/d/1oiS0KQMyE6NdWk6Feemxrb-TmIMN3QaQ/view?usp=sharing"
+        },
+        {
+            "name": "Financial report",
+            "desc": "The association's financial report for the previous operational year.",
+            "link": "https://drive.google.com/file/d/1fxTnGCUInotwLEr6qZ5_R1Z9wGpG9JBc/view?usp=sharing"
+        }
+    ]
+}
