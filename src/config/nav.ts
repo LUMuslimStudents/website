@@ -216,7 +216,7 @@ export const navCategories: NavCategory[] = [
         items: [
           {
             label: "Partner with us",
-            to: "/partners",
+            to: "/collaborate",
             icon: HeartHandshake,
             description:
               "Collaborate, advertise, or become a long-term partner of LUMS.",

@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CTASection } from "@/components/CTASection";
+import { DonateSection } from "@/components/DonateSection";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
 import { WhyJoin } from "@/components/WhyJoin";
 import { Pillars } from "@/components/Pillars";
@@ -86,6 +87,7 @@ const Index = () => {
         <Resources />
         {/* <Gallery /> */}
         <Testimonials />
+        <DonateSection />
         <CTASection />
       </main>
       <Footer />

@@ -18,6 +18,7 @@ import HalalMap from "./pages/HalalMap";
 import AdhanSchedule from "./pages/PrayerTimes";
 import Donate from "./pages/Donate";
 import DonateThankYou from "./pages/DonateThankYou";
+import Collaborate from "./pages/Collaborate";
 import { ThemeProvider } from "next-themes";
 import Suggestions from "./pages/Suggestions";
 import Signup from "./pages/Signup";
@@ -64,6 +65,7 @@ const App = () => (
                   <Route path="/resources/prayer-rooms" element={<PrayerRooms />} />
                   <Route path="/donate" element={<Donate />} />
                   <Route path="/donate/thank-you" element={<DonateThankYou />} />
+                  <Route path="/collaborate" element={<Collaborate />} />
                   <Route path="/suggestions" element={<Suggestions />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />

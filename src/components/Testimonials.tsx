@@ -23,6 +23,15 @@ const MEMBER_QUOTES: { quote: string; author: string; role?: string }[] = [
     quote: "I have been following LUMS since the beginning, \
     and it was the main reason for choosing to do my exchange semester in Lund. \
     Here, I met brothers with whom I have strong connections to this day, and we keep in touch."
+  },
+  {
+    author: "Sedra",
+    role: "Member",
+    quote: "What makes LUMS special to me isn't just the events \
+    or the people I've met, but the feeling I get when I'm there. \
+    Being surrounded by people who value their faith, \
+    while coming from such different backgrounds and experiences, \
+    has reminded me that our differences don't stop us from finding common ground."
   }
 ];
 

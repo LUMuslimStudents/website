@@ -119,6 +119,15 @@ export const Footer = () => {
               </li>
               <li>
                 <button
+                  onClick={() => handleNavigation('/collaborate')}
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <StarMark className="h-2.5 w-2.5 shrink-0 text-gold/70" />
+                  Collaborate With Us
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => handleNavigation('/suggestions')}
                   className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -150,7 +159,7 @@ export const Footer = () => {
             © {new Date().getFullYear()} LUMS - Lund University Muslim Students.
           </p>
           <p className="text-sm text-muted-foreground/80">
-            Developed with ❤️ by LUMS Tech Team
+            Developed in whole by LUMS Tech Team
           </p>
         </div>
       </div>
