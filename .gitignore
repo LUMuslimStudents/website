@@ -29,3 +29,5 @@ backend/supabase/website-dev_db_pass
 *.sw?
 
 supabase/.temp/*
+.vercel
+.env*
