@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
-import { Calendar, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
+import { Calendar, CalendarOff, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
@@ -370,6 +370,24 @@ const EventPoster = ({ event }: { event: ExpandedEvent }) => (
     className="rounded-md"
     fallback={<EventPosterPlaceholder title={event.title} />}
   />
+);
+
+/**
+ * Shown when the events feed has finished loading but no events are
+ * currently open for registration.
+ */
+const NoEventsPlaceholder = () => (
+  <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/40 px-6 py-20 text-center md:py-28">
+    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-muted/70">
+      <CalendarOff className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+    </div>
+    <h2 className="font-display text-2xl font-semibold tracking-tight">
+      No events are out right now
+    </h2>
+    <p className="mt-2 max-w-md text-balance text-muted-foreground">
+      We're planning the next one — new events are announced here as soon as they're confirmed. Check back soon!
+    </p>
+  </div>
 );
 
 const Events = () => {
@@ -849,7 +867,9 @@ const Events = () => {
             ? Array.from({ length: 6 }).map((_, index) => (
                 <EventCardSkeleton key={`skeleton-${index}`} />
               ))
-            : events.map((event) => (
+            : events.length === 0
+              ? <NoEventsPlaceholder />
+              : events.map((event) => (
             <Card
               key={event.id}
               className="hover-card cursor-pointer active:scale-[0.99]"
