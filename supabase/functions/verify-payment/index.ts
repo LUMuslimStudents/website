@@ -6,6 +6,8 @@
 //
 // NOTE: accepts POST (not GET) — supabase-js cannot send a body on GET
 // requests (Firefox rejects fetch with a GET body).
+// NOTE: verify_jwt is OFF (deploy flag) — donations may be anonymous. Auth is
+// enforced in-function below for membership/event payments only.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   adminClient,

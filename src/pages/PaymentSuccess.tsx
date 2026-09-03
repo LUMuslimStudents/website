@@ -16,7 +16,8 @@ const PaymentSuccess = () => {
   const [kind, setKind] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, refresh } = useAuth();
+  const hasSessionId = new URLSearchParams(location.search).has("session_id");
 
   useEffect(() => {
     // Wait for the auth session to be restored before verifying — calling the
@@ -24,6 +25,11 @@ const PaymentSuccess = () => {
     if (authLoading) return;
 
     let cancelled = false;
+    // Backoff between verification attempts (ms). Total ~30s of retrying —
+    // enough for the payment webhook to mark the transaction paid even if it
+    // lags a few seconds behind the Stripe redirect.
+    const retryDelays = [2000, 3000, 5000, 8000, 12000];
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
     async function verifyPayment() {
       try {
@@ -35,14 +41,26 @@ const PaymentSuccess = () => {
           return;
         }
 
+        // The customer may have spent minutes on Stripe's hosted page, so the
+        // access token can be expired (or not yet restored) when we land back.
+        // Refresh the session first — an expired token makes verify-payment
+        // reject the call with 401 and the page would never show the success
+        // state. Anonymous donors simply have nothing to refresh — verification
+        // below decides what's allowed.
+        try {
+          await refresh();
+        } catch {
+          // ignore — verification itself reports auth failures
+        }
+        if (cancelled) return;
+
         // Server-side verification: never trust the URL alone.
-        // Retry briefly — the webhook marking the DB row as paid can lag a few
-        // seconds behind the Stripe redirect.
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
           if (cancelled) return;
           if (attempt > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await sleep(retryDelays[attempt - 1]);
           }
+          if (cancelled) return;
           try {
             const result = await apiRequest(
               `/payment/verify?session_id=${encodeURIComponent(sessionId)}`,
@@ -70,7 +88,7 @@ const PaymentSuccess = () => {
     return () => {
       cancelled = true;
     };
-  }, [location.search, authLoading]);
+  }, [location.search, authLoading, refresh]);
 
   const isEvent = kind === "event";
   const isDonation = kind === "donation";
@@ -121,15 +139,17 @@ const PaymentSuccess = () => {
                 </div>
                 <p className="text-center text-destructive">
                   We couldn't verify your payment status. If you completed the payment,
-                  give it a moment and reload this page, or contact our support team.
+                  give it a moment and try again, or contact our support team.
                 </p>
                 <Button
                   className="mt-4 w-full"
                   onClick={() =>
-                    navigate(isEvent ? "/events" : isDonation ? "/donate" : "/membership")
+                    hasSessionId
+                      ? window.location.reload()
+                      : navigate(isEvent ? "/events" : isDonation ? "/donate" : "/")
                   }
                 >
-                  Try Again
+                  {hasSessionId ? "Try Again" : "Back to Home"}
                 </Button>
               </div>
             )}

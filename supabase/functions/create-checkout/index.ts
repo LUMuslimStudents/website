@@ -1,6 +1,8 @@
 // create-checkout — creates a Stripe Checkout Session for a membership payment
 // or an event registration payment. Prices are always resolved server-side from
 // the database; the client never sends an amount.
+// NOTE: verify_jwt is OFF (deploy flag) — donations allow anonymous checkouts.
+// Auth is enforced in-function below for membership/event payments only.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import {
   adminClient,
