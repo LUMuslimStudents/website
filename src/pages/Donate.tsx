@@ -198,7 +198,7 @@ const Donate = () => {
           <div className="container max-w-5xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
               <Reveal>
-                <img src="public/assets/ikc_lund.webp" alt="Lund Mosque (IKC)" className="h-full w-full object-cover rounded-2xl" />
+                <img src="/assets/ikc_lund.webp" alt="Lund Mosque (IKC)" className="h-full w-full object-cover rounded-2xl" />
               </Reveal>
               <Reveal delay={120}>
                 <span className="text-sm font-medium uppercase tracking-[0.2em] text-gold">
