@@ -743,7 +743,7 @@ export const EventRegistrationForm = ({
             </p>
             <p>
               If you want to cancel your registration, please contact our treasurer at
-              <a href="mailto:ma3452am-s@student.lu.se" className="text-muted-foreground hover:text-primary transition-colors">ma3452am-s@student.lu.se</a>,
+              &nbsp; <a href="mailto:muslimskastudenterlu@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">muslimskastudenterlu@gmail.com</a>,
               or via Whatsapp to <a href="https://wa.me/46735306506" className="text-muted-foreground hover:text-primary transition-colors">+46735306506</a>.
             </p>
             <p>
