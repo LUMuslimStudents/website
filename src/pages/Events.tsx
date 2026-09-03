@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ExpandedCardModal } from "@/components/ExpandedCardModal";
 import { EventRegistrationForm, type EventRegistrationFooterState } from "@/components/events/EventRegistrationForm";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
-import { Calendar, CalendarOff, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard } from "lucide-react";
+import { Calendar, CalendarOff, ChevronDown, ExternalLink, MapPin, BadgeCheck, GraduationCap, Clock, Users, CheckCircle2, AlertCircle, CreditCard, Hourglass } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
@@ -114,6 +114,13 @@ const isRegistrationClosed = (event?: { deadline?: string | Date | null }) => {
   const deadlineAt = new Date(event.deadline);
   return !Number.isNaN(deadlineAt.getTime()) && deadlineAt.getTime() <= Date.now();
 };
+
+/**
+ * Whether an event is open for signups. While closed it is advertised as
+ * "coming soon" (no deadline/price shown, registration disabled). Missing
+ * value (e.g. legacy payloads) is treated as open.
+ */
+const isEventOpenForSignup = (event?: { is_open?: boolean }) => event?.is_open !== false;
 
 const buildGoogleCalendarUrl = (event: events_info) => {
   const date = new Date(event.date);
@@ -885,6 +892,7 @@ const Events = () => {
                 <div className="flex justify-between ">
                 <CardTitle className="max-w-[60%] min-h-[3rem]">{event.title}</CardTitle>
 
+                {isEventOpenForSignup(event) && (
                 <TouchTooltip
                   contentClassName="text-xs"
                   content="Registration deadline"
@@ -894,6 +902,7 @@ const Events = () => {
                     <p>{formatRegistrationDeadline(event.deadline)}</p>
                   </span>
                 </TouchTooltip>
+                )}
                   </div>
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 mr-2" />
@@ -909,33 +918,42 @@ const Events = () => {
                 <EventPoster event={event} />
               </CardContent>
               <CardFooter className="flex justify-between items-center">
-                <div className="font-medium">{priceTag(event)}</div>
-                <div className="flex flex-col items-end gap-2">
-                  {isRegistrationClosed(event) && !event.is_registered && !event.is_pending_payment && (
-                    <span className="text-xs text-red-600">
-                      Deadline has passed
-                    </span>
-                  )}
-                  <Button
-                    variant={event.is_pending_payment ? "default" : event.is_registered || isRegistrationClosed(event) ? "outline" : "default"}
-                    className={event.is_registered
-                      ? "border-green-600 text-green-600 hover:bg-green-50"
-                      : event.is_pending_payment
-                        ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
-                        : isRegistrationClosed(event)
-                          ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
-                          : ""}
-                    disabled={Boolean(event.is_registered || (isRegistrationClosed(event) && !event.is_pending_payment) || isResumingPayment)}
-                    onClick={(e) => {
-                      if (event.is_pending_payment) {
-                        e.stopPropagation();
-                        resumeEventPayment(event);
-                      }
-                    }}
-                  >
-                    {renderRegistrationButtonLabel(event)}
-                  </Button>
-                </div>
+                {isEventOpenForSignup(event) ? (
+                  <>
+                    <div className="font-medium">{priceTag(event)}</div>
+                    <div className="flex flex-col items-end gap-2">
+                      {isRegistrationClosed(event) && !event.is_registered && !event.is_pending_payment && (
+                        <span className="text-xs text-red-600">
+                          Deadline has passed
+                        </span>
+                      )}
+                      <Button
+                        variant={event.is_pending_payment ? "default" : event.is_registered || isRegistrationClosed(event) ? "outline" : "default"}
+                        className={event.is_registered
+                          ? "border-green-600 text-green-600 hover:bg-green-50"
+                          : event.is_pending_payment
+                            ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
+                            : isRegistrationClosed(event)
+                              ? "border-border text-muted-foreground bg-muted/50 hover:bg-muted/50 opacity-80"
+                              : ""}
+                        disabled={Boolean(event.is_registered || (isRegistrationClosed(event) && !event.is_pending_payment) || isResumingPayment)}
+                        onClick={(e) => {
+                          if (event.is_pending_payment) {
+                            e.stopPropagation();
+                            resumeEventPayment(event);
+                          }
+                        }}
+                      >
+                        {renderRegistrationButtonLabel(event)}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300">
+                    <Hourglass className="h-4 w-4" aria-hidden="true" />
+                    Coming soon
+                  </span>
+                )}
               </CardFooter>
             </Card>
             ))}
@@ -955,7 +973,7 @@ const Events = () => {
         shareUrl={expandedEvent
           ? `${window.location.origin}/events/${toEventSlug(expandedEvent.title)}`
           : undefined}
-        footer={registrationFooterState && expandedEvent ? (
+        footer={registrationFooterState && expandedEvent && isEventOpenForSignup(expandedEvent) ? (
           <div className="expanded-card-footer flex items-center justify-between gap-4">
             <div className="text-xl font-semibold">
               {priceTag(expandedEvent, registrationFooterState.displayPrice, registrationFooterState.displayPriceTier)}
@@ -1052,10 +1070,12 @@ const Events = () => {
                 {formatAddress(expandedEvent.address)}
               </div>
               {invitation(expandedEvent, true)}
+              {isEventOpenForSignup(expandedEvent) && (
               <div className="flex items-center text-lg text-amber-600">
                 <Clock className="h-5 w-5 mr-3" />
                 <p>Deadline: {formatRegistrationDeadline(expandedEvent.deadline)}</p>
               </div>
+              )}
             </div>
             </div>
             <div className="expanded-card-body">
@@ -1120,6 +1140,7 @@ const Events = () => {
                 {isContentReady ? (
                   <div className="modal-content-fade-in">
                     {renderMarkdown(expandedEvent.description)}
+                    {isEventOpenForSignup(expandedEvent) ? (
                     <EventRegistrationForm
                 event={expandedEvent}
                 isRegistrationClosed={isRegistrationClosed(expandedEvent)}
@@ -1165,6 +1186,17 @@ const Events = () => {
                   ));
                 }}
               />
+                    ) : (
+                      <div className="mt-4 flex flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/70 bg-amber-50/40 px-6 py-12 text-center dark:border-amber-500/30 dark:bg-amber-950/20">
+                        <Hourglass className="mb-4 h-9 w-9 text-amber-500" aria-hidden="true" />
+                        <h3 className="font-display text-xl font-semibold tracking-tight">
+                          Not open for sign up yet
+                        </h3>
+                        <p className="mt-2 max-w-sm text-balance text-sm text-muted-foreground">
+                          This event is coming soon — registration opens closer to the date. Check back to grab your spot!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <ContentSkeleton />

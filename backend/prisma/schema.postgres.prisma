@@ -48,6 +48,7 @@ model events_info {
   description     String?      @db.Text
   poster          String?      @db.VarChar(255)
   is_published    Boolean      @default(true)
+  is_open         Boolean      @default(true)
   registrations   event_registrations[]
   form_fields     event_form_fields[]
 }

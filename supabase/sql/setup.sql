@@ -85,7 +85,8 @@ CREATE TABLE IF NOT EXISTS public.events_info (
     price_alumnus    INT            NOT NULL DEFAULT -1,
     description      TEXT,
     poster           VARCHAR(255),
-    is_published     BOOLEAN        NOT NULL DEFAULT true
+    is_published     BOOLEAN        NOT NULL DEFAULT true,
+    is_open          BOOLEAN        NOT NULL DEFAULT true
 );
 
 -- transactions (single ledger for all payments)

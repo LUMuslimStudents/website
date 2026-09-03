@@ -7,6 +7,7 @@ import {
   createEvent,
   updateEvent,
   updateEventPublishState,
+  updateEventOpenState,
   updateRegistrationStatuses,
   deleteRegistration,
 } from './pathways/adminPathways';
@@ -61,6 +62,11 @@ export const adminUpdateEventPublishState = async (
   eventId: number,
   isPublished: boolean,
 ) => updateEventPublishState(eventId, isPublished);
+
+export const adminUpdateEventOpenState = async (
+  eventId: number,
+  isOpen: boolean,
+) => updateEventOpenState(eventId, isOpen);
 
 export const adminUpdateRegistrationStatuses = async (
   eventId: number,

@@ -36,6 +36,7 @@ type CreateEventInput = {
   poster?: string | null;
   form_fields?: FormFieldInput[];
   is_published?: boolean;
+  is_open?: boolean;
 };
 
 type UpdateEventInput = Partial<CreateEventInput>;
@@ -265,6 +266,7 @@ export const createEvent = async (input: CreateEventInput) => {
     description = null,
     form_fields = [],
     is_published = true,
+    is_open = true,
   } = input;
 
   if (!title || !date || !startTime || !endTime || !deadline || !address) {
@@ -306,6 +308,7 @@ export const createEvent = async (input: CreateEventInput) => {
       description,
       poster: input.poster ?? null,
       is_published,
+      is_open,
     })
     .select()
     .single();
@@ -387,6 +390,7 @@ export const updateEvent = async (eventId: number, input: UpdateEventInput) => {
   if (input.price_alumnus !== undefined) updateData.price_alumnus = input.price_alumnus;
   if (input.description !== undefined) updateData.description = input.description;
   if (input.is_published !== undefined) updateData.is_published = input.is_published;
+  if (input.is_open !== undefined) updateData.is_open = input.is_open;
   if (input.poster !== undefined) updateData.poster = input.poster;
 
   if (Object.keys(updateData).length === 0 && !input.form_fields) {
@@ -502,6 +506,44 @@ export const updateEventPublishState = async (
       : 'Event unpublished successfully',
     event: {
       is_published: isPublished,
+    },
+  };
+};
+
+// ── PATCH /admin/events/:id/open-state ──────────────────────────────────────
+
+/**
+ * Flip whether an event is open for signups without touching anything else.
+ * While is_open = false the public Events page shows the event as
+ * "coming soon" (no deadline/price, registration disabled).
+ */
+export const updateEventOpenState = async (
+  eventId: number,
+  isOpen: boolean,
+) => {
+  await ensureAdmin();
+
+  const { data: existing } = await supabase
+    .from('events_info')
+    .select('id')
+    .eq('id', eventId)
+    .single();
+
+  if (!existing) throw new Error('Event not found');
+
+  const { error } = await supabase
+    .from('events_info')
+    .update({ is_open: isOpen })
+    .eq('id', eventId);
+
+  if (error) throw new Error(error.message);
+
+  return {
+    message: isOpen
+      ? 'Event is now open for signups'
+      : 'Event is closed for signups',
+    event: {
+      is_open: isOpen,
     },
   };
 };

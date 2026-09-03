@@ -113,6 +113,10 @@ export const submitRegistration = async (
     throw new Error('Event not found');
   }
 
+  if (event.is_open === false) {
+    throw new Error('Signups are not open for this event yet.');
+  }
+
   if (new Date(event.deadline).getTime() <= Date.now()) {
     throw new Error('Registration deadline has passed.');
   }

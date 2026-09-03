@@ -445,6 +445,9 @@ export const AdminEventsList = ({ events, loading, latestTerm: propLatestTerm, o
                           <Badge className={event.is_published === false ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"} variant="outline">
                             {event.is_published === false ? "Draft" : "Published"}
                           </Badge>
+                          <Badge className={event.is_open === false ? "border-amber-200 bg-amber-50 text-amber-700" : "border-sky-200 bg-sky-50 text-sky-700"} variant="outline">
+                            {event.is_open === false ? "Signups closed" : "Signups open"}
+                          </Badge>
                           <Badge className={eventIsPast ? "border-orange-200 bg-orange-50 text-orange-700" : "border-blue-200 bg-blue-50 text-blue-700"} variant="outline">
                             {eventIsPast ? "Past" : "Upcoming"}
                           </Badge>

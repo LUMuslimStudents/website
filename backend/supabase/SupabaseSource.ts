@@ -10,6 +10,7 @@ import {
   adminCreateEvent,
   adminUpdateEvent,
   adminUpdateEventPublishState,
+  adminUpdateEventOpenState,
   adminUpdateRegistrationStatuses,
   adminDeleteRegistration,
 } from ']/services/events/events';
@@ -118,6 +119,11 @@ export const adminUpdateEventPublishStateData = async (
   eventId: number,
   isPublished: boolean,
 ) => adminUpdateEventPublishState(eventId, isPublished);
+
+export const adminUpdateEventOpenStateData = async (
+  eventId: number,
+  isOpen: boolean,
+) => adminUpdateEventOpenState(eventId, isOpen);
 export const adminUpdateRegistrationStatusesData = async (
   eventId: number,
   updates: Parameters<typeof adminUpdateRegistrationStatuses>[1],

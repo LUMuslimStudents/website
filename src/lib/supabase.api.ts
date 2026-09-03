@@ -26,6 +26,7 @@ import {
   adminOptionsData,
   adminOptionsCurrentData,
   adminOptionsUpsertData,
+  adminUpdateEventOpenStateData,
   membershipStatusData,
   membershipCheckoutData,
   membershipCancelData,
@@ -288,6 +289,13 @@ export const SupabaseRequest = async (
   if (publishMatch && method === 'PATCH') {
     const eventId = Number(publishMatch[1]);
     return adminUpdateEventPublishStateData(eventId, body?.is_published);
+  }
+
+  // ── Admin: Signup open state ───────────────────────────────────
+  const openStateMatch = endpoint.match(/^\/admin\/events\/(\d+)\/open-state$/);
+  if (openStateMatch && method === 'PATCH') {
+    const eventId = Number(openStateMatch[1]);
+    return adminUpdateEventOpenStateData(eventId, body?.is_open);
   }
 
   // ── Admin: Update registration statuses ────────────────────────

@@ -544,6 +544,7 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<string | null>(null);
   const [updatingPublishState, setUpdatingPublishState] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
+  const [updatingOpenState, setUpdatingOpenState] = useState(false);
   const [closingRegistration, setClosingRegistration] = useState(false);
   const [closeRegistrationConfirmOpen, setCloseRegistrationConfirmOpen] = useState(false);
 
@@ -741,6 +742,32 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
     }
   };
 
+  // Flips whether the event is open for signups ("coming soon" mode on the
+  // public Events page). Independent of publish state and registration
+  // deadline — it only gates new signups.
+  const setOpenState = async (nextIsOpen: boolean) => {
+    if (!event || event.is_open === nextIsOpen) {
+      return;
+    }
+
+    setUpdatingOpenState(true);
+    try {
+      const response = await apiRequest(`/admin/events/${event.id}/open-state`, "PATCH", { is_open: nextIsOpen }) as {
+        event?: { is_open?: boolean };
+      };
+
+      if (response?.event?.is_open === nextIsOpen) {
+        setEvent((previous) => (previous ? { ...previous, is_open: nextIsOpen } : previous));
+      }
+
+      toast.success(nextIsOpen ? "Event opened for signups." : "Event closed for signups.");
+    } catch (error: any) {
+      toast.error(error.message || `Failed to ${nextIsOpen ? "open" : "close"} signups`);
+    } finally {
+      setUpdatingOpenState(false);
+    }
+  };
+
   // Sets the registration deadline to right now — no new registrations can be
   // submitted after that. Existing registrations and pending payments are
   // unaffected.
@@ -867,6 +894,9 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
               <span className={event.is_published === false ? "rounded-full border border-red-200 bg-red-50 px-2 py-1 text-red-700" : "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700"}>
                 {event.is_published === false ? "Draft" : "Published"}
               </span>
+              <span className={event.is_open === false ? "rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-700" : "rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-sky-700"}>
+                {event.is_open === false ? "Signups closed" : "Signups open"}
+              </span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{participantCount} registered</span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{event.invitation}</span>
               <span className="rounded-full border px-2 py-1 text-muted-foreground">{event.siblings}</span>
@@ -948,6 +978,22 @@ export const AdminEventDetailView = ({ eventId, onBack }: AdminEventDetailProps)
                       Edit draft
                     </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updatingOpenState}
+                    onClick={() => void setOpenState(event.is_open === false)}
+                    className={
+                      event.is_open === false
+                        ? "border-emerald-600/60 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30"
+                        : "border-amber-500/60 text-amber-700 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
+                    }
+                  >
+                    {updatingOpenState
+                      ? (event.is_open === false ? "Opening signups..." : "Closing signups...")
+                      : (event.is_open === false ? "Open signups" : "Close signups")}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"

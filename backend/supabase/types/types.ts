@@ -250,6 +250,7 @@ export type Database = {
           end_time: string
           id: number
           invitation: Database["public"]["Enums"]["Invitation"]
+          is_open: boolean
           is_published: boolean
           poster: string | null
           price_alumnus: number
@@ -268,6 +269,7 @@ export type Database = {
           end_time: string
           id?: number
           invitation?: Database["public"]["Enums"]["Invitation"]
+          is_open?: boolean
           is_published?: boolean
           poster?: string | null
           price_alumnus?: number
@@ -286,6 +288,7 @@ export type Database = {
           end_time?: string
           id?: number
           invitation?: Database["public"]["Enums"]["Invitation"]
+          is_open?: boolean
           is_published?: boolean
           poster?: string | null
           price_alumnus?: number
