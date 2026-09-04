@@ -111,7 +111,7 @@ export const fetchCurrentEvents = async () => {
 
     let eventsQuery = supabase
         .from('events_info')
-        .select('id,title,date,start_time,end_time,deadline,address,invitation,siblings,price_member,price_nonmember,poster,is_open')
+        .select('id,title,date,start_time,end_time,deadline,address,invitation,siblings,price_member,price_nonmember,poster,is_open,term')
         .eq('is_published', true)
         .gte('date', today)
         .order('date', { ascending: false });

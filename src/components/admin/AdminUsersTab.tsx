@@ -10,7 +10,7 @@ const formatDateOnly = (value?: string | null) => {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('sv-SE');
 };
 
 const formatGender = (value?: string | null) => {

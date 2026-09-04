@@ -38,7 +38,7 @@ const formatDateOnly = (value?: string | null) => {
     return "—";
   }
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString("sv-SE");
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -46,7 +46,7 @@ const formatDateTime = (value?: string | null) => {
     return "—";
   }
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 };
 
 const formatMoney = (value: number) => `${value} SEK`;

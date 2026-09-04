@@ -115,7 +115,7 @@ const formatDateTime = (value?: string | null) => {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 };
 
 const formatGender = (value?: string | null) => {
@@ -138,7 +138,7 @@ const formatDateOnly = (value?: string | null) => {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString("sv-SE");
 };
 
 const normalizeText = (value?: string | null) => (value ?? "").toLowerCase().trim();

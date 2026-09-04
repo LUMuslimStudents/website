@@ -30,10 +30,11 @@ const formatDateOnly = (value?: string | null) => {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('sv-SE');
 };
 
-const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+// .webp first — new uploads are converted to WebP; jpg/png remain for legacy folders.
+const POSTER_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "gif"];
 
 const toDateTime = (date: string, time: string) => {
   const parsed = new Date(`${date}T${time}`);

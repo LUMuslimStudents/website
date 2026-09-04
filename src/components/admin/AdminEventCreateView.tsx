@@ -3,7 +3,7 @@ import type { ComponentProps, InputHTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format, parse, isValid } from "date-fns";
-import { ArrowLeft, Clock3, HelpCircle, Eye, Code, MapPin, Clock, Calendar, Users, User, GraduationCap, Mail, VenusAndMars, Plus, Type, CircleDot, ListChecks } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Clock3, HelpCircle, Eye, Code, MapPin, Clock, Calendar, Users, User, GraduationCap, Mail, VenusAndMars, Plus, Type, CircleDot, ListChecks } from "lucide-react";
 import MDEditor, { type ICommand } from "@uiw/react-md-editor";
 import DatePicker from "react-datepicker";
 import { useTheme } from "next-themes";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { EventMarkdown } from "@/components/events/EventMarkdown";
 import { PosterUploader } from "@/components/admin/PosterUploader";
 import { apiRequest } from "@/lib/api";
+import { toEventSlug, toTermSlug } from "@/lib/utils";
 import {
   DynamicQuestionCard,
   type DynamicFormFieldDraft,
@@ -37,9 +38,10 @@ import InputMask from "react-input-mask";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "react-datepicker/dist/react-datepicker.css";
 import "./AdminEventCreateView.css";
-import type { AdminEventDetail, AdminEventFormField } from "./types";
+import type { AdminEventDetail, AdminEventFormField, AdminEventSummary } from "./types";
 
-const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+// .webp first — new uploads are converted to WebP; jpg/png remain for legacy folders.
+const POSTER_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "gif"];
 
 type PublishMode = "draft" | "publish";
 
@@ -260,6 +262,10 @@ export const AdminEventCreateView = () => {
   const [mounted, setMounted] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(Boolean(eventId));
   const [existingPosterCandidates, setExistingPosterCandidates] = useState<string[]>([]);
+  // Existing events + the term this form creates/edits in — used to warn when
+  // the chosen title already exists in the same term.
+  const [existingEvents, setExistingEvents] = useState<AdminEventSummary[]>([]);
+  const [formTerm, setFormTerm] = useState<string | null>(null);
   const { resolvedTheme } = useTheme();
   const { user } = useAuth();
   const isEditing = typeof eventId === "string" && !Number.isNaN(Number(eventId));
@@ -279,6 +285,7 @@ export const AdminEventCreateView = () => {
       setForm(INITIAL_FORM);
       setDynamicFormFields([]);
       setImages([]);
+      setFormTerm(null);
       return;
     }
 
@@ -309,6 +316,7 @@ export const AdminEventCreateView = () => {
         setDynamicFormFields((data.form_fields || []).map(mapEventFieldToDraft));
         setImages([]);
         setExistingPosterCandidates(buildPosterCandidateUrls(data.poster));
+        setFormTerm(data.term ?? null);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Failed to load event';
         toast.error(message);
@@ -326,6 +334,31 @@ export const AdminEventCreateView = () => {
       isMounted = false;
     };
   }, [isEditing, navigate, parsedEventId]);
+
+  // Preload the existing event list (and, when creating, the term the event
+  // will be filed under) so the editor can flag same-term duplicate titles.
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchContext = async () => {
+      try {
+        const [eventsData, currentOptions] = await Promise.all([
+          apiRequest('/admin/events', 'GET'),
+          apiRequest('/options/current', 'GET').catch(() => null),
+        ]);
+        if (!isMounted) return;
+        if (Array.isArray(eventsData)) setExistingEvents(eventsData);
+        if (!isEditing && currentOptions?.term) setFormTerm(currentOptions.term);
+      } catch {
+        // Non-fatal — the duplicate-title warning just stays hidden.
+      }
+    };
+
+    void fetchContext();
+    return () => {
+      isMounted = false;
+    };
+  }, [isEditing]);
 
   const colorMode = mounted && resolvedTheme === "dark" ? "dark" : "light";
 
@@ -361,6 +394,26 @@ export const AdminEventCreateView = () => {
   const dynamicFieldsInvalid = useMemo(() => {
     return validateDynamicFormFields(dynamicFormFields) !== null;
   }, [dynamicFormFields]);
+
+  /**
+   * Another event (not this one) in the same term whose title slug matches
+   * the current title. Slug comparison mirrors how routes/folders are built,
+   * so "Cupcake decorating" and "Cupcake decorating " are caught too.
+   */
+  const duplicateTitleEvent = useMemo(() => {
+    const term = formTerm;
+    if (!term) return null;
+    const candidateSlug = toEventSlug(form.title);
+    if (!candidateSlug) return null;
+    return (
+      existingEvents.find(
+        (event) =>
+          event.id !== parsedEventId &&
+          event.term === term &&
+          toEventSlug(event.title) === candidateSlug,
+      ) ?? null
+    );
+  }, [existingEvents, formTerm, form.title, parsedEventId]);
 
   const onInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
@@ -488,6 +541,13 @@ export const AdminEventCreateView = () => {
   const submit = async (submitMode: PublishMode) => {
     if (minimumRequiredMissing) {
       toast.error('Please complete all required fields.');
+      return;
+    }
+
+    if (duplicateTitleEvent) {
+      toast.error(
+        `Cannot save: another event named “${duplicateTitleEvent.title}” already exists in term ${duplicateTitleEvent.term}. Event names must be unique within a term.`,
+      );
       return;
     }
 
@@ -654,6 +714,27 @@ export const AdminEventCreateView = () => {
                     aria-label="Event title"
                   />
                 </div>
+
+                {duplicateTitleEvent && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2.5 rounded-xl border border-red-300/70 bg-red-50/90 px-3.5 py-3 text-sm text-red-900 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500 dark:text-red-400" aria-hidden="true" />
+                    <p>
+                      <span className="font-semibold">Saving is blocked.</span> Another event named{" "}
+                      <span className="font-semibold">“{duplicateTitleEvent.title}”</span> already
+                      exists in term{" "}
+                      <span className="font-semibold">{duplicateTitleEvent.term}</span> on{" "}
+                      {duplicateTitleEvent.date}. Same-name events in the same term would share the
+                      same public link ({" "}
+                      <span className="font-mono text-xs">
+                        /events/{toTermSlug(duplicateTitleEvent.term)}/{toEventSlug(form.title)}
+                      </span>
+                      ) and poster folder. Choose a different name to continue.
+                    </p>
+                  </div>
+                )}
 
                 {/* Location with Icon */}
                 <div className="hero-datepicker-shell flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
@@ -1143,7 +1224,13 @@ export const AdminEventCreateView = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                 <Clock3 className="h-3.5 w-3.5" />
-                {minimumRequiredMissing ? "Complete required fields to publish" : dynamicFieldsInvalid ? "Complete question fields to publish" : "Ready to publish"}
+                {duplicateTitleEvent
+                  ? "Rename the event — this name is already taken in this term"
+                  : minimumRequiredMissing
+                    ? "Complete required fields to publish"
+                    : dynamicFieldsInvalid
+                      ? "Complete question fields to publish"
+                      : "Ready to publish"}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -1151,14 +1238,14 @@ export const AdminEventCreateView = () => {
                   type="button"
                   variant="outline"
                   className="rounded-full transition-all duration-200 hover:bg-slate-50 hover:text-black dark:border-slate-700 dark:hover:bg-slate-900"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || duplicateTitleEvent !== null}
                   onClick={() => {
                     void submit('draft');
                   }}
                 >
                   {submittingMode === 'draft' ? (isEditing ? 'Saving changes...' : 'Saving draft...') : (isEditing ? 'Save draft' : 'Save draft')}
                 </Button>
-                <Button type="submit" className="rounded-full transition-all duration-200 hover:shadow-lg" disabled={isSubmitting || minimumRequiredMissing || dynamicFieldsInvalid}>
+                <Button type="submit" className="rounded-full transition-all duration-200 hover:shadow-lg" disabled={isSubmitting || minimumRequiredMissing || dynamicFieldsInvalid || duplicateTitleEvent !== null}>
                   {submittingMode === 'publish' ? (isEditing ? 'Publishing changes...' : 'Publishing...') : (isEditing ? 'Publish changes' : 'Publish event')}
                 </Button>
               </div>

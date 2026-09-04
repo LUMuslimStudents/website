@@ -53,13 +53,14 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/events" element={<Events />} />
+                  <Route path="/events/:term/:eventSlug" element={<Events />} />
                   <Route path="/events/:eventSlug" element={<Events />} />
                   <Route path="/membership" element={<Membership />} />
                   <Route path="/membership/checkout" element={<MembershipCheckout />} />
                   <Route path="/payment-success" element={<PaymentSuccess />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/mission" element={<Mission />} />
-                  <Route path="/by-laws" element={<Governance />} />
+                  <Route path="/governance" element={<Governance />} />
                   <Route path="/resources/halal-map" element={<HalalMap />} />
                   <Route path="/resources/prayer-times" element={<AdhanSchedule />} />
                   <Route path="/resources/prayer-rooms" element={<PrayerRooms />} />

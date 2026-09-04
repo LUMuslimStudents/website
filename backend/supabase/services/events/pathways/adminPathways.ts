@@ -314,9 +314,6 @@ export const createEvent = async (input: CreateEventInput) => {
     .single();
 
   if (error) {
-    if (error.code === '23505') {
-      throw new Error('An event with this title already exists.');
-    }
     throw new Error(error.message);
   }
 
@@ -404,9 +401,6 @@ export const updateEvent = async (eventId: number, input: UpdateEventInput) => {
       .eq('id', eventId);
 
     if (error) {
-      if (error.code === '23505') {
-        throw new Error('An event with this title already exists.');
-      }
       throw new Error(error.message);
     }
   }

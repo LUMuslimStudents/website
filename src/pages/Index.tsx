@@ -83,8 +83,7 @@ const Index = () => {
         <UpcomingEvents />
         <WhyJoin />
         <Pillars />
-        <Sponsors />
-        <Resources />
+a        <Resources />
         {/* <Gallery /> */}
         <Testimonials />
         <DonateSection />

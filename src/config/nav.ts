@@ -90,7 +90,7 @@ export const navCategories: NavCategory[] = [
           },
           {
             label: "By-laws & governance",
-            to: "/by-laws",
+            to: "/governance",
             icon: FileText,
             description:
               "Read our statutes, meeting protocols, and annual general meeting documents.",

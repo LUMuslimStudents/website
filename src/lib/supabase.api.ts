@@ -83,6 +83,18 @@ const toEventSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '') || 'event';
 
+/**
+ * Storage slug for an event's poster folder in the `events` bucket:
+ * "{term}-{event-slug}". Events are namespaced by term so poster folders
+ * never collide across terms (e.g. "ht26-summer-event"). Falls back to the
+ * title-only slug when no term is known (legacy events).
+ */
+const toEventStorageSlug = (term: string | null | undefined, title: string) => {
+  const termPart = toEventSlug(term ?? '');
+  const titlePart = toEventSlug(title || 'event');
+  return termPart ? `${termPart}-${titlePart}` : titlePart;
+};
+
 const parseFormDataPayload = async (
   formData: FormData,
 ): Promise<{ payload: Record<string, any>; files: File[] }> => {
@@ -108,16 +120,87 @@ const parseFormDataPayload = async (
   return { payload, files };
 };
 
+/**
+ * Re-encodes a poster image to WebP (and caps its longest edge) before it is
+ * uploaded, to keep bucket storage usage small. Returns null when the file
+ * can't be decoded/encoded (e.g. unsupported format) — callers then fall back
+ * to uploading the original bytes under their original extension.
+ */
+const POSTER_WEBP_QUALITY = 0.82;
+/** Longest edge (px) that uploaded posters are scaled down to. */
+const POSTER_MAX_DIMENSION = 2000;
+
+const convertImageToWebP = (file: File): Promise<Blob | null> =>
+  new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          POSTER_MAX_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight),
+        );
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+          cleanup();
+          resolve(null);
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            cleanup();
+            resolve(blob);
+          },
+          'image/webp',
+          POSTER_WEBP_QUALITY,
+        );
+      } catch {
+        cleanup();
+        resolve(null);
+      }
+    };
+
+    image.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    image.src = objectUrl;
+  });
+
 const uploadPosterToStorage = async (slug: string, files: File[]): Promise<string | null> => {
   if (files.length === 0) return null;
 
   for (let i = 0; i < files.length; i++) {
-    const ext = files[i].name.split('.').pop()?.toLowerCase() || 'jpg';
-    const path = `${slug}/${i}.${ext}`;
+    // Convert every poster to WebP first — readers probe ".webp" before the
+    // legacy formats, so new folders only ever contain one file per slide.
+    // If encoding fails or doesn't actually save space, upload the original.
+    const original = files[i];
+    const converted = await convertImageToWebP(original);
+    const useConverted = converted !== null && converted.size < original.size;
+
+    const path = useConverted
+      ? `${slug}/${i}.webp`
+      : `${slug}/${i}.${original.name.split('.').pop()?.toLowerCase() || 'jpg'}`;
 
     const { error } = await supabase.storage
       .from('events')
-      .upload(path, files[i], { upsert: true });
+      .upload(path, useConverted ? converted : original, {
+        upsert: true,
+        ...(useConverted ? { contentType: 'image/webp' } : {}),
+      });
 
     if (error) throw new Error(`Image upload failed: ${error.message}`);
   }
@@ -257,7 +340,11 @@ export const SupabaseRequest = async (
   if (endpoint === '/admin/create-event' && method === 'POST') {
     if (body instanceof FormData) {
       const { payload, files } = await parseFormDataPayload(body);
-      const slug = toEventSlug(payload.title || 'event');
+      // New events always belong to the current term (the create pathway
+      // resolves the very same term server-side), so posters are stored
+      // under "{term}-{event-slug}" to keep folders unique across terms.
+      const currentOptions = await adminOptionsCurrentData();
+      const slug = toEventStorageSlug(currentOptions?.term, payload.title || 'event');
       const poster = await uploadPosterToStorage(slug, files);
       const result = await adminCreateEventData({ ...payload, poster: slug });
       return { ...result, event: { ...result.event, poster: resolvePosterUrl(poster) } };
@@ -275,9 +362,15 @@ export const SupabaseRequest = async (
     if (method === 'PATCH') {
       if (body instanceof FormData) {
         const { payload, files } = await parseFormDataPayload(body);
-        const poster = files.length > 0
-          ? await uploadPosterToStorage(toEventSlug(payload.title || 'event'), files)
-          : undefined;
+        let poster: string | undefined;
+        if (files.length > 0) {
+          // Use the event's own term (an event can be edited long after its
+          // term stopped being current) so its poster folder stays
+          // consistent with the term-scoped naming scheme.
+          const existing = await adminEventDetailData(eventId);
+          const slug = toEventStorageSlug(existing?.term, payload.title || 'event');
+          poster = await uploadPosterToStorage(slug, files);
+        }
         return adminUpdateEventData(eventId, { ...payload, ...(poster ? { poster } : {}) });
       }
       return adminUpdateEventData(eventId, body);

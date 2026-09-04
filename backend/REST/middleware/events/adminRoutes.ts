@@ -112,15 +112,6 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
             console.log("POST: /admin/create-event");
         } catch (error) {
             console.error('Create event error:', error);
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                const target = Array.isArray(error.meta?.target)
-                    ? (error.meta.target as string[])
-                    : [];
-
-                if (target.includes('title')) {
-                    return res.status(409).json({ error: 'An event with this title already exists.' });
-                }
-            }
             res.status(500).json({ error: 'Internal server error' });
         }
     });
@@ -264,15 +255,6 @@ export function setupEventAdminRoutes(app: Express, prisma: PrismaClient) {
         } catch (error) {
             console.error('Update event error:', error);
             removeUploadedFiles(Array.isArray(req.files) ? (req.files as Express.Multer.File[]) : []);
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                const target = Array.isArray(error.meta?.target)
-                    ? (error.meta.target as string[])
-                    : [];
-
-                if (target.includes('title')) {
-                    return res.status(409).json({ error: 'An event with this title already exists.' });
-                }
-            }
             res.status(500).json({ error: 'Internal server error' });
         }
     });

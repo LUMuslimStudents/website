@@ -7,10 +7,10 @@ import { useLocation } from "react-router-dom";
  * buttons, and programmatic navigate() calls alike.
  *
  * Exceptions:
- * - In-page transitions within the Events page (/events → /events/:slug →
- *   /events/:otherSlug). Events owns its own scroll there (card-anchored
- *   expand animation + deep links) and a jump would break it. As a side
- *   effect, browser-back inside events also keeps its position.
+ * - In-page transitions within the Events page (/events → /events/:term/:slug
+ *   → /events/:term/:otherSlug). Events owns its own scroll there
+ *   (card-anchored expand animation + deep links) and a jump would break it.
+ *   As a side effect, browser-back inside events also keeps its position.
  * - The very first run: lets the browser's native reload scroll-restoration
  *   work instead of force-jumping to the top.
  */

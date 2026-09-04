@@ -5,10 +5,11 @@ import { ArrowRight, CalendarDays, Clock, MapPin } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { OrnamentDivider } from "@/components/IslamicPattern";
 import { apiRequest } from "@/lib/api";
-import { toEventSlug } from "@/lib/utils";
+import { toEventRoute } from "@/lib/utils";
 
 type EventSummary = {
   id: number;
+  term: string;
   title: string;
   date: string; // YYYY-MM-DD
   start_time?: string | null; // HH:MM
@@ -90,7 +91,7 @@ export const UpcomingEvents = () => {
             {events!.map((event, index) => (
               <Reveal key={event.id} delay={index * 100} className="h-full">
                 <Link
-                  to={`/events/${toEventSlug(event.title)}`}
+                  to={toEventRoute(event.term, event.title)}
                   className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-sm transition-all duration-300 ease-organic hover:-translate-y-1.5 hover:shadow-lift"
                 >
                   {/* <div className="relative aspect-[16/10] overflow-hidden">

@@ -5,10 +5,11 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { OrnamentDivider } from "@/components/IslamicPattern";
 import { apiRequest } from "@/lib/api";
-import { toEventSlug } from "@/lib/utils";
+import { toEventRoute } from "@/lib/utils";
 
 type GalleryEvent = {
   id: number;
+  term: string;
   title: string;
   poster?: string | null;
 };
@@ -70,7 +71,7 @@ export const Gallery = () => {
             {events!.map((event, index) => (
               <Reveal key={event.id} delay={index * 60}>
                 <Link
-                  to={`/events/${toEventSlug(event.title)}`}
+                  to={toEventRoute(event.term, event.title)}
                   className="group relative block aspect-[4/3] overflow-hidden rounded-2xl border border-border/70 shadow-soft transition-all duration-300 ease-organic hover:-translate-y-1 hover:shadow-lift"
                 >
                   <img

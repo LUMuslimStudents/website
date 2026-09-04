@@ -16,7 +16,7 @@ const formatDateTime = (value?: string | null) => {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
 };
 
 const renderBoolean = (value: boolean) => (value ? 'Yes' : 'No');

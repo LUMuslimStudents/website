@@ -34,7 +34,7 @@ model users {
 model events_info {
   id              Int          @id @default(autoincrement())
   term            String       @db.VarChar(4)
-  title           String       @unique(map: "title") @db.VarChar(50)
+  title           String       @db.VarChar(50)
   date            DateTime     @db.Date
   start_time      DateTime     @db.Time(0)
   end_time        DateTime     @db.Time(0)

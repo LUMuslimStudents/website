@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useNavigate, useParams } from "react-router-dom";
 import { AuroraBackground } from "@/components/AuroraBackground";
+import { toEventRoute, toEventSlug, toTermSlug } from "@/lib/utils";
 
 const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
 
@@ -37,15 +38,6 @@ const REGISTERED_EVENTS_PERSIST_KEY = "registered_event_ids";
 // posters (e.g. Instagram's new 4:5) are shown fully — not cropped — over a
 // soft blurred copy of the same image, so the empty area stays visually
 // pleasing and the cards keep an identical, clean shape.
-
-const toEventSlug = (title: string) => title
-  .normalize("NFKD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .toLowerCase()
-  .trim()
-  .replace(/[^a-z0-9\s-]/g, "")
-  .replace(/\s+/g, "-")
-  .replace(/-+/g, "-");
 
 const formatAddress = (addr: String) => {
   const query = "https://www.google.com/maps/search/?api=1&query=" + addr.split(/[\s,]+/).join('+')
@@ -161,7 +153,8 @@ const isMemberExclusive = (event: events_info) => {
   return event.invitation === 'members';
 };
 
-const POSTER_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+// .webp first — new uploads are converted to WebP; jpg/png remain for legacy folders.
+const POSTER_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "gif"];
 const POSTER_MAX_FILES = 10;
 
 const loadImage = (src: string) =>
@@ -367,17 +360,28 @@ const EventPosterFrame = ({
 };
 
 /**
- * Poster for an event card. Falls back to the gradient placeholder when
- * the image is missing or fails to load.
+ * Poster for an event card. Uploads are stored as WebP, but legacy folders
+ * may still contain png/jpg files, so the card probes each known extension
+ * (webp first) and falls back to the gradient placeholder when nothing loads.
  */
-const EventPoster = ({ event }: { event: ExpandedEvent }) => (
-  <EventPosterFrame
-    src={`${event.poster}/0.png`}
-    alt={`${event.title} poster`}
-    className="rounded-md"
-    fallback={<EventPosterPlaceholder title={event.title} />}
-  />
-);
+const EventPoster = ({ event }: { event: ExpandedEvent }) => {
+  const [extIndex, setExtIndex] = useState(0);
+  const ext = POSTER_EXTENSIONS[Math.min(extIndex, POSTER_EXTENSIONS.length - 1)];
+
+  return (
+    <EventPosterFrame
+      src={`${event.poster}/0.${ext}`}
+      alt={`${event.title} poster`}
+      className="rounded-md"
+      onError={() =>
+        setExtIndex((current) =>
+          current < POSTER_EXTENSIONS.length - 1 ? current + 1 : current,
+        )
+      }
+      fallback={<EventPosterPlaceholder title={event.title} />}
+    />
+  );
+};
 
 /**
  * Shown when the events feed has finished loading but no events are
@@ -399,7 +403,10 @@ const NoEventsPlaceholder = () => (
 
 const Events = () => {
   const navigate = useNavigate();
-  const { eventSlug } = useParams<{ eventSlug?: string }>();
+  // Detail URLs are term-scoped: /events/{term}/{event-slug}. The single
+  // `eventSlug` fallback matches legacy /events/:eventSlug links.
+  const { term, eventSlug } = useParams<{ term?: string; eventSlug?: string }>();
+  const normalizedRouteTerm = term ? term.toLowerCase().trim() : null;
   const normalizedRouteEventSlug = eventSlug ? eventSlug.toLowerCase().trim() : null;
 
   // const categories = ["All", "Social", "Educational", "Religious", "Community"];
@@ -674,12 +681,31 @@ const Events = () => {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (!normalizedRouteEventSlug) {
+    // Plain listing (/events) — nothing to resolve from the URL.
+    if (!normalizedRouteTerm && !normalizedRouteEventSlug) {
       invalidRouteEventRef.current = null;
       return;
     }
 
-    const targetEvent = events.find((event) => toEventSlug(event.title) === normalizedRouteEventSlug);
+    // Legacy one-segment URLs (/events/:eventSlug) predate term-scoped
+    // routes and can no longer be resolved to an event.
+    if (!normalizedRouteTerm || !normalizedRouteEventSlug) {
+      if (hasFetchedEvents) {
+        const key = normalizedRouteEventSlug ?? normalizedRouteTerm ?? '';
+        if (invalidRouteEventRef.current !== key) {
+          toast.error('This event is no longer available.');
+          invalidRouteEventRef.current = key;
+        }
+        navigate('/events', { replace: true });
+      }
+      return;
+    }
+
+    const targetEvent = events.find(
+      (event) =>
+        toTermSlug(event.term) === normalizedRouteTerm &&
+        toEventSlug(event.title) === normalizedRouteEventSlug,
+    );
 
     if (targetEvent) {
       invalidRouteEventRef.current = null;
@@ -692,13 +718,14 @@ const Events = () => {
     }
 
     if (hasFetchedEvents) {
-      if (invalidRouteEventRef.current !== normalizedRouteEventSlug) {
+      const key = `${normalizedRouteTerm}/${normalizedRouteEventSlug}`;
+      if (invalidRouteEventRef.current !== key) {
         toast.error('This event is no longer available.');
-        invalidRouteEventRef.current = normalizedRouteEventSlug;
+        invalidRouteEventRef.current = key;
       }
       navigate('/events', { replace: true });
     }
-  }, [normalizedRouteEventSlug, events, hasFetchedEvents, expandedEventId, navigate, openExpandedEvent, scheduleExpandedEventDetails]);
+  }, [normalizedRouteTerm, normalizedRouteEventSlug, events, hasFetchedEvents, expandedEventId, navigate, openExpandedEvent, scheduleExpandedEventDetails]);
 
   const handleCardClick = (event: events_info, cardElement: HTMLDivElement) => {
     const listEvent = events.find((currentEvent) => currentEvent.id === event.id);
@@ -718,7 +745,7 @@ const Events = () => {
     }
     pendingNavigateTimerRef.current = window.setTimeout(() => {
       pendingNavigateTimerRef.current = null;
-      navigate(`/events/${toEventSlug(event.title)}`);
+      navigate(toEventRoute(event.term, event.title));
     }, 650);
   };
 
@@ -802,7 +829,7 @@ const Events = () => {
       return;
     }
 
-    setExpandedEventPosters([`${basePath}/0.png`]);
+    setExpandedEventPosters([`${basePath}/0.${POSTER_EXTENSIONS[0]}`]);
 
     const fetchPosters = async () => {
       try {
@@ -813,7 +840,7 @@ const Events = () => {
         }
       } catch (error: any) {
         if (!isCancelled) {
-          setExpandedEventPosters([`${basePath}/0.png`]);
+          setExpandedEventPosters([`${basePath}/0.${POSTER_EXTENSIONS[0]}`]);
         }
       }
     };
@@ -971,7 +998,7 @@ const Events = () => {
         shareTitle={expandedEvent?.title ?? "LUMS Event"}
         shareText={expandedEvent ? `Join me at ${expandedEvent.title}` : "Check out this event"}
         shareUrl={expandedEvent
-          ? `${window.location.origin}/events/${toEventSlug(expandedEvent.title)}`
+          ? `${window.location.origin}${toEventRoute(expandedEvent.term, expandedEvent.title)}`
           : undefined}
         footer={registrationFooterState && expandedEvent && isEventOpenForSignup(expandedEvent) ? (
           <div className="expanded-card-footer flex items-center justify-between gap-4">
