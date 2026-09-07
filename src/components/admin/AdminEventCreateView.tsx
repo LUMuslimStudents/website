@@ -575,6 +575,9 @@ export const AdminEventCreateView = () => {
     const formData = new FormData();
 
     formData.append('title', form.title);
+    // The term the event will be filed under (current term when creating, the
+    // event's own term when editing) — drives the term-scoped poster slug.
+    formData.append('term', formTerm ?? '');
     formData.append('date', form.date);
     formData.append('start_time', form.start_time);
     formData.append('end_time', form.end_time);

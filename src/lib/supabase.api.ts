@@ -189,6 +189,11 @@ const uploadPosterToStorage = async (slug: string, files: File[]): Promise<strin
     // If encoding fails or doesn't actually save space, upload the original.
     const original = files[i];
     const converted = await convertImageToWebP(original);
+    if (converted === null) {
+      // Surface silent fallbacks (e.g. browsers without WebP encoding) so a
+      // stray png/jpg in a new folder is never a surprise.
+      console.warn('Poster WebP conversion failed — uploading original file.', original.name);
+    }
     const useConverted = converted !== null && converted.size < original.size;
 
     const path = useConverted
@@ -340,11 +345,14 @@ export const SupabaseRequest = async (
   if (endpoint === '/admin/create-event' && method === 'POST') {
     if (body instanceof FormData) {
       const { payload, files } = await parseFormDataPayload(body);
-      // New events always belong to the current term (the create pathway
-      // resolves the very same term server-side), so posters are stored
-      // under "{term}-{event-slug}" to keep folders unique across terms.
-      const currentOptions = await adminOptionsCurrentData();
-      const slug = toEventStorageSlug(currentOptions?.term, payload.title || 'event');
+      // Poster folders are term-scoped ("{term}-{event-slug}"). New events
+      // belong to the current term — the form sends that term along, with a
+      // server-side lookup (same source the pathway uses) as a fallback.
+      const term =
+        typeof payload.term === 'string' && payload.term
+          ? payload.term
+          : ((await adminOptionsCurrentData())?.term ?? null);
+      const slug = toEventStorageSlug(term, payload.title || 'event');
       const poster = await uploadPosterToStorage(slug, files);
       const result = await adminCreateEventData({ ...payload, poster: slug });
       return { ...result, event: { ...result.event, poster: resolvePosterUrl(poster) } };
@@ -364,11 +372,16 @@ export const SupabaseRequest = async (
         const { payload, files } = await parseFormDataPayload(body);
         let poster: string | undefined;
         if (files.length > 0) {
-          // Use the event's own term (an event can be edited long after its
-          // term stopped being current) so its poster folder stays
-          // consistent with the term-scoped naming scheme.
-          const existing = await adminEventDetailData(eventId);
-          const slug = toEventStorageSlug(existing?.term, payload.title || 'event');
+          // Poster folders are term-scoped ("{term}-{event-slug}"). The form
+          // sends the event's own term along (an event can be edited long
+          // after its term stopped being current); fall back to a lookup.
+          let term: string | null =
+            typeof payload.term === 'string' && payload.term ? payload.term : null;
+          if (!term) {
+            const existing = await adminEventDetailData(eventId);
+            term = existing?.term ?? null;
+          }
+          const slug = toEventStorageSlug(term, payload.title || 'event');
           poster = await uploadPosterToStorage(slug, files);
         }
         return adminUpdateEventData(eventId, { ...payload, ...(poster ? { poster } : {}) });

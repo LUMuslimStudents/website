@@ -20,8 +20,22 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif";
+const ACCEPTED_IMAGE_TYPES =
+  "image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif";
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"];
 const DEFAULT_MAX_FILES = 10;
+
+/**
+ * True for files we can upload as posters. Checks the MIME type first, but
+ * some OSes report an empty type for known image extensions (especially
+ * webp) — in that case fall back to the file extension so drag & drop and
+ * click-to-browse never silently reject a valid poster.
+ */
+const isImageFile = (file: File) => {
+  if (file.type.startsWith("image/")) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_EXTENSIONS.includes(ext);
+};
 
 type PosterUploaderProps = {
   files: File[];
@@ -85,6 +99,11 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES, 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [existingPosterIndex, setExistingPosterIndex] = useState(0);
 
+  // Nested dragenter/leave counter: dragleave fires when moving between the
+  // preview square and the thumbnails; only clear the highlight on the last
+  // leave so it doesn't flicker.
+  const dragDepthRef = useRef(0);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fileIdsRef = useRef(new WeakMap<File, string>());
   const fileIdSeedRef = useRef(0);
@@ -137,7 +156,7 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES, 
   }, [existingPosterCandidates]);
 
   const appendFiles = (incoming: File[]) => {
-    const imageFiles = incoming.filter((file) => file.type.startsWith("image/"));
+    const imageFiles = incoming.filter(isImageFile);
 
     if (imageFiles.length === 0) {
       toast.error("Please upload image files only.");
@@ -165,23 +184,33 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES, 
     event.target.value = "";
   };
 
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+  const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    setIsDraggingOver(false);
-    appendFiles(Array.from(event.dataTransfer.files ?? []));
+    dragDepthRef.current += 1;
+    setIsDraggingOver(true);
   };
 
   const onDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    setIsDraggingOver(true);
   };
 
   const onDragLeave = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    dragDepthRef.current = Math.max(dragDepthRef.current - 1, 0);
+    if (dragDepthRef.current === 0) {
+      setIsDraggingOver(false);
+    }
+  };
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
     setIsDraggingOver(false);
+    appendFiles(Array.from(event.dataTransfer.files ?? []));
   };
 
   const removeAt = (index: number) => {
@@ -214,14 +243,15 @@ export const PosterUploader = ({ files, onChange, maxFiles = DEFAULT_MAX_FILES, 
   const activeExistingPoster = posterItems.length === 0 ? existingPosterCandidates[existingPosterIndex] : null;
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className={`flex h-full flex-col ${isDraggingOver ? "rounded-2xl ring-2 ring-blue-500 ring-offset-1" : ""}`}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <div
-        className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-200 via-slate-100 to-white transition-all duration-200 dark:border-slate-800 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950 ${
-          isDraggingOver ? "ring-2 ring-blue-500 ring-offset-1" : ""
-        }`}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
+        className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-200 via-slate-100 to-white transition-all duration-200 dark:border-slate-800 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
       >
         <button
           type="button"
