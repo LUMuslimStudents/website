@@ -9,6 +9,7 @@ import {
   corsHeaders,
   jsonResponse,
   randomSuffix,
+  reconcilePaymentRow,
   siteUrl,
   stripe,
   userClient,
@@ -181,7 +182,7 @@ serve(async (req) => {
 
       const { data: registration, error: regError } = await adminClient
         .from('event_registrations')
-        .select('id, event_id, user_id, quoted_price, payment_required, transaction:transactions(payment_status)')
+        .select('id, event_id, user_id, quoted_price, payment_required, transaction_id, transaction:transactions(id, payment_status, stripe_session_id)')
         .eq('id', registrationId)
         .maybeSingle();
       if (regError) throw regError;
@@ -204,6 +205,38 @@ serve(async (req) => {
         .eq('id', registration.event_id)
         .maybeSingle();
       if (eventError) throw eventError;
+
+      // A registration owns exactly ONE transaction (event_registrations.
+      // transaction_id is unique). Never mint a second transaction for the
+      // same registration: the first row the user pays must stay the
+      // authoritative one and the registration must keep pointing at it.
+      const existingTxnId = registration.transaction_id ?? null;
+      const existingSessionId =
+        registration.transaction?.stripe_session_id ?? null;
+
+      // If a Checkout Session is already linked, reuse it while it is still
+      // open so duplicate/resume calls stay idempotent and never overwrite
+      // the stripe_session_id the webhook needs to reconcile the real payment.
+      if (existingSessionId) {
+        try {
+          const existing = await stripe().checkout.sessions.retrieve(
+            existingSessionId,
+          );
+          if (existing.payment_status === 'paid') {
+            await reconcilePaymentRow(existing, 'paid');
+            return jsonResponse({ error: 'Registration is already paid' }, 409);
+          }
+          if (existing.status === 'open' && existing.url) {
+            return jsonResponse({ url: existing.url });
+          }
+        } catch (retrieveErr) {
+          // A stale/unreadable session is not fatal — fall through and mint a
+          // fresh session, reusing the existing transaction row.
+          console.warn('create-checkout: session re-check failed', retrieveErr);
+        }
+        // Expired/complete → fall through and mint a fresh session below,
+        // reusing the existing transaction row rather than inserting a new one.
+      }
 
       const session = await stripe().checkout.sessions.create({
         ...sessionBase,
@@ -229,25 +262,53 @@ serve(async (req) => {
         integration_identifier: `lums-event-${randomSuffix()}`,
       });
 
-      const txnId = crypto.randomUUID();
-      const { error: txnErr } = await adminClient
-        .from('transactions')
-        .insert({
-          id: txnId,
-          user_id: user.id,
-          source: 'event',
-          term: event?.term ?? '',
-          amount: registration.quoted_price,
-          currency: 'sek',
-          stripe_session_id: session.id,
-        });
-      if (txnErr) throw txnErr;
+      if (existingTxnId) {
+        // Guard against a concurrent webhook marking this row paid between our
+        // read above and this write (TOCTOU). Never downgrade a paid row.
+        const { error: txnErr } = await adminClient
+          .from('transactions')
+          .update({
+            amount: registration.quoted_price,
+            currency: 'sek',
+            stripe_session_id: session.id,
+            payment_status: 'unpaid',
+            paid_at: null,
+          })
+          .eq('id', existingTxnId)
+          .neq('payment_status', 'paid');
+        if (txnErr) throw txnErr;
 
-      const { error: updErr } = await adminClient
-        .from('event_registrations')
-        .update({ transaction_id: txnId })
-        .eq('id', registrationId);
-      if (updErr) throw updErr;
+        // If the webhook won the race, the row is already paid — don't send the
+        // user to a fresh checkout; tell them it's settled.
+        const { data: recheck } = await adminClient
+          .from('transactions')
+          .select('payment_status')
+          .eq('id', existingTxnId)
+          .maybeSingle();
+        if (recheck?.payment_status === 'paid') {
+          return jsonResponse({ error: 'Registration is already paid' }, 409);
+        }
+      } else {
+        const txnId = crypto.randomUUID();
+        const { error: txnErr } = await adminClient
+          .from('transactions')
+          .insert({
+            id: txnId,
+            user_id: user.id,
+            source: 'event',
+            term: event?.term ?? '',
+            amount: registration.quoted_price,
+            currency: 'sek',
+            stripe_session_id: session.id,
+          });
+        if (txnErr) throw txnErr;
+
+        const { error: updErr } = await adminClient
+          .from('event_registrations')
+          .update({ transaction_id: txnId })
+          .eq('id', registrationId);
+        if (updErr) throw updErr;
+      }
 
       return jsonResponse({ url: session.url });
     }

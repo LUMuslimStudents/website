@@ -471,6 +471,23 @@ const Events = () => {
       });
       window.location.assign(url);
     } catch (error: any) {
+      // The user may already be paid (webhook lag reconciled server-side) —
+      // flip the card to "Registered!" instead of showing an error.
+      if (error?.message === "Registration is already paid") {
+        const markPaid = (e: ExpandedEvent): ExpandedEvent => ({
+          ...e,
+          is_registered: true,
+          is_pending_payment: false,
+          pending_registration_id: null,
+        });
+        setEvents((prev) => prev.map((e) => (e.id === event.id ? markPaid(e) : e)));
+        setExpandedEvent((prev) => (prev && prev.id === event.id ? markPaid(prev) : prev));
+        const cached = eventCacheRef.current.get(event.id);
+        if (cached) eventCacheRef.current.set(event.id, markPaid(cached));
+        toast.success("Payment confirmed — you're registered!");
+        setIsResumingPayment(false);
+        return;
+      }
       toast.error(error?.message || "Could not open the payment page. Please try again.");
       setIsResumingPayment(false);
     }

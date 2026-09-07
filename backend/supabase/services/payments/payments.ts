@@ -64,13 +64,31 @@ export const getMembershipStatus = async (): Promise<MembershipStatus> => {
 
 // ── Checkout creation (redirects to Stripe-hosted Checkout) ─────────────────
 
+/**
+ * supabase.functions.invoke hides a function's JSON error body behind a generic
+ * message. Surface the real `{ error }` payload so the UI can show it (and, for
+ * the resume-payment flows, detect "already paid").
+ */
+const readFunctionErrorMessage = async (error: unknown): Promise<string> => {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = (await context.json()) as { error?: string };
+      if (body?.error) return body.error;
+    } catch {
+      // keep the generic message
+    }
+  }
+  return (error as { message?: string })?.message ?? 'Something went wrong';
+};
+
 export const createMembershipCheckout = async (
   plan: MembershipPlan,
 ): Promise<{ url: string }> => {
   const { data, error } = await supabase.functions.invoke('create-checkout', {
     body: { kind: 'membership', plan },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(await readFunctionErrorMessage(error));
   return data as { url: string };
 };
 
@@ -135,7 +153,7 @@ export const createEventCheckout = async (
   const { data, error } = await supabase.functions.invoke('create-checkout', {
     body: { kind: 'event', registration_id: registrationId },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(await readFunctionErrorMessage(error));
   return data as { url: string };
 };
 

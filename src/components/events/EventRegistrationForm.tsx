@@ -352,6 +352,15 @@ export const EventRegistrationForm = ({
       });
       window.location.assign(url);
     } catch (error: any) {
+      // Already paid (webhook lag reconciled server-side) — flip to registered.
+      if (error?.message === "Registration is already paid") {
+        setIsPendingPayment(false);
+        setIsAlreadyRegistered(true);
+        onRegistered(event.id, false);
+        toast.success("Payment confirmed — you're registered!");
+        setIsResumingPayment(false);
+        return;
+      }
       toast.error(error?.message || "Could not open the payment page. Please try again.");
       setIsResumingPayment(false);
     }
