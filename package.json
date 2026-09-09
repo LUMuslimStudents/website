@@ -79,7 +79,7 @@
     "react-input-mask": "^2.0.4",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.9",
-    "react-router-dom": "^6.30.4",
+    "react-router-dom": "^6.30.6",
     "recharts": "^2.15.4",
     "rehype-sanitize": "^6.0.0",
     "remark-breaks": "^4.0.0",
