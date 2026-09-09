@@ -132,6 +132,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Mutable mirror of recovery state so async auth callbacks always read the
   // latest value without being re-created.
   const recoveryRef = useRef(initialRecoveryFromUrl);
+  // Mutable mirror of the signed-in user. Event handlers are bound once and
+  // their closures only ever see the first render's state, so a ref is needed
+  // to compare what React believes against what session storage actually has
+  // (e.g. after a tab was restored from the bfcache or re-focused).
+  const userRef = useRef<AuthUser | null>(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   // ── Supabase path ─────────────────────────────────────────────────────────
 
@@ -157,11 +165,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const supabaseRefresh = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user && !data.user.is_anonymous) {
-      await fetchProfileAndSet(data.user);
-    } else {
-      setUser(null);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        // A definitive "no session" answer means logged out. Transient
+        // failures (offline, throttled) must not sign an existing user out —
+        // token auto-refresh retries in the background.
+        if (/Auth session missing/i.test(error.message)) {
+          setUser(null);
+        } else {
+          console.warn('[useAuth] Session check failed:', error.message);
+        }
+        setLoading(false);
+        return;
+      }
+      if (data.user && !data.user.is_anonymous) {
+        await fetchProfileAndSet(data.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.warn('[useAuth] Session check threw:', err);
       setLoading(false);
     }
   }, [fetchProfileAndSet]);
@@ -181,6 +206,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // used as a normal login (otherwise abandoning the reset = a free login).
       if (event === 'PASSWORD_RECOVERY') {
         recoveryRef.current = true;
+      }
+
+      // A genuine sign-in (email+password, OAuth, or a stored session that we
+      // reconcile) supersedes any earlier recovery session — the recovery flag
+      // must never poison a later login into a permanent "not logged in".
+      // (Recovery redirects emit PASSWORD_RECOVERY, never SIGNED_IN, so this
+      // can't turn an abandoned reset into a free login.)
+      if (event === 'SIGNED_IN') {
+        recoveryRef.current = false;
+        setRecoveryMode(false);
       }
 
       // Signing out ends any recovery session and clears the flag.
@@ -207,6 +242,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // Fast local restore: surface a stored session immediately with no network
+    // round-trip, so anonymous visitors never wait on an auth request.
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => applySession(null, session));
@@ -217,9 +254,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       applySession(event, session),
     );
 
+    // Tabs restored from the back-forward cache (or re-focused after auth
+    // changed in another tab/webview) can keep a stale "logged out" React
+    // state while a session already exists in storage. Re-read it locally and
+    // fix the UI only when it disagrees with storage — recovery sessions are
+    // left untouched so an abandoned reset can never become a free login.
+    const reconcileFromStorage = () => {
+      if (document.visibilityState !== 'visible') return;
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (cancelled || recoveryRef.current) return;
+        const storedUserId = session?.user?.id ?? null;
+        const currentUserId = userRef.current?.id ?? null;
+        if (storedUserId && storedUserId !== currentUserId) {
+          applySession('SIGNED_IN', session);
+        } else if (!storedUserId && currentUserId) {
+          // Signed out elsewhere while this tab was hidden.
+          setUser(null);
+          setLoading(false);
+        }
+      });
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) reconcileFromStorage();
+    };
+    const onFocus = () => reconcileFromStorage();
+    const onVisibilityChange = () => reconcileFromStorage();
+
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       cancelled = true;
       subscription.unsubscribe();
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [fetchProfileAndSet]);
 

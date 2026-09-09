@@ -23,7 +23,7 @@ const Login = () => {
   const location = useLocation() as {
     state?: { email?: string; signupSuccess?: boolean };
   };
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -81,7 +81,10 @@ const Login = () => {
     setLoading(true);
     try {
       await apiRequest('/auth/login', 'POST', values);
-      // Session is now managed by Supabase — useAuth will pick up the change
+      // Don't rely on the SIGNED_IN event alone — confirm the session with the
+      // server so the UI can never stay stuck on the login page after a
+      // successful sign-in (the redirect effect below reacts to `user`).
+      await refresh();
       toast.success('Logged in successfully!');
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Login failed');

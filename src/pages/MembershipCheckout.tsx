@@ -32,7 +32,7 @@ const CANCEL_CONFIRM_TEXT =
 const MembershipCheckout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
 
   const [plan, setPlan] = useState<'single_term' | 'two_term'>('single_term');
   const [status, setStatus] = useState<any>(null);
@@ -44,7 +44,11 @@ const MembershipCheckout = () => {
 
   // ── Verify the signup confirmation link (establishes the session) ────────
   useEffect(() => {
-    const tokenHash = new URLSearchParams(location.search).get('token_hash');
+    // The token can arrive in the query string or the URL hash depending on
+    // how the auth provider built the confirmation link — read both.
+    const query = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const tokenHash = query.get('token_hash') ?? fragment.get('token_hash');
     if (!tokenHash || user) return;
 
     let cancelled = false;
@@ -52,7 +56,9 @@ const MembershipCheckout = () => {
       setVerifyingToken(true);
       try {
         await apiRequest('/auth/verify-signup', 'POST', { token_hash: tokenHash });
-        // useAuth picks up the session via onAuthStateChange.
+        // Re-sync from the server instead of relying on the SIGNED_IN event
+        // alone — the payment gate must see the session immediately.
+        await refresh();
       } catch (error: any) {
         if (!cancelled) {
           setTokenError(error?.message || 'This confirmation link is invalid or expired.');
@@ -65,7 +71,7 @@ const MembershipCheckout = () => {
     return () => {
       cancelled = true;
     };
-  }, [location.search, user]);
+  }, [location.search, location.hash, user, refresh]);
 
   // ── Membership status + plan (from signup metadata, fallback single_term) ─
   useEffect(() => {

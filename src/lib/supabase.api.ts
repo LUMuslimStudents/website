@@ -354,7 +354,14 @@ export const SupabaseRequest = async (
           : ((await adminOptionsCurrentData())?.term ?? null);
       const slug = toEventStorageSlug(term, payload.title || 'event');
       const poster = await uploadPosterToStorage(slug, files);
-      const result = await adminCreateEventData({ ...payload, poster: slug });
+      // `payload` is a form-derived Record<string, any>; spreading it directly
+      // drops its keys type-wise (object literals don't keep index signatures),
+      // so cast it to the expected event input before adding the poster slug.
+      const eventInput = {
+        ...(payload as Parameters<typeof adminCreateEventData>[0]),
+        poster: slug,
+      };
+      const result = await adminCreateEventData(eventInput);
       return { ...result, event: { ...result.event, poster: resolvePosterUrl(poster) } };
     }
     return adminCreateEventData(body);
