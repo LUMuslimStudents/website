@@ -108,7 +108,7 @@ serve(async (req) => {
     let registrationQuery = adminClient
       .from('event_registrations')
       .select(
-        'id, event_id, user_id, status, quoted_price, payment_required, transaction:transactions(amount, payment_status, paid_at), submitted_at, updated_at, event:events_info(id, term, title, date), user:users(first_name, last_name, phone_number), profile:event_registration_profiles(first_name, last_name, email, phone_number)',
+        'id, event_id, user_id, status, quoted_price, payment_required, transaction:transactions(amount, payment_status, paid_at), submitted_at, updated_at, event:events_info(id, term, title, date), profile:event_registration_profiles(first_name, last_name, email, phone_number)',
       );
 
     if (term) {
@@ -123,6 +123,27 @@ serve(async (req) => {
       return jsonResponse({ error: registrationResult.error.message }, 500);
     }
 
+    // ── Member identity map (public.users) ──────────────────────────────────
+    // event_registrations.user_id and transactions.user_id reference
+    // auth.users now (so anonymous guest registrations need no public.users
+    // row), which breaks PostgREST's `user:users(...)` embed. Resolve member
+    // names manually from public.users instead.
+    const memberById = new Map<
+      string,
+      { first_name: string; last_name: string; phone_number: string }
+    >();
+    {
+      const { data: memberRows, error: memberErr } = await adminClient
+        .from('users')
+        .select('id, first_name, last_name, phone_number');
+      if (memberErr) {
+        return jsonResponse({ error: memberErr.message }, 500);
+      }
+      for (const m of memberRows ?? []) {
+        memberById.set(m.id, m);
+      }
+    }
+
     // ── Merge emails (auth.users) into both row sets ────────────────────────
     const memberships = (membershipResult.data ?? []).map((row) => ({
       ...row,
@@ -134,6 +155,7 @@ serve(async (req) => {
 
     const registrations = (registrationResult.data ?? []).map((row) => ({
       ...row,
+      user: memberById.get(row.user_id) ?? null,
       payment_status: row.transaction?.payment_status ?? 'unpaid',
       payment_completed_at: row.transaction?.paid_at ?? null,
       email: row.profile?.email ?? emailById.get(row.user_id) ?? null,
@@ -144,7 +166,7 @@ serve(async (req) => {
     // excluded; failed attempts are kept so the treasurer sees them.
     let txQuery = adminClient
       .from('transactions')
-      .select('*, user:users(first_name, last_name, phone_number)');
+      .select('*');
     if (term) {
       txQuery = txQuery.eq('term', term);
     }
@@ -185,6 +207,7 @@ serve(async (req) => {
         const source = t.source;
         const ev = eventCtx.get(t.id);
         const mp = membershipCtx.get(t.id);
+        const member = memberById.get(t.user_id);
 
         let payer_name = 'Unknown';
         let payer_email: string | null = null;
@@ -194,11 +217,11 @@ serve(async (req) => {
         let event_date: string | null = null;
 
         if (source === 'membership') {
-          payer_name = t.user
-            ? `${t.user.first_name} ${t.user.last_name}`.trim()
+          payer_name = member
+            ? `${member.first_name} ${member.last_name}`.trim()
             : 'Unknown member';
           payer_email = emailById.get(t.user_id) ?? null;
-          payer_phone = t.user?.phone_number ?? null;
+          payer_phone = member?.phone_number ?? null;
           plan = mp?.plan ?? null;
         } else if (source === 'event') {
           const profileName = ev?.profile
@@ -206,21 +229,21 @@ serve(async (req) => {
             : '';
           payer_name =
             profileName ||
-            (t.user
-              ? `${t.user.first_name} ${t.user.last_name}`.trim()
+            (member
+              ? `${member.first_name} ${member.last_name}`.trim()
               : 'Guest');
           payer_email = ev?.profile?.email ?? emailById.get(t.user_id) ?? null;
           payer_phone =
-            t.user?.phone_number ?? ev?.profile?.phone_number ?? null;
+            member?.phone_number ?? ev?.profile?.phone_number ?? null;
           event_title = ev?.event?.title ?? null;
           event_date = ev?.event?.date ?? null;
         } else {
           // donation (no source table yet)
-          payer_name = t.user
-            ? `${t.user.first_name} ${t.user.last_name}`.trim()
+          payer_name = member
+            ? `${member.first_name} ${member.last_name}`.trim()
             : 'Donor';
           payer_email = emailById.get(t.user_id) ?? null;
-          payer_phone = t.user?.phone_number ?? null;
+          payer_phone = member?.phone_number ?? null;
         }
 
         return {

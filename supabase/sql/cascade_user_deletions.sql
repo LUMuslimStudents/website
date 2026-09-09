@@ -9,11 +9,13 @@
 
 BEGIN;
 
+-- event_registrations and transactions reference auth.users directly so that
+-- anonymous guest registrations/payments don't require a public.users row.
 ALTER TABLE public.event_registrations
     DROP CONSTRAINT IF EXISTS event_registrations_user_id_fkey;
 ALTER TABLE public.event_registrations
     ADD CONSTRAINT event_registrations_user_id_fkey
-    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 ALTER TABLE public.membership_payments
     DROP CONSTRAINT IF EXISTS membership_payments_user_id_fkey;
@@ -25,6 +27,6 @@ ALTER TABLE public.transactions
     DROP CONSTRAINT IF EXISTS transactions_user_id_fkey;
 ALTER TABLE public.transactions
     ADD CONSTRAINT transactions_user_id_fkey
-    FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 COMMIT;

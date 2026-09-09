@@ -92,7 +92,8 @@ CREATE TABLE IF NOT EXISTS public.events_info (
 -- transactions (single ledger for all payments)
 CREATE TABLE IF NOT EXISTS public.transactions (
     id                UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           UUID                  REFERENCES public.users(id) ON DELETE CASCADE,
+    -- Guest event payments reference auth.users directly (no public.users row).
+    user_id           UUID                  REFERENCES auth.users(id) ON DELETE CASCADE,
     source            "TransactionSource"   NOT NULL,
     term              VARCHAR(4)            NOT NULL,
     amount            INT                   NOT NULL,
@@ -112,7 +113,9 @@ CREATE INDEX IF NOT EXISTS idx_transactions_source_term
 CREATE TABLE IF NOT EXISTS public.event_registrations (
     id                  UUID                      PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id            INT                       NOT NULL REFERENCES public.events_info(id) ON DELETE CASCADE,
-    user_id             UUID                      REFERENCES public.users(id) ON DELETE CASCADE,
+    -- Anonymous guest registrations reference auth.users directly; they do
+    -- NOT get a public.users row (see handle_new_user below).
+    user_id             UUID                      REFERENCES auth.users(id) ON DELETE CASCADE,
     status              "EventRegistrationStatus" NOT NULL DEFAULT 'pending',
     invitation_snapshot "Invitation"              NOT NULL,
     siblings_snapshot   "Siblings"                NOT NULL,
@@ -331,27 +334,56 @@ CREATE TRIGGER trg_event_form_fields_updated_at
 -- ── Trigger: auto-create public.users on new auth.users ─────────────────────
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO public.users (id, first_name, last_name, phone_number, role, gender, study_program, term, created_at)
+  -- Anonymous users only exist for guest event registrations and never get a
+  -- public profile row.
+  IF NEW.is_anonymous IS TRUE THEN
+    RETURN NEW;
+  END IF;
+
+  -- Do not create the profile until the email is confirmed. This prevents an
+  -- unconfirmed signup (e.g. a mistyped email) from reserving the UNIQUE
+  -- phone_number and blocking a corrected retry.
+  IF NEW.email_confirmed_at IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.users (
+    id, first_name, last_name, phone_number, role, gender, study_program, term, created_at
+  )
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'phone_number', ''),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'first_name', ''), ''),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'last_name', ''), ''),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'phone_number', ''), ''),
     'user',
     COALESCE((NEW.raw_user_meta_data->>'gender')::public."Gender", 'male'),
-    COALESCE(NEW.raw_user_meta_data->>'study_program', ''),
-    COALESCE(NEW.raw_user_meta_data->>'term', ''),
-    NOW()
-  );
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'study_program', ''), ''),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'term', ''), ''),
+    COALESCE(NEW.created_at, now())
+  )
+  ON CONFLICT (id) DO NOTHING;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Fires when the user confirms their email (email_confirmed_at NULL → set),
+-- creating the public.users row at that point instead of at signup time.
+DROP TRIGGER IF EXISTS on_auth_user_confirmed ON auth.users;
+CREATE TRIGGER on_auth_user_confirmed
+  AFTER UPDATE OF email_confirmed_at ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
