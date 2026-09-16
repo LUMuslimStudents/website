@@ -41,7 +41,7 @@ serve(async (req) => {
     const successUrl = `${siteUrl()}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
     const sessionBase = {
       mode: 'payment' as const,
-      customer_email: user?.email ?? undefined,
+      customer_email: user?.email || undefined,
       success_url: successUrl,
     };
 
@@ -182,7 +182,7 @@ serve(async (req) => {
 
       const { data: registration, error: regError } = await adminClient
         .from('event_registrations')
-        .select('id, event_id, user_id, quoted_price, payment_required, transaction_id, transaction:transactions(id, payment_status, stripe_session_id)')
+        .select('id, event_id, user_id, quoted_price, payment_required, transaction_id, transaction:transactions(id, payment_status, stripe_session_id), profile:event_registration_profiles(email)')
         .eq('id', registrationId)
         .maybeSingle();
       if (regError) throw regError;
@@ -240,6 +240,7 @@ serve(async (req) => {
 
       const session = await stripe().checkout.sessions.create({
         ...sessionBase,
+        customer_email: registration.profile?.email || user?.email || undefined,
         line_items: [
           {
             quantity: 1,
