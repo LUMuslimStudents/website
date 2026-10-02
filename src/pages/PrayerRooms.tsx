@@ -18,7 +18,7 @@ import {
   Building2,
   DoorOpen,
   ExternalLink,
-  Mail,
+  MessageCircleQuestionMark,
   MapPin,
   Video,
 } from "lucide-react";
@@ -35,9 +35,10 @@ type PrayerRoom = {
   /** Extra note next to the room badge, e.g. "Hus H" or "Våning 2" */
   roomNote?: string;
   /** Street address — also used to build the Google Maps directions link */
-  address: string;
+  address?: string;
   /** Campus shown on the card */
   campus: "Lund" | "Helsingborg";
+  note?: string;
   /**
    * Optional walkthrough video. Paste a YouTube (or other) link here to show
    * a "Watch how to get there" button on the card, e.g.
@@ -53,7 +54,7 @@ const PRAYER_ROOMS: PrayerRoom[] = [
     room: "EC2:141",
     address: "Tycho Brahes väg 1, Lund",
     campus: "Lund",
-    videoUrl: "https://youtube.com/shorts/0qPUto11ITA?si=ZHhhX2NfCuRfQew-"
+    videoUrl: "https://youtube.com/shorts/0qPUto11ITA"
   },
   {
     name: "Juridicum",
@@ -62,7 +63,7 @@ const PRAYER_ROOMS: PrayerRoom[] = [
     roomNote: "2nd Floor",
     address: "Lilla Gråbrödersgatan 3C, Lund",
     campus: "Lund",
-    // videoUrl: ""
+    videoUrl: "https://youtube.com/shorts/uL36S34JROc"
   },
   {
     // name: "Språk- och litteraturcentrum",
@@ -72,7 +73,7 @@ const PRAYER_ROOMS: PrayerRoom[] = [
     roomNote: "Basement in Absalon",
     address: "Helgonabacken 12, Lund",
     campus: "Lund",
-    videoUrl: "https://youtube.com/shorts/qKKtLfVSSOU?si=x53L0VyXBlf9ptEy"
+    videoUrl: "https://youtube.com/shorts/qKKtLfVSSOU"
   },
   {
     name: "Biomedical Center (BMC)",
@@ -81,6 +82,7 @@ const PRAYER_ROOMS: PrayerRoom[] = [
     roomNote: "Hus H",
     address: "Sölvegatan 19, Lund",
     campus: "Lund",
+    videoUrl: "https://youtube.com/shorts/ZyFBZpdO96A",
   },
   // {
   //   name: "Universitetssjukhuset",
@@ -170,16 +172,18 @@ const PrayerRoomCard = ({ room }: { room: PrayerRoom }) => {
         )}
       </div>
 
-      <a
-        href={directionsUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground"
-      >
-        <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
-        {room.address}
-        <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-      </a>
+      {room.address && (
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground"
+        >
+          <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
+          {room.address}
+          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+        </a>
+      )}
 
       {room.videoUrl && (
         <>
@@ -272,26 +276,39 @@ const PrayerRooms = () => {
             ))}
 
             {/* Fill-in CTA card so the grid always ends on a full row */}
-            {/* <Reveal
+            <Reveal
               delay={PRAYER_ROOMS.length * 80}
               className="h-full"
             >
-              <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-card/40 p-6 text-center">
-                <p className="text-sm font-medium">
-                  Can&apos;t find your faculty?
+              <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-card/40 p-6 pb-3 text-center">
+                <p className="text-sm font-medium mb-3">
+                  Looking for a room to pray at LTH?
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Let us know and we&apos;ll add it to the list.
+                <p className="mt-1 text-sm text-muted-foreground text-left">
+                  LTH, at the moment, provides no rooms for reflection like the &nbsp;
+                  <a
+                    className="text-primary hover:underline" 
+                    href="https://www.lunduniversity.lu.se/current-students/student-services-and-support/spaces-study-or-meditate/rooms-reflection-and-contemplation"
+                  >
+                  other faculties at LU
+                  </a> despite our many requests.
+                  <br/>
+                  If you would like to see a change, 
+                  please fill out this <strong>needs analysis</strong> survey conducted by the
+                  student union "Teknologkåren vid LTH". 
+                  <br/>
+                  <br/>
+                  <strong>P.S.</strong> You must be signed in to your school account to be able to answer!
                 </p>
                 <a
-                  href="mailto:muslimskastudenterlu@gmail.com"
-                  className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-4 py-2 text-sm font-medium transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSfwAXzPpHhNQ7ovHpIoP5EO4Ve0S8AhE1tyZW-R2cZ4zJltkg/viewform"
+                  className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-4 py-2 text-sm font-medium transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                 >
-                  <Mail className="h-4 w-4" />
-                  Send us an email
+                  <MessageCircleQuestionMark className="h-4 w-4" />
+                  Voice your opinion
                 </a>
               </div>
-            </Reveal> */}
+            </Reveal>
           </div>
 
           <Reveal delay={150}>
