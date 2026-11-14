@@ -213,6 +213,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_membership_payments_transaction
 CREATE INDEX IF NOT EXISTS idx_membership_payments_user_term
     ON public.membership_payments (user_id, term);
 
+-- social_stats — follower counts synced daily by the sync-social-stats function
+CREATE TABLE IF NOT EXISTS public.social_stats (
+    platform       TEXT        PRIMARY KEY,
+    follower_count INTEGER     NOT NULL CHECK (follower_count >= 0),
+    handle         TEXT,
+    synced_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- stat_totals — lifetime counters for the public site stats
+-- Seed, trigger, refresh function and site_stats view live in stat_totals.sql
+CREATE TABLE IF NOT EXISTS public.stat_totals (
+    metric         TEXT        PRIMARY KEY,
+    base_value     INTEGER     NOT NULL DEFAULT 0 CHECK (base_value >= 0),
+    lifetime_count INTEGER     NOT NULL DEFAULT 0 CHECK (lifetime_count >= 0),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ── Enable Row Level Security on all tables ─────────────────────────────────
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -224,6 +241,8 @@ ALTER TABLE public.event_registration_field_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.social_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stat_totals ENABLE ROW LEVEL SECURITY;
 
 -- ── RLS Policies ────────────────────────────────────────────────────────────
 -- See also: supabase/sql/rls_policies.sql for the canonical policy definitions.
@@ -309,6 +328,18 @@ DROP POLICY IF EXISTS "admin_options_delete" ON public.admin_options;
 CREATE POLICY "admin_options_delete" ON public.admin_options
     FOR DELETE
     USING (public.is_admin());
+
+-- social_stats: public read, server-side writes only (service role)
+DROP POLICY IF EXISTS "social_stats_read" ON public.social_stats;
+CREATE POLICY "social_stats_read" ON public.social_stats
+    FOR SELECT
+    USING (true);
+
+-- stat_totals: public read, counters updated by SECURITY DEFINER functions
+DROP POLICY IF EXISTS "stat_totals_read" ON public.stat_totals;
+CREATE POLICY "stat_totals_read" ON public.stat_totals
+    FOR SELECT
+    USING (true);
 
 -- ── Triggers ────────────────────────────────────────────────────────────────
 

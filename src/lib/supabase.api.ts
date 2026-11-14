@@ -34,6 +34,8 @@ import {
   eventCancellationData,
   donationCheckoutData,
   paymentVerifyData,
+  siteStatsData,
+  socialStatData,
 } from ']/SupabaseSource';
 import { supabase } from ']/client';
 
@@ -483,6 +485,18 @@ export const SupabaseRequest = async (
     if (!sessionId) throw new Error('session_id is required');
     return paymentVerifyData(sessionId);
   }
-  
+
+  // ── Public: Site stats (lifetime counters + synced platforms) ──
+  if (endpoint === '/stats/site' && method === 'GET') {
+    return siteStatsData();
+  }
+
+  // ── Public: One platform's stats (pitch pages) ─────────────────
+  if (endpoint.startsWith('/stats/social') && method === 'GET') {
+    const platform = getQueryParam(endpoint, 'platform');
+    if (!platform) throw new Error('platform is required');
+    return socialStatData(platform);
+  }
+
   throw new Error('API request invalid');
 };

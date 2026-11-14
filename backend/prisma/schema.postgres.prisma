@@ -25,6 +25,7 @@ model users {
   gender        Gender
   study_program String    @db.VarChar(50)
   term          String    @db.VarChar(4)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
 
   registrations event_registrations[]
   membership_payments membership_payments[]
@@ -170,6 +171,20 @@ model transactions {
 
   @@index([user_id])
   @@index([source, term])
+}
+
+model social_stats {
+  platform       String   @id
+  follower_count Int
+  handle         String?
+  synced_at      DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model stat_totals {
+  metric         String   @id
+  base_value     Int      @default(0)
+  lifetime_count Int      @default(0)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
 }
 
 enum Role {

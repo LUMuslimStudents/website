@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, Globe, Mail, Sparkles } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
+import { useSocialStat } from "@/hooks/useSocialStat";
 import {
   COLLABORATION_EMAIL,
   COLLABORATION_SUBJECT,
@@ -24,6 +25,11 @@ const mailto = (subject: string = COLLABORATION_SUBJECT) =>
   `mailto:${COLLABORATION_EMAIL}?subject=${encodeURIComponent(subject)}`;
 
 const Collaborate = () => {
+  const instagramFollowers = useSocialStat(
+    "instagram",
+    SOCIALS.instagram.followers
+  );
+
   return (
     <div className="min-h-dvh flex flex-col page">
       <Navbar overlay />
@@ -109,7 +115,7 @@ const Collaborate = () => {
                     <FaInstagram className="h-6 w-6" />
                   </div>
                   <div className="font-display text-5xl tracking-tight text-gold">
-                    <StatCounter value={SOCIALS.instagram.followers} />
+                    <StatCounter value={instagramFollowers} />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Instagram followers

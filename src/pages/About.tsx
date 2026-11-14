@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { Reveal } from "@/components/Reveal";
 import { StatCounter } from "@/components/StatCounter";
+import { useSiteStats } from "@/hooks/useSiteStats";
 import {
   OrnamentDivider,
   KhatamPattern,
@@ -61,10 +62,13 @@ const About = () => {
   ];
 
   // Key figures — update the values as they grow.
+  const { members, events, instagramFollowers, yearsActive } = useSiteStats();
+
   const stats = [
-    { value: 308, label: "Members so far" },
-    { value: 50, label: "Events hosted so far" },
-    { value: 4, label: "Years active" },
+    { value: members, label: "Members so far" },
+    { value: events, label: "Events hosted so far" },
+    { value: instagramFollowers, label: "Instagram followers" },
+    { value: yearsActive, label: "Years active" },
   ];
 
   return (
@@ -253,7 +257,7 @@ const About = () => {
                 <KhatamPattern className="text-foreground/[0.06]" />
                 <div className="relative">
                   {/* Stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/70">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-x divide-border/70">
                     {stats.map((stat) => (
                       <div
                         key={stat.label}

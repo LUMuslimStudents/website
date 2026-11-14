@@ -40,11 +40,11 @@ export const SOCIALS = {
     handle: "@muslimstudentslu",
     url: "https://www.instagram.com/muslimstudentslu/",
     /**
-     * ⚠️ Update this to your real follower count — it's shown on the pitch page.
-     * For a truly live number, an Instagram Graph API token is required (then a
-     * small Supabase edge function can sync it automatically).
+     * Fallback shown until the live stat loads (and if it can't be read).
+     * The live number comes from `social_stats`, synced daily by the
+     * `sync-social-stats` edge function.
      */
-    followers: 2249,
+    followers: 2300,
   },
 } as const;
 

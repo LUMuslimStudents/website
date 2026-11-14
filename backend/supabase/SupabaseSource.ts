@@ -41,6 +41,8 @@ import {
   cancelMembership,
   cancelEventRegistration,
 } from ']/services/payments/payments';
+import { getSiteStats } from ']/services/stats/stats';
+import { getSocialStat } from ']/services/social/social';
 
 // ── Event data exports ──────────────────────────────────────────────────────
 
@@ -165,3 +167,11 @@ export const eventCancellationData = async (registrationId: string) =>
 
 export const paymentVerifyData = async (sessionId: string) =>
   verifyPayment(sessionId);
+
+// ── Site stats exports ──────────────────────────────────────────────────────
+
+export const siteStatsData = async () => getSiteStats();
+
+// ── Social (per-platform) exports ───────────────────────────────────────────
+
+export const socialStatData = async (platform: string) => getSocialStat(platform);

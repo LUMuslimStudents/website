@@ -173,6 +173,24 @@ CREATE POLICY "admin_options_delete" ON public.admin_options
     FOR DELETE
     USING (public.is_admin());
 
+-- ── public.social_stats ─────────────────────────────────────────────────────
+-- Public read; written only by the sync-social-stats edge function (service
+-- role, which bypasses RLS). Data API grants live in social_stats.sql.
+
+DROP POLICY IF EXISTS "social_stats_read" ON public.social_stats;
+CREATE POLICY "social_stats_read" ON public.social_stats
+    FOR SELECT
+    USING (true);
+
+-- ── public.stat_totals ──────────────────────────────────────────────────────
+-- Public read; counters are written only by the SECURITY DEFINER functions in
+-- stat_totals.sql (payment trigger + nightly refresh).
+
+DROP POLICY IF EXISTS "stat_totals_read" ON public.stat_totals;
+CREATE POLICY "stat_totals_read" ON public.stat_totals
+    FOR SELECT
+    USING (true);
+
 -- ── public.membership_payments ──────────────────────────────────────────────
 
 DROP POLICY IF EXISTS "membership_payments_own_read" ON public.membership_payments;

@@ -1,0 +1,9 @@
+# Supabase CLI configuration.
+# https://supabase.com/docs/guides/local-development/managing-config
+
+project_id = "vcvbjvmqdjjlidrulbel"
+
+[functions.sync-social-stats]
+# pg_cron invokes this with the public publishable key. Verification stays on,
+# so the endpoint cannot be called without a valid project JWT.
+verify_jwt = true
