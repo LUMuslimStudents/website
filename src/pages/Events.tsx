@@ -450,6 +450,11 @@ const Events = () => {
   const activeExpandedEventIdRef = useRef<number | null>(null);
   const detailFetchTimerRef = useRef<number | null>(null);
   const pendingNavigateTimerRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  // True from the moment we start closing until the /events route is in
+  // place. Blocks the URL-driven open effect from reactivating the card
+  // while the deep-link params are still in the address bar.
+  const isClosingRef = useRef(false);
 
   const { user } = useAuth();
   const isSignedIn = Boolean(user);
@@ -556,6 +561,11 @@ const Events = () => {
   }, []);
 
   const openExpandedEvent = useCallback((eventIdToOpen: number, cardElement?: HTMLDivElement | null) => {
+    isClosingRef.current = false;
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     activeExpandedEventIdRef.current = eventIdToOpen;
     const rect = cardElement?.getBoundingClientRect();
     setCardPosition(rect ? {
@@ -701,6 +711,15 @@ const Events = () => {
     // Plain listing (/events) — nothing to resolve from the URL.
     if (!normalizedRouteTerm && !normalizedRouteEventSlug) {
       invalidRouteEventRef.current = null;
+      // The deep link is gone, so the close transition (if any) is finished.
+      isClosingRef.current = false;
+      return;
+    }
+
+    // A close is in progress but the address bar still holds the event's
+    // deep link (navigate() commits asynchronously). Reopening here would
+    // resurrect the card just as its state is being torn down.
+    if (isClosingRef.current) {
       return;
     }
 
@@ -792,8 +811,17 @@ const Events = () => {
       window.clearTimeout(pendingNavigateTimerRef.current);
       pendingNavigateTimerRef.current = null;
     }
+    if (detailFetchTimerRef.current) {
+      window.clearTimeout(detailFetchTimerRef.current);
+      detailFetchTimerRef.current = null;
+    }
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+    isClosingRef.current = true;
     setIsClosing(true);
-    setTimeout(() => {
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
       setExpandedEventId(null);
       setIsClosing(false);
       document.body.style.overflow = "unset";
@@ -809,6 +837,9 @@ const Events = () => {
       }
       if (pendingNavigateTimerRef.current) {
         window.clearTimeout(pendingNavigateTimerRef.current);
+      }
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current);
       }
     };
   }, []);
