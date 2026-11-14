@@ -2,7 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client';
 import { setupAuthRoutes } from './middleware/authHandlers';
 import { setupUserRoutes } from './middleware/userHandlers';
 import { setupEventRoutes } from './middleware/eventHandlers';
@@ -16,7 +17,11 @@ import { setupAdminOptionsRoutes } from './middleware/adminOptionsHandlers';
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
+// Prisma 7 requires a driver adapter; the REST backend connects directly.
+const adapter = new PrismaPg({
+  connectionString: process.env.DIRECT_SB_URL!,
+});
+const prisma = new PrismaClient({ adapter });
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());

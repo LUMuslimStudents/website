@@ -10,7 +10,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } fro
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { events_info } from '@prisma/client';
+import type { events_infoModel as events_info } from '../../backend/generated/prisma/models';
 import {
   DropdownMenu,
   DropdownMenuContent,

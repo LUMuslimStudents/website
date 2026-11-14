@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
 import { authenticateToken, requireAdmin, AuthRequest } from './auth';
 
 export function setupAdminOptionsRoutes(app: Express, prisma: PrismaClient) {

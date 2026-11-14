@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../generated/prisma/client';
 import { authenticateTokenOptional, AuthRequest } from '../auth';
 import { buildIcsPayload, fixDateTimeFormat, getEventFormFields } from './shared';
 

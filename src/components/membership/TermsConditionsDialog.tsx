@@ -53,7 +53,7 @@ export const TermsConditionsDialog = ({
                                 <span>No refunds can be made for the membership fee, regardless of inactivity.</span>
                                 <ChevronDown 
                                     size={18} 
-                                    className={`flex-shrink-0 transition-transform ${expandedCondition === 'condition-1' ? 'rotate-180' : ''}`}
+                                    className={`shrink-0 transition-transform ${expandedCondition === 'condition-1' ? 'rotate-180' : ''}`}
                                 />
                             </button>
                         </div>
@@ -78,7 +78,7 @@ export const TermsConditionsDialog = ({
                                 <span>In accordance with the General Data Protection Regulation (GDPR), personal and financial data collected will be handled securely, respecting members' privacy and rights</span>
                                 <ChevronDown 
                                     size={18} 
-                                    className={`flex-shrink-0 transition-transform ${expandedCondition === 'condition-2' ? 'rotate-180' : ''}`}
+                                    className={`shrink-0 transition-transform ${expandedCondition === 'condition-2' ? 'rotate-180' : ''}`}
                                 />
                             </button>
                         </div>

@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { $Enums, Prisma, PrismaClient } from '@prisma/client';
+import { $Enums, Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { authenticateToken, requireAdmin, AuthRequest } from '../auth';
 import {
     EVENT_REGISTRATION_STATUSES,

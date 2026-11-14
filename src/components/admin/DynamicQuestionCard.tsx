@@ -84,7 +84,7 @@ const OptionsEditor = ({ fieldId, optionsText, onUpdate, indicatorType }: Option
             className="group flex items-center gap-2"
           >
             {/* Radio / Checkbox indicator */}
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center">
               {indicatorType === "radio" ? (
                 <span className="h-4 w-4 rounded-full border-2 border-slate-300 dark:border-slate-600" />
               ) : (
@@ -105,7 +105,7 @@ const OptionsEditor = ({ fieldId, optionsText, onUpdate, indicatorType }: Option
               type="button"
               size="icon"
               variant="ghost"
-              className="h-7 w-7 flex-shrink-0 rounded-full text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              className="h-7 w-7 shrink-0 rounded-full text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
               onClick={() => removeOption(index)}
               aria-label={`Remove option ${index + 1}`}
             >

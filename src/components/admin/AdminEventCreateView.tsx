@@ -741,7 +741,7 @@ export const AdminEventCreateView = () => {
 
                 {/* Location with Icon */}
                 <div className="hero-datepicker-shell flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/70">
-                  <MapPin className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
                   <Input
                     id="address"
                     name="address"

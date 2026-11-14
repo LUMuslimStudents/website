@@ -22,7 +22,7 @@ export const NavCategoryDropdown = ({ category }: { category: NavCategory }) => 
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<NavItem | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const items = flattenNavItems(category);

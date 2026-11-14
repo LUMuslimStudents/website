@@ -69,7 +69,7 @@ export const EventRegistrationTermsDialog = ({
                 <span>Refund Policy</span>
                 <ChevronDown
                   size={18}
-                  className={`flex-shrink-0 transition-transform ${expandedCondition === "refund" ? "rotate-180" : ""}`}
+                  className={`shrink-0 transition-transform ${expandedCondition === "refund" ? "rotate-180" : ""}`}
                 />
               </button>
             </div>
@@ -96,7 +96,7 @@ export const EventRegistrationTermsDialog = ({
                 <span>In accordance with the General Data Protection Regulation (GDPR), personal and financial data collected will be handled securely, respecting members' privacy and rights.</span>
                 <ChevronDown
                   size={18}
-                  className={`flex-shrink-0 transition-transform ${expandedCondition === "gdpr" ? "rotate-180" : ""}`}
+                  className={`shrink-0 transition-transform ${expandedCondition === "gdpr" ? "rotate-180" : ""}`}
                 />
               </button>
             </div>

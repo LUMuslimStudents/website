@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+
+# Prisma 7 generated client (run `npx prisma generate`)
+backend/generated
 dist
 dist-ssr
 *.local

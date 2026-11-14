@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
 import { setupEventAdminRoutes } from './events/adminRoutes';
 import { setupEventPublicRoutes } from './events/publicRoutes';
 import { setupEventRegistrationRoutes } from './events/registrationRoutes';

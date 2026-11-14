@@ -86,7 +86,11 @@ supabase/
 The Prisma schema (`backend/prisma/schema.postgres.prisma`) is the source of truth for table shapes. To make a change:
 
 1. Edit `schema.postgres.prisma`
-2. Run `npx prisma generate` (updates frontend types)
+2. Run `npx prisma generate` (updates the client in `backend/generated/prisma`)
+   > Prisma 7 outputs the client to `backend/generated/prisma` and it is
+   > gitignored — run this after cloning or switching branches. Imports use the
+   > generated path (`backend/generated/prisma/client`), and the REST backend
+   > instantiates the client with the `@prisma/adapter-pg` adapter.
 3. Write the matching SQL in `supabase/sql/`
 4. Apply it:
    ```bash

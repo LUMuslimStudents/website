@@ -30,7 +30,7 @@ const formSchema = z.object({
         .regex(/(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
         .regex(/(?=.*\d)/, 'Password must contain at least one number'),
 
-    gender: z.enum(['male', 'female'], { errorMap: () => ({ message: 'Please select a gender' }) }),
+    gender: z.enum(['male', 'female'], { error: 'Please select a gender' }),
 
     plan: z.enum(['single_term', 'two_term']),
 

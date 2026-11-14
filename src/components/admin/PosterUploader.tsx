@@ -62,7 +62,7 @@ const SortableThumb = ({ id, previewUrl, index, isActive, onSelect, onRemove }: 
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className={`relative flex-shrink-0 rounded-xl border bg-white/95 dark:bg-slate-950/90 ${
+      className={`relative shrink-0 rounded-xl border bg-white/95 dark:bg-slate-950/90 ${
         isActive
           ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/60"
           : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"

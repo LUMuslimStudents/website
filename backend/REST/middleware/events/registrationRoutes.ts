@@ -1,5 +1,5 @@
 import { Express } from 'express';
-import { $Enums, PrismaClient } from '@prisma/client';
+import { $Enums, PrismaClient } from '../../../generated/prisma/client';
 import { authenticateTokenOptional, AuthRequest } from '../auth';
 import {
     boolOrDefault,

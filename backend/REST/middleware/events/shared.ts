@@ -1,5 +1,6 @@
 import { Express } from 'express';
-import { $Enums, PrismaClient, events_info } from '@prisma/client';
+import { $Enums, PrismaClient } from '../../../generated/prisma/client';
+import type { events_infoModel as events_info } from '../../../generated/prisma/models';
 import { AuthRequest } from '../auth';
 import multer from 'multer';
 import path from 'path';
