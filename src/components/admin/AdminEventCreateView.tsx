@@ -1,5 +1,4 @@
-import { ChangeEvent, FormEvent, forwardRef, SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { ComponentProps, InputHTMLAttributes } from "react";
+import { ChangeEvent, FormEvent, SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format, parse, isValid } from "date-fns";
@@ -34,7 +33,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import InputMask from "react-input-mask";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "react-datepicker/dist/react-datepicker.css";
 import "./AdminEventCreateView.css";
@@ -147,6 +145,14 @@ const maskTimeValue = (value: string) => {
   return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
 };
 
+const maskDateTimeValue = (value: string) => {
+  const digits = toDigits(value).slice(0, 12);
+  const date = maskDateValue(digits);
+  if (digits.length <= 8) return date;
+  if (digits.length <= 10) return `${date} ${digits.slice(8, 10)}`;
+  return `${date} ${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+};
+
 const parseDateTimeValue = (value: string) => {
   if (!value) return null;
 
@@ -180,74 +186,6 @@ const validateDynamicFormFields = (fields: DynamicFormFieldDraft[]) => {
 const filterMarkdownEditorCommands = (command: ICommand): false | ICommand => {
   return command.keyCommand === "fullscreen" ? false : command;
 };
-
-type PickerInputProps = ComponentProps<typeof Input>;
-
-const DateMaskedInput = forwardRef<HTMLInputElement, PickerInputProps>((props, ref) => {
-  const { className, value, onChange, onClick, onFocus, onBlur, onKeyDown, disabled, readOnly, ...rest } = props;
-
-  return (
-    <InputMask
-      {...rest}
-      mask="9999-99-99"
-      maskChar={null}
-      value={typeof value === "string" ? value : ""}
-      onChange={onChange}
-      onClick={onClick}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      disabled={disabled}
-      readOnly={readOnly}
-      inputRef={ref}
-    >
-      {(inputProps: InputHTMLAttributes<HTMLInputElement>) => (
-        <Input
-          {...inputProps}
-          ref={ref}
-          className={className}
-          inputMode="numeric"
-          autoComplete="off"
-        />
-      )}
-    </InputMask>
-  );
-});
-
-DateMaskedInput.displayName = "DateMaskedInput";
-
-const DateTimeMaskedInput = forwardRef<HTMLInputElement, PickerInputProps>((props, ref) => {
-  const { className, value, onChange, onClick, onFocus, onBlur, onKeyDown, disabled, readOnly, ...rest } = props;
-
-  return (
-    <InputMask
-      {...rest}
-      mask="9999-99-99 99:99"
-      maskChar={null}
-      value={typeof value === "string" ? value : ""}
-      onChange={onChange}
-      onClick={onClick}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      disabled={disabled}
-      readOnly={readOnly}
-      inputRef={ref}
-    >
-      {(inputProps: InputHTMLAttributes<HTMLInputElement>) => (
-        <Input
-          {...inputProps}
-          ref={ref}
-          className={className}
-          inputMode="numeric"
-          autoComplete="off"
-        />
-      )}
-    </InputMask>
-  );
-});
-
-DateTimeMaskedInput.displayName = "DateTimeMaskedInput";
 
 export const AdminEventCreateView = () => {
   const { eventId } = useParams();
@@ -427,6 +365,20 @@ export const AdminEventCreateView = () => {
     const value = maskTimeValue(input.value);
     input.value = value;
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const onDateRawChange = (event?: SyntheticEvent<HTMLElement>) => {
+    const input = event?.target;
+    if (!(input instanceof HTMLInputElement)) return;
+
+    input.value = maskDateValue(input.value);
+  };
+
+  const onDeadlineRawChange = (event?: SyntheticEvent<HTMLElement>) => {
+    const input = event?.target;
+    if (!(input instanceof HTMLInputElement)) return;
+
+    input.value = maskDateTimeValue(input.value);
   };
 
   const onDateChange = (value: Date | null) => {
@@ -771,13 +723,16 @@ export const AdminEventCreateView = () => {
                           id="date"
                           selected={parseDateValue(form.date)}
                           onChange={onDateChange}
+                          onChangeRaw={onDateRawChange}
                           customInput={(
-                            <DateMaskedInput
+                            <Input
                               name="date"
                               required
                               placeholder="YYYY-MM-DD"
                               className="hero-picker-input h-8 border-0 bg-transparent px-0 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                               aria-label="Event date"
+                              inputMode="numeric"
+                              autoComplete="off"
                             />
                           )}
                           dateFormat="yyyy-MM-dd"
@@ -865,13 +820,16 @@ export const AdminEventCreateView = () => {
                         id="deadline"
                         selected={parseDateTimeValue(form.deadline)}
                         onChange={onDeadlineChange}
+                        onChangeRaw={onDeadlineRawChange}
                         customInput={(
-                          <DateTimeMaskedInput
+                          <Input
                             name="deadline"
                             required
                             placeholder="YYYY-MM-DD HH:mm"
                             className="hero-picker-input h-8 border-0 bg-transparent px-0 text-sm shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                             aria-label="Registration deadline"
+                            inputMode="numeric"
+                            autoComplete="off"
                           />
                         )}
                         showTimeSelect

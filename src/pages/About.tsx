@@ -114,7 +114,7 @@ const About = () => {
                   size="lg"
                   className="h-12 rounded-full px-8 shadow-glow transition-all duration-300 ease-organic hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
                 >
-                  <Link to="/by-laws">
+                  <Link to="/governance">
                     How LUMS is governed
                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </Link>
